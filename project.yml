@@ -1,0 +1,51 @@
+# Receta del proyecto para XcodeGen.
+# En la nube, XcodeGen lee este archivo y genera AppTDAH.xcodeproj
+# (el proyecto de Xcode), que por eso NO se sube al repositorio.
+
+name: AppTDAH
+
+options:
+  deploymentTarget:
+    iOS: "17.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  AppTDAH:
+    type: application
+    platform: iOS
+    sources: [AppTDAH]
+    settings:
+      base:
+        # SideStore reemplaza este identificador al instalar con tu Apple ID.
+        PRODUCT_BUNDLE_IDENTIFIER: app.tdah.AppTDAH
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: AppTDAH
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        TARGETED_DEVICE_FAMILY: "1"
+
+  AppTDAHTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [AppTDAHTests]
+    dependencies:
+      - target: AppTDAH
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.tdah.AppTDAHTests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  AppTDAH:
+    build:
+      targets:
+        AppTDAH: all
+    test:
+      targets:
+        - AppTDAHTests

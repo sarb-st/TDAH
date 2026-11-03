@@ -1,0 +1,42 @@
+# --- Proyecto generado por XcodeGen (se crea en la nube, no se sube) ---
+*.xcodeproj/
+*.xcworkspace/
+
+# --- Resultados de compilación ---
+build/
+DerivedData/
+dist/
+verificar/
+Payload/
+*.ipa
+*.app
+*.dSYM
+*.dSYM.zip
+*.xcarchive
+
+# --- Archivos personales de Xcode ---
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.moved-aside
+
+# --- Paquetes de Swift ---
+.build/
+.swiftpm/
+
+# --- Sistema operativo ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Claves, certificados y secretos: NUNCA al repositorio ---
+.env
+.env.*
+*.p12
+*.p8
+*.pem
+*.key
+*.cer
+*.mobileprovision
+*.provisionprofile
+secrets/

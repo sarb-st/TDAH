@@ -1,0 +1,130 @@
+name: Compilar y publicar
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Solo se necesita permiso para crear Releases. Se usa el token automático
+# de GitHub (GITHUB_TOKEN); no hay claves guardadas en el repositorio.
+permissions:
+  contents: write
+
+concurrency:
+  group: compilar-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compilar:
+    # Runner macOS estándar: gratis en repos públicos (no usar "xlarge").
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Elegir el Xcode más reciente
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Mostrar versiones
+        run: |
+          sw_vers
+          xcodebuild -version
+
+      - name: Instalar XcodeGen
+        run: brew install xcodegen
+
+      - name: Guardar fecha de compilación en la app
+        run: |
+          cat > AppTDAH/BuildInfo.swift <<EOF
+          import Foundation
+
+          // Archivo generado automáticamente por GitHub Actions.
+          enum BuildInfo {
+              static let timestamp: TimeInterval? = $(date +%s)
+              static let commit: String? = "${GITHUB_SHA::7}"
+          }
+          EOF
+          cat AppTDAH/BuildInfo.swift
+
+      - name: Generar el proyecto de Xcode
+        run: xcodegen generate
+
+      - name: Correr las pruebas en el simulador
+        run: |
+          UDID=$(xcrun simctl list devices available --json | jq -r '
+            .devices | to_entries
+            | map(select(.key | test("iOS-")))
+            | map({
+                v: (.key | capture("iOS-(?<v>[0-9-]+)").v | split("-") | map(tonumber)),
+                d: [.value[] | select(.name | startswith("iPhone"))]
+              })
+            | map(select(.d | length > 0))
+            | sort_by(.v) | last | .d[0].udid // empty')
+          if [ -z "$UDID" ]; then
+            echo "::error::No se encontró ningún simulador de iPhone"
+            xcrun simctl list devices available
+            exit 1
+          fi
+          echo "Simulador elegido: $UDID"
+          xcodebuild test \
+            -project AppTDAH.xcodeproj \
+            -scheme AppTDAH \
+            -destination "id=$UDID" \
+            -derivedDataPath build/tests
+
+      - name: Compilar para iPhone sin firmar
+        run: |
+          xcodebuild build \
+            -project AppTDAH.xcodeproj \
+            -scheme AppTDAH \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/device \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Empaquetar como .ipa
+        run: |
+          mkdir -p dist/Payload
+          cp -R build/device/Build/Products/Release-iphoneos/AppTDAH.app dist/Payload/
+          cd dist
+          zip -qry AppTDAH.ipa Payload
+          ls -lh AppTDAH.ipa
+
+      - name: Verificar que el .ipa sirve para SideStore
+        run: |
+          set -e
+          mkdir -p verificar
+          unzip -q dist/AppTDAH.ipa -d verificar
+          APP=verificar/Payload/AppTDAH.app
+          test -d "$APP" || { echo "::error::Falta Payload/AppTDAH.app"; exit 1; }
+          PLIST="$APP/Info.plist"
+          EXE=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$PLIST")
+          echo "Identificador: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")"
+          echo "iOS mínimo:    $(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$PLIST")"
+          echo "Plataforma:    $(/usr/libexec/PlistBuddy -c 'Print :DTPlatformName' "$PLIST")"
+          ARCHS=$(lipo -archs "$APP/$EXE")
+          echo "Arquitecturas: $ARCHS"
+          [ "$(/usr/libexec/PlistBuddy -c 'Print :DTPlatformName' "$PLIST")" = "iphoneos" ] \
+            || { echo "::error::No es una compilación para iPhone real"; exit 1; }
+          echo "$ARCHS" | grep -q arm64 \
+            || { echo "::error::El ejecutable no es arm64"; exit 1; }
+          echo "OK: estructura Payload/AppTDAH.app, compilado para iPhone (arm64), sin firmar."
+
+      - name: Publicar en un Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="build-${{ github.run_number }}"
+          FECHA=$(date -u +"%Y-%m-%d %H:%M UTC")
+          gh release create "$TAG" dist/AppTDAH.ipa \
+            --target "$GITHUB_SHA" \
+            --title "AppTDAH · compilación ${{ github.run_number }} ($FECHA)" \
+            --notes "Compilada el $FECHA desde el commit ${GITHUB_SHA::7}. Descargá AppTDAH.ipa y abrilo con SideStore." \
+            --latest
