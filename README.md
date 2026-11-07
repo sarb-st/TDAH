@@ -17,11 +17,17 @@ Este enlace siempre apunta a la última versión compilada.
 
 | Archivo | Para qué sirve |
 |---|---|
-| `AppTDAH/AppTDAHApp.swift` | Punto de arranque de la app: abre la pantalla principal. |
-| `AppTDAH/ContentView.swift` | La pantalla que ves: "Hola" y la fecha de compilación. |
-| `AppTDAH/Textos.swift` | Los textos de la app y cómo se escribe la fecha (separado para poder probarlo). |
-| `AppTDAH/BuildInfo.swift` | Guarda la fecha y versión de compilación; la nube lo reescribe en cada compilación. |
-| `AppTDAHTests/TextosTests.swift` | Pruebas automáticas que revisan que los textos sean correctos. |
+| `AppTDAH/AppTDAHApp.swift` | Arranque de la app y la pantalla raíz, que decide qué mostrar en cada momento. |
+| `AppTDAH/Modelo/Tarea.swift` | Qué se guarda en el iPhone: tareas, pasos y el rastro de cada slot. |
+| `AppTDAH/Logica/MotorSlots.swift` | Las reglas: qué pantalla toca, los avisos, los choques y los huecos libres para "¿Cuándo?". |
+| `AppTDAH/Diseno/Paleta.swift` | Los colores de la estética "Respiro" y cómo cambian a lo largo del día. |
+| `AppTDAH/Diseno/CirculoQueRespira.swift` | El círculo que respira y las piezas comunes de las pantallas. |
+| `AppTDAH/Pantallas/Flujo.swift` | Las pantallas principales: Espera, Decidir, ¿Cuándo?, En curso y Fin del slot. |
+| `AppTDAH/Pantallas/Formularios.swift` | Nueva tarea, Ajustes y Diagnóstico. |
+| `AppTDAH/Servicios/Servicios.swift` | Avisos, firma, copia de seguridad, registro de errores y datos de muestra para las capturas. |
+| `AppTDAH/Textos.swift` | Cómo se escribe la fecha de compilación. |
+| `AppTDAH/BuildInfo.swift` | Fecha y versión de compilación; la nube lo reescribe en cada compilación. |
+| `AppTDAHTests/` | Pruebas automáticas de las reglas, los colores y los textos. |
 | `project.yml` | Receta del proyecto: XcodeGen la usa para crear el proyecto de Xcode en la nube. |
 | `.github/workflows/compilar.yml` | Instrucciones para la Mac en la nube: probar, compilar, empaquetar y publicar. |
 | `.gitignore` | Lista de archivos que nunca se suben (compilaciones, archivos temporales, claves). |

@@ -74,11 +74,38 @@ jobs:
             exit 1
           fi
           echo "Simulador elegido: $UDID"
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
           xcodebuild test \
             -project AppTDAH.xcodeproj \
             -scheme AppTDAH \
             -destination "id=$UDID" \
             -derivedDataPath build/tests
+
+      - name: Sacar capturas del simulador
+        run: |
+          APP=$(find build/tests/Build/Products -maxdepth 3 -path '*iphonesimulator*' -name AppTDAH.app | head -1)
+          echo "App del simulador: $APP"
+          xcrun simctl boot "$UDID" 2>/dev/null || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 || true
+          xcrun simctl install "$UDID" "$APP"
+          mkdir -p capturas
+          i=1
+          # pantalla:hora del día con la que se pintan los colores
+          for item in espera:9.5 decidir:9.5 cuando:9.5 encurso:16 fin:17 vacio:9.5 ajustes:9.5 espera:20.6 espera:23; do
+            p="${item%%:*}"; h="${item##*:}"
+            xcrun simctl launch --terminate-running-process "$UDID" app.tdah.AppTDAH -demo "$p" -hora "$h"
+            sleep 6
+            xcrun simctl io "$UDID" screenshot "capturas/$(printf '%02d' $i)-$p-${h/./_}h.png"
+            i=$((i+1))
+          done
+          ls -lh capturas
+
+      - name: Guardar capturas como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: capturas
+          path: capturas
 
       - name: Compilar para iPhone sin firmar
         run: |
@@ -127,8 +154,8 @@ jobs:
         run: |
           TAG="build-${{ github.run_number }}"
           FECHA=$(date -u +"%Y-%m-%d %H:%M UTC")
-          gh release create "$TAG" dist/AppTDAH.ipa \
+          gh release create "$TAG" dist/AppTDAH.ipa capturas/*.png \
             --target "$GITHUB_SHA" \
             --title "AppTDAH · compilación ${{ github.run_number }} ($FECHA)" \
-            --notes "Compilada el $FECHA desde el commit ${GITHUB_SHA::7}. Descargá AppTDAH.ipa y abrilo con SideStore." \
+            --notes "Compilada el $FECHA desde el commit ${GITHUB_SHA::7}. Descargá AppTDAH.ipa y abrilo con SideStore. Las imágenes .png son capturas de cada pantalla en el simulador." \
             --latest

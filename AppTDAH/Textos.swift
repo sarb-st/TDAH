@@ -1,9 +1,7 @@
 import Foundation
 
-/// Textos que muestra la app. Están separados de la pantalla para poder probarlos.
+/// Textos con formato que se pueden probar sin pantalla.
 enum Textos {
-    static let saludo = "Hola"
-
     static func fechaDeCompilacion(
         timestamp: TimeInterval?,
         locale: Locale = .current,
