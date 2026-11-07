@@ -1,4 +1,6 @@
 import SwiftUI
+import UIKit
+import CoreText
 
 /// Color en RGB (0 a 1), fácil de mezclar y de probar.
 struct RGB: Equatable, Sendable {
@@ -126,11 +128,45 @@ extension EnvironmentValues {
     }
 }
 
+/// Fraunces (licencia OFL, en AppTDAH/Fuentes) para títulos, preguntas y números; SF Pro para el resto.
+/// Si por algún motivo no carga, se usa la serif del sistema y queda anotado en Diagnóstico.
+enum Tipografia {
+    static func registrar() {
+        for nombre in ["Fraunces", "Fraunces-Italic"] {
+            guard let url = Bundle.main.url(forResource: nombre, withExtension: "ttf") else {
+                Registro.anotar("Tipografía: falta \(nombre).ttf en la app.")
+                continue
+            }
+            var error: Unmanaged<CFError>?
+            if !CTFontManagerRegisterFontsForURL(url as CFURL, .process, &error) {
+                Registro.anotar("Tipografía: no se pudo registrar \(nombre): \(String(describing: error?.takeRetainedValue()))")
+            }
+        }
+        for ps in ["Fraunces-Regular", "Fraunces-Light", "Fraunces-Italic"] where UIFont(name: ps, size: 12) == nil {
+            Registro.anotar("Tipografía: no se encontró \(ps); uso la serif del sistema.")
+        }
+    }
+
+    static func fraunces(_ ps: String, _ tamano: CGFloat, relativoA estilo: Font.TextStyle, italica: Bool = false) -> Font {
+        if UIFont(name: ps, size: tamano) != nil { return .custom(ps, size: tamano, relativeTo: estilo) }
+        let base = Font.system(estilo, design: .serif)
+        return italica ? base.italic() : base
+    }
+}
+
 extension Font {
-    /// Fraunces todavía no está incluida: por ahora, la serif del sistema (New York).
-    static let tituloTarea = Font.system(.largeTitle, design: .serif)
-    static let pregunta = Font.system(.title2, design: .serif)
-    static func numero(_ tamano: CGFloat) -> Font { .system(size: tamano, weight: .light, design: .serif) }
+    static var tituloTarea: Font { Tipografia.fraunces("Fraunces-Regular", 34, relativoA: .largeTitle) }
+    static var pregunta: Font { Tipografia.fraunces("Fraunces-Regular", 22, relativoA: .title2) }
+    static func serif(_ tamano: CGFloat, relativoA estilo: Font.TextStyle) -> Font { Tipografia.fraunces("Fraunces-Regular", tamano, relativoA: estilo) }
+    static func serifItalica(_ tamano: CGFloat, relativoA estilo: Font.TextStyle) -> Font {
+        Tipografia.fraunces("Fraunces-Italic", tamano, relativoA: estilo, italica: true)
+    }
+    /// El tamaño ya viene escalado con @ScaledMetric.
+    static func numero(_ tamano: CGFloat) -> Font {
+        UIFont(name: "Fraunces-Light", size: tamano) != nil
+            ? .custom("Fraunces-Light", fixedSize: tamano)
+            : .system(size: tamano, weight: .light, design: .serif)
+    }
 }
 
 struct BotonPrimario: ButtonStyle {

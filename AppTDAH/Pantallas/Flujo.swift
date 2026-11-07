@@ -266,7 +266,7 @@ struct CuandoView: View {
         let lista = sugerencias
         VStack(alignment: .leading, spacing: 6) {
             Text(tarea.titulo).font(.tituloTarea).lineLimit(3).padding(.top, 12)
-            Text(calma).font(.system(.title3, design: .serif).italic()).foregroundStyle(paleta.primario.color)
+            Text(calma).font(.serifItalica(20, relativoA: .title3)).foregroundStyle(paleta.primario.color)
             Spacer(minLength: 12)
             VStack(spacing: 8) {
                 Text("¿Cuándo, entonces?")
@@ -306,7 +306,7 @@ struct CuandoView: View {
     private func opcion(_ i: Int, titulo: String, motivo: String, agendar: @escaping () -> Void) -> some View {
         let sel = elegida == i
         return VStack(alignment: .leading, spacing: 8) {
-            Text(titulo).font(.system(sel ? .title : .title3, design: .serif))
+            Text(titulo).font(sel ? .serif(28, relativoA: .title) : .serif(20, relativoA: .title3))
             if sel {
                 Text(motivo).font(.subheadline).foregroundStyle(paleta.secundario.color)
                 Button("Agendar", action: agendar).buttonStyle(BotonPrimario(paleta: paleta))
@@ -325,7 +325,7 @@ struct CuandoView: View {
             get: { otraFecha ?? lista.first?.inicio ?? ahora.addingTimeInterval(3600) },
             set: { otraFecha = $0 })
         return VStack(alignment: .leading, spacing: 8) {
-            Text("Otra hora").font(.system(sel ? .title : .title3, design: .serif))
+            Text("Otra hora").font(sel ? .serif(28, relativoA: .title) : .serif(20, relativoA: .title3))
             if sel {
                 DatePicker("Cuándo", selection: fecha, in: ahora..., displayedComponents: [.date, .hourAndMinute])
                     .labelsHidden()
@@ -490,7 +490,7 @@ struct FinSlotView: View {
                 .multilineTextAlignment(.center)
             Spacer(minLength: 8)
             VStack(spacing: 8) {
-                Text("¿Cómo seguimos?").font(.system(.title3, design: .serif)).foregroundStyle(paleta.primario.color)
+                Text("¿Cómo seguimos?").font(.serif(20, relativoA: .title3)).foregroundStyle(paleta.primario.color)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 opcion("Terminé", "Se cierra y queda el tiempo real.", icono: "leaf", accion: onTermine)
                 necesitoMas

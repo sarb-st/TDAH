@@ -3,6 +3,10 @@ import SwiftData
 
 @main
 struct AppTDAHApp: App {
+    init() {
+        Tipografia.registrar()
+    }
+
     let contenedor: ModelContainer = {
         let enMemoria = DatosDemo.pantalla != nil
         do {

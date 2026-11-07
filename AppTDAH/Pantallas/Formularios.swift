@@ -21,7 +21,7 @@ struct NuevaTareaView: View {
             Form {
                 Section {
                     TextField("Qué vas a hacer", text: $titulo, axis: .vertical)
-                        .font(.system(.title3, design: .serif))
+                        .font(.serif(20, relativoA: .title3))
                 }
                 Section {
                     DatePicker("Comienza", selection: $inicio, in: Date()...)

@@ -25,6 +25,7 @@ Este enlace siempre apunta a la última versión compilada.
 | `AppTDAH/Pantallas/Flujo.swift` | Las pantallas principales: Espera, Decidir, ¿Cuándo?, En curso y Fin del slot. |
 | `AppTDAH/Pantallas/Formularios.swift` | Nueva tarea, Ajustes y Diagnóstico. |
 | `AppTDAH/Servicios/Servicios.swift` | Avisos, firma, copia de seguridad, registro de errores y datos de muestra para las capturas. |
+| `AppTDAH/Fuentes/` | La tipografía Fraunces y su licencia libre (SIL Open Font License). |
 | `AppTDAH/Textos.swift` | Cómo se escribe la fecha de compilación. |
 | `AppTDAH/BuildInfo.swift` | Fecha y versión de compilación; la nube lo reescribe en cada compilación. |
 | `AppTDAHTests/` | Pruebas automáticas de las reglas, los colores y los textos. |
