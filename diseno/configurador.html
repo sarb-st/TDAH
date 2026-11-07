@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configurador Respiro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,400&display=swap" rel="stylesheet">
+<style>
+/* Layout: teléfono de muestra fijo a la izquierda y las decisiones a la derecha; en el celular, teléfono arriba. */
+:root {
+  --bg: #F5F2EB;
+  --surface: #FFFFFF;
+  --ink: #2C2A25;
+  --muted: #6F6A60;
+  --line: #E2DBCF;
+  --accent: #4E6B55;
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-body: -apple-system, "SF Pro Text", system-ui, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161917; --surface: #1F2420; --ink: #E9EBE4; --muted: #A2A99F; --line: #333B35; --accent: #9DBBA4;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161917; --surface: #1F2420; --ink: #E9EBE4; --muted: #A2A99F; --line: #333B35; --accent: #9DBBA4;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.5; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 28px 16px 64px; display: grid; gap: 24px; }
+.intro h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(30px, 6vw, 40px); line-height: 1.1; margin: 0 0 8px; text-wrap: balance; }
+.intro p { margin: 0; color: var(--muted); max-width: 62ch; }
+.layout { display: grid; grid-template-columns: minmax(300px, 360px) 1fr; gap: 36px; align-items: start; }
+.left { position: sticky; top: 16px; display: grid; gap: 12px; justify-items: center; }
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; }
+  .left { position: static; }
+}
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.tabs button { font: inherit; font-size: 14px; padding: 7px 12px; min-height: 36px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.tabs button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.screen-note { font-size: 14px; color: var(--muted); text-align: center; max-width: 36ch; min-height: 42px; }
+button:focus-visible, .chips input:focus-visible + label { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.side { display: grid; gap: 22px; }
+fieldset { border: 0; margin: 0; padding: 0 0 20px; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
+legend { font-family: var(--font-display); font-size: 21px; padding: 0; margin-bottom: 2px; }
+.help { font-size: 14px; color: var(--muted); margin: -4px 0 2px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips input { position: absolute; opacity: 0; pointer-events: none; }
+.chips label { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-size: 15px; }
+.chips input:checked + label { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.chips input:checked + label::before { content: "✓"; color: var(--accent); font-weight: 700; }
+.range { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
+.range input { width: 100%; accent-color: var(--accent); }
+.range output { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 12ch; text-align: right; }
+.decided { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+.decided h2, .save h2 { font-family: var(--font-display); font-weight: 400; font-size: 22px; margin: 0 0 8px; }
+.decided ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 15px; display: grid; gap: 3px; }
+.save { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 12px; }
+.save textarea { font: inherit; width: 100%; min-height: 96px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 10px; resize: vertical; }
+.save label { font-size: 14px; color: var(--muted); }
+.save .primary { font: inherit; font-weight: 600; font-size: 16px; padding: 14px; border-radius: 12px; border: 0; background: var(--accent); color: var(--bg); cursor: pointer; min-height: 48px; }
+.status-msg { font-size: 14px; color: var(--muted); min-height: 21px; }
+
+/* ---------------- Teléfono ---------------- */
+.phone { width: min(340px, 100%); aspect-ratio: 9 / 19.3; border-radius: 48px; padding: 10px; background: #111; box-shadow: 0 20px 44px rgba(30, 30, 20, .22); }
+.screen { height: 100%; border-radius: 39px; overflow: hidden; position: relative; background: var(--s-bg); color: var(--s-ink); font-family: var(--s-body); }
+.screen.ready { transition: background-color .4s linear, color .4s linear; }
+.sbar { position: absolute; top: 14px; left: 32px; right: 30px; display: flex; justify-content: space-between; font: 600 14px -apple-system, system-ui, sans-serif; z-index: 5; }
+.screen[data-view="aviso"] .sbar { color: #fff; }
+.view { position: absolute; inset: 0; padding: 54px 24px 26px; display: none; flex-direction: column; gap: 4px; z-index: 1; }
+.view.on { display: flex; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--s-muted); font-weight: 600; }
+.task { font-family: var(--s-display); font-weight: 400; font-size: 32px; line-height: 1.08; margin: 2px 0; letter-spacing: -.01em; }
+.when { color: var(--s-muted); font-size: 15px; }
+/* El círculo tiene el mismo tamaño y el mismo lugar en Espera, Decidir y En curso. */
+.stage, .decide-stage, .curso-stage { position: absolute; inset: 0; display: grid; place-items: center; padding-bottom: 4%; }
+
+/* Círculo: sin línea; el halo nace del borde, y en su mínimo entra apenas hacia adentro. */
+.breath { position: relative; width: 168px; height: 168px; display: grid; place-items: center; }
+.breath canvas, .prog canvas { position: absolute; inset: -50%; width: 200%; height: 200%; pointer-events: none; }
+.inner { position: relative; z-index: 1; text-align: center; display: grid; gap: 2px; }
+.inner small { color: var(--s-muted); font-size: 13px; }
+.num { font-family: var(--s-display); font-weight: 300; font-size: 46px; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.num.long { font-size: 32px; }
+
+/* Espera */
+.view[data-view="espera"] { padding: 0; }
+.carousel { position: absolute; inset: 0; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
+.carousel::-webkit-scrollbar { display: none; }
+.page { position: relative; flex: 0 0 100%; scroll-snap-align: start; padding: 54px 24px 26px; display: flex; flex-direction: column; gap: 4px; }
+.dots { position: absolute; bottom: 22px; left: 0; right: 0; display: flex; justify-content: center; gap: 7px; z-index: 2; pointer-events: none; }
+.dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--s-muted); opacity: .3; transition: opacity .3s; }
+.dots i.on { opacity: .9; }
+
+/* Decidir */
+.decide-stage { touch-action: none; }
+.drag { position: relative; width: 168px; height: 168px; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; transition: transform .4s cubic-bezier(.2,.8,.2,1); }
+.drag.dragging { transition: none; cursor: grabbing; }
+.drag .breath { width: 100%; height: 100%; }
+.hold-arc { position: absolute; inset: -6px; width: calc(100% + 12px); height: calc(100% + 12px); transform: rotate(-90deg); pointer-events: none; z-index: 2; }
+.icon { position: relative; z-index: 1; width: 44px; height: 44px; color: var(--s-primary); transition: opacity .2s; }
+.icon .pulse { transform-origin: 22px 22px; animation: pulse 2.4s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { transform: scale(1); opacity: .85; } 50% { transform: scale(1.18); opacity: .6; } }
+.feedback { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; font-family: var(--s-display); font-size: 22px; opacity: 0; pointer-events: none; }
+.fb-yes { color: var(--s-primary); }
+.fb-no { color: var(--s-muted); }
+.guide { position: absolute; bottom: 26px; left: 0; right: 0; display: flex; justify-content: center; gap: 22px; font-size: 13px; color: var(--s-muted); transition: opacity .3s; }
+.guide span { display: inline-flex; align-items: center; gap: 6px; }
+.guide svg { width: 14px; height: 14px; color: var(--s-primary); }
+.flash { position: absolute; inset: 0; background: var(--s-energy); opacity: 0; pointer-events: none; transition: opacity .5s; z-index: 2; }
+.flash.go { opacity: .5; }
+
+/* En curso */
+.prog { position: relative; width: 168px; height: 168px; display: grid; place-items: center; }
+.level { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; z-index: 0; display: none; }
+.screen[data-progreso="nivel"] .level { display: block; }
+.level svg { position: absolute; left: -50%; width: 200%; height: 24px; transition: top 1s linear; }
+.level svg path { fill: color-mix(in srgb, var(--s-energy) 22%, transparent); }
+.level .water { position: absolute; left: 0; right: 0; bottom: 0; background: color-mix(in srgb, var(--s-energy) 22%, transparent); transition: height 1s linear; }
+.level .wave { animation: wave 6s linear infinite; }
+@keyframes wave { from { transform: translateX(0); } to { transform: translateX(25%); } }
+
+.wheel-wrap { position: absolute; left: 24px; right: 24px; bottom: 22px; }
+.wheel { height: 132px; overflow-y: auto; scroll-snap-type: y mandatory; scrollbar-width: none; -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 78%, transparent 100%); mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 78%, transparent 100%); }
+.wheel::-webkit-scrollbar { display: none; }
+.wheel ol { list-style: none; margin: 0; padding: 0 0 88px; }
+.wheel li { height: 44px; display: flex; align-items: center; gap: 10px; scroll-snap-align: start; font-size: 15px; transition: transform .2s, opacity .2s; transform-origin: left center; }
+.wheel li button { width: 24px; height: 24px; flex: none; border-radius: 50%; border: 1.5px solid var(--s-primary); background: transparent; padding: 0; cursor: pointer; }
+.wheel li.done { color: var(--s-muted); text-decoration: line-through; }
+.wheel li.done button { background: var(--s-primary); }
+.wheel li.next { font-weight: 600; }
+
+/* Fin del slot */
+.view[data-view="fin"] { gap: 6px; }
+.reward { display: grid; justify-items: center; text-align: center; gap: 4px; margin-top: 6px; }
+.burst { position: relative; width: 84px; height: 84px; display: grid; place-items: center; }
+.burst i { position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid var(--s-energy); opacity: 0; }
+.view.on .burst i { animation: burst 1.8s ease-out forwards; }
+.view.on .burst i:nth-child(2) { animation-delay: .25s; }
+.view.on .burst i:nth-child(3) { animation-delay: .5s; }
+@keyframes burst { 0% { transform: scale(.4); opacity: .9; } 100% { transform: scale(1.6); opacity: 0; } }
+.burst .core { width: 58px; height: 58px; border-radius: 50%; background: color-mix(in srgb, var(--s-energy) 35%, var(--s-bg)); display: grid; place-items: center; color: var(--s-primary); }
+.reward h2 { font-family: var(--s-display); font-weight: 400; font-size: 26px; line-height: 1.12; margin: 4px 0 0; text-wrap: balance; }
+.reward p { margin: 0; font-size: 14px; color: var(--s-muted); }
+.fin { margin-top: auto; display: grid; gap: 8px; }
+.fin h3 { font-family: var(--s-display); font-weight: 400; font-size: 21px; margin: 0; color: var(--s-primary); }
+.big { font: inherit; font-size: 16px; text-align: left; padding: 11px 14px; border-radius: 16px; border: 1px solid var(--s-line); background: var(--s-surface); color: var(--s-ink); display: grid; grid-template-columns: 30px 1fr; gap: 2px 10px; align-items: center; cursor: pointer; }
+.big svg { width: 28px; height: 28px; grid-row: span 2; color: var(--s-primary); }
+.big em { font-style: normal; color: var(--s-muted); font-size: 13px; }
+.more { grid-column: 2; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px; }
+.more button { font: inherit; font-size: 14px; padding: 8px 0; border-radius: 10px; border: 1px solid var(--s-line); background: var(--s-bg); color: var(--s-ink); cursor: pointer; }
+.warn { font-size: 13px; border-radius: 12px; padding: 9px 11px; background: color-mix(in srgb, var(--s-warn) 16%, transparent); border: 1px solid color-mix(in srgb, var(--s-warn) 40%, transparent); display: none; gap: 6px; }
+.warn.on { display: grid; }
+.warn .row button { font: inherit; font-size: 13px; border-radius: 10px; padding: 6px 10px; border: 1px solid var(--s-line); background: var(--s-surface); color: var(--s-ink); cursor: pointer; }
+.row { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+
+/* ¿Cuándo? */
+.calm { font-family: var(--s-display); font-style: italic; font-size: 18px; color: var(--s-primary); }
+.sheet { margin-top: auto; background: var(--s-surface); border-radius: 26px; padding: 22px 18px 14px; display: grid; gap: 8px; box-shadow: 0 -8px 30px rgba(0,0,0,.06); }
+.sheet h3 { font-family: var(--s-display); font-weight: 400; font-size: 26px; margin: 0 0 4px; line-height: 1.1; color: var(--s-primary); }
+.slot { font: inherit; text-align: left; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--s-line); background: transparent; color: var(--s-ink); display: grid; gap: 4px; cursor: pointer; transition: padding .25s, border-color .25s; }
+.slot b { font-family: var(--s-display); font-weight: 400; font-size: 19px; transition: font-size .25s; }
+.slot .extra { display: none; gap: 10px; }
+.slot.sel { padding: 16px; border: 1.5px solid var(--s-primary); }
+.slot.sel b { font-size: 25px; }
+.slot.sel .extra { display: grid; }
+.slot em { font-style: normal; color: var(--s-muted); font-size: 14px; }
+.confirm { font: inherit; font-size: 15px; font-weight: 600; padding: 11px; border-radius: 12px; border: 0; background: var(--s-primary); color: var(--s-bg); cursor: pointer; }
+.picker { display: grid; gap: 8px; }
+.days, .times { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.days::-webkit-scrollbar, .times::-webkit-scrollbar { display: none; }
+.days button, .times button { font: inherit; font-size: 14px; flex: none; padding: 7px 11px; border-radius: 10px; border: 1px solid var(--s-line); background: var(--s-bg); color: var(--s-ink); cursor: pointer; }
+.days button[aria-pressed="true"], .times button[aria-pressed="true"] { border-color: var(--s-primary); box-shadow: inset 0 0 0 1px var(--s-primary); }
+.times button:disabled { opacity: .35; text-decoration: line-through; cursor: default; }
+.link { font: inherit; font-size: 14px; background: none; border: 0; color: var(--s-muted); text-decoration: underline; padding: 6px; cursor: pointer; justify-self: center; }
+.toast { position: absolute; left: 20px; right: 20px; top: 60px; background: var(--s-primary); color: var(--s-bg); border-radius: 14px; padding: 12px 14px; font-size: 14px; opacity: 0; transition: opacity .3s; z-index: 6; pointer-events: none; }
+.toast.on { opacity: 1; }
+
+/* Aviso */
+.lock { position: absolute; inset: 0; padding: 66px 14px 30px; display: flex; flex-direction: column; align-items: center; gap: 2px; color: #fff; background: radial-gradient(120% 80% at 30% 20%, #7C8FA6 0%, #4A5568 45%, #2A303B 100%); font-family: -apple-system, system-ui, sans-serif; }
+.lock .day { font-size: 16px; opacity: .9; }
+.lock .clock { font-size: 76px; font-weight: 600; line-height: 1; letter-spacing: -.02em; }
+.stack { margin-top: auto; width: 100%; display: grid; gap: 8px; }
+.notif { background: rgba(245,245,245,.78); color: #1d1d1d; border-radius: 20px; padding: 11px 12px; font-size: 13.5px; display: grid; grid-template-columns: 36px 1fr; gap: 10px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.notif .ico { width: 36px; height: 36px; border-radius: 9px; display: grid; place-items: center; }
+.notif .top { display: flex; justify-content: space-between; font-size: 12px; color: #555; }
+#ourNotif { touch-action: pan-y; cursor: grab; transition: transform .3s ease, opacity .3s ease; }
+#ourNotif.gone { opacity: 0; transform: translateX(110%); }
+#ourNotif.dragging { transition: none; }
+.lock .hintline { font-size: 12.5px; opacity: .85; text-align: center; margin-top: 8px; min-height: 18px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .drag { transition: none; }
+  .icon .pulse, .view.on .burst i, .level .wave { animation: none; }
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="intro">
+    <h1>Configurador Respiro</h1>
+    <p>Versión 8. El círculo tiene el mismo tamaño y el mismo lugar en Espera, Decidir y En curso. Mové “Hora del día” para ver el paso de la mañana a la noche.</p>
+  </header>
+
+  <div class="layout">
+    <div class="left">
+      <div class="tabs" role="group" aria-label="Pantalla">
+        <button type="button" data-view="espera" aria-pressed="true">Espera</button>
+        <button type="button" data-view="decidir" aria-pressed="false">Decidir</button>
+        <button type="button" data-view="cuando" aria-pressed="false">¿Cuándo?</button>
+        <button type="button" data-view="curso" aria-pressed="false">En curso</button>
+        <button type="button" data-view="fin" aria-pressed="false">Fin del slot</button>
+        <button type="button" data-view="aviso" aria-pressed="false">Aviso</button>
+      </div>
+
+      <div class="phone"><div class="screen" id="screen">
+        <div class="sbar"><span id="sclock">17:55</span><span>▮▮▮</span></div>
+
+        <section class="view on" data-view="espera">
+          <div class="carousel" id="carousel">
+            <div class="page">
+              <div class="eyebrow">Lo próximo</div>
+              <div class="task">Llamar al banco</div>
+              <div class="when">Hoy 18:00 · 45 min</div>
+              <div class="stage"><div class="breath"><canvas data-halo="glow" aria-hidden="true"></canvas>
+                <div class="inner"><small>comienza en</small><span class="num" data-cd="272">4:32</span></div></div></div>
+            </div>
+            <div class="page">
+              <div class="eyebrow">Después</div>
+              <div class="task">Preparar el menú semanal</div>
+              <div class="when">Hoy 19:00 · 30 min</div>
+              <div class="stage"><div class="breath"><canvas data-halo="glow" aria-hidden="true"></canvas>
+                <div class="inner"><small>comienza en</small><span class="num long" data-cd="3872">1 h 04</span></div></div></div>
+            </div>
+            <div class="page">
+              <div class="eyebrow">Más tarde</div>
+              <div class="task">Regar las plantas</div>
+              <div class="when">Hoy 20:30 · 15 min</div>
+              <div class="stage"><div class="breath"><canvas data-halo="glow" aria-hidden="true"></canvas>
+                <div class="inner"><small>comienza en</small><span class="num long" data-cd="9272">2 h 34</span></div></div></div>
+            </div>
+          </div>
+          <div class="dots" id="dots"><i class="on"></i><i></i><i></i></div>
+        </section>
+
+        <section class="view" data-view="decidir">
+          <div class="eyebrow">Es la hora</div>
+          <div class="task">Llamar al banco</div>
+          <div class="when">18:00 · 45 min</div>
+          <div class="decide-stage">
+            <div class="drag" id="drag" role="button" tabindex="0" aria-label="Deslizá hacia arriba para empezar o mantené apretado para posponer">
+              <div class="breath"><canvas data-halo="glow" aria-hidden="true"></canvas>
+                <svg class="icon" id="icon" viewBox="0 0 44 44" aria-hidden="true"><circle class="pulse" cx="22" cy="22" r="8.5" fill="var(--s-dot)"/><circle cx="22" cy="22" r="15" fill="none" stroke="var(--s-dot)" stroke-width="1" opacity=".5"/></svg>
+                <span class="feedback fb-yes" id="fbYes">Empiezo</span>
+                <span class="feedback fb-no" id="fbNo">Ahora no</span>
+              </div>
+              <svg class="hold-arc" viewBox="0 0 180 180" aria-hidden="true"><circle id="holdArc" cx="90" cy="90" r="87" fill="none" stroke="var(--s-muted)" stroke-width="2" stroke-linecap="round" stroke-dasharray="547" stroke-dashoffset="547"/></svg>
+            </div>
+            <div class="guide" id="guide">
+              <span><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M7 12V2M3 6l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>deslizá: empiezo</span>
+              <span><svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="2.6" fill="currentColor"/><circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1" opacity=".6"/></svg>mantené: ahora no</span>
+            </div>
+          </div>
+          <div class="flash" id="flash"></div>
+        </section>
+
+        <section class="view" data-view="cuando">
+          <div class="task">Llamar al banco</div>
+          <div class="calm">Está bien, lo movemos.</div>
+          <div class="sheet" id="sheet">
+            <h3>¿Cuándo, entonces?</h3>
+            <button class="slot sel" type="button" data-t="el lunes a las 9:15"><b>Lunes 9:15</b>
+              <span class="extra"><em>El banco abre a las 9 y a esa hora estás libre.</em><span class="confirm">Agendar</span></span></button>
+            <button class="slot" type="button" data-t="el lunes a las 12:30"><b>Lunes 12:30</b>
+              <span class="extra"><em>Después de tu reunión de las 11, antes de almorzar.</em><span class="confirm">Agendar</span></span></button>
+            <button class="slot" type="button" data-t="el martes a las 9:00"><b>Martes 9:00</b>
+              <span class="extra"><em>El martes a la mañana lo tenés despejado.</em><span class="confirm">Agendar</span></span></button>
+            <button class="slot" type="button" data-other="1"><b>Otra hora</b>
+              <span class="extra picker" id="picker">
+                <span class="days" id="days"></span>
+                <span class="times" id="times"></span>
+                <em id="pickNote">Solo horas en que el banco atiende y vos estás libre.</em>
+                <span class="confirm" id="pickOk">Agendar</span>
+              </span></button>
+            <button class="link" type="button" data-t="archivo">Ya no la voy a hacer</button>
+          </div>
+          <div class="toast" id="toast"></div>
+        </section>
+
+        <section class="view" data-view="curso">
+          <div class="eyebrow">En curso</div>
+          <div class="task">Llamar al banco</div>
+          <div class="when">18:00 a 18:45</div>
+          <div class="curso-stage">
+            <div class="prog"><canvas data-halo="energy" aria-hidden="true"></canvas>
+              <div class="level" aria-hidden="true"><div class="water" id="water"></div>
+                <svg id="waveSvg" viewBox="0 0 400 24" preserveAspectRatio="none"><path class="wave" d="M0 12 Q25 4 50 12 T100 12 T150 12 T200 12 T250 12 T300 12 T350 12 T400 12 V24 H0 Z"/></svg></div>
+              <div class="inner"><span class="num" id="left">32:40</span><small>quedan</small></div></div>
+            <div class="wheel-wrap"><div class="wheel" id="wheel"><ol id="steps"></ol></div></div>
+          </div>
+        </section>
+
+        <section class="view" data-view="fin">
+          <div class="eyebrow">18:45 · Llamar al banco</div>
+          <div class="reward">
+            <div class="burst" aria-hidden="true"><i></i><i></i><i></i>
+              <div class="core"><svg viewBox="0 0 24 24" width="26" height="26"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+            <h2 id="cheer">45 minutos de foco. Lo sostuviste.</h2>
+            <p id="cheerSub">Arrancar era lo difícil, y lo hiciste. 3 de 7 pasos tachados.</p>
+          </div>
+          <div class="fin">
+            <h3>¿Cómo seguimos?</h3>
+            <button class="big" type="button" data-fin="terminé">
+              <svg viewBox="0 0 28 28" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 25V13"/><path d="M14 15c-5 0-8-3-8-8 5 0 8 3 8 8z"/><path d="M14 13c0-4 2.5-7 7-7 0 4.5-2.5 7-7 7z"/></g></svg>
+              <b>Terminé</b><em>Se cierra y queda el tiempo real.</em></button>
+            <div class="big" style="cursor:default">
+              <svg viewBox="0 0 28 28" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="14" cy="14" r="10"/><path d="M14 8.5V14l3.5 2.5"/></g></svg>
+              <b>Necesito más</b>
+              <div class="more"><button type="button" data-mas="10">+10</button><button type="button" data-mas="15">+15</button><button type="button" data-mas="30">+30</button></div></div>
+            <div class="warn" id="warn"><span>Con +30 pisás “Preparar el menú semanal” de las 19:00.</span>
+              <div class="row"><button type="button" data-fin="corrido">Correrlo a 19:20</button><button type="button" data-fin="15">Mejor +15</button></div></div>
+            <button class="big" type="button" data-fin="paro">
+              <svg viewBox="0 0 28 28" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21.5A9 9 0 0 1 11 6a9 9 0 1 0 11 11 9 9 0 0 1-4 4.5z"/><path d="M20 5v3M18.5 6.5h3"/></g></svg>
+              <b>Paro por hoy</b><em>Te pregunto cuándo retomás.</em></button>
+          </div>
+          <div class="toast" id="toastFin"></div>
+        </section>
+
+        <section class="view" data-view="aviso">
+          <div class="lock">
+            <div class="day">Viernes 6 de noviembre</div>
+            <div class="clock" id="lockClock">18:00</div>
+            <div class="stack">
+              <div class="notif" id="ourNotif"><div class="ico" style="background:#4E6B55"><svg viewBox="0 0 36 36" width="26" height="26"><circle cx="18" cy="18" r="10" fill="none" stroke="#F3EEE4" stroke-width="2"/></svg></div>
+                <div><div class="top"><b>AppTDAH</b><span id="notifWhen">ahora</span></div><b id="notifTitle">Llamar al banco comienza ahora</b><div id="notifBody">Abrí para decidir.</div></div></div>
+              <div class="notif"><div class="ico" style="background:#34C759"><svg viewBox="0 0 36 36" width="22" height="22"><path d="M8 11h20v12H16l-6 5v-5H8z" fill="#fff"/></svg></div>
+                <div><div class="top"><b>Mensajes</b><span>hace 4 min</span></div><b>Martín</b><div>¿Te queda bien el sábado?</div></div></div>
+              <div class="notif"><div class="ico" style="background:#fff"><svg viewBox="0 0 36 36" width="26" height="26"><text x="18" y="24" text-anchor="middle" font-size="15" font-weight="600" fill="#E5484D">6</text></svg></div>
+                <div><div class="top"><b>Calendario</b><span>17:30</span></div><b>Cena</b><div>20:00 a 21:00</div></div></div>
+            </div>
+            <div class="hintline" id="hintline">Deslizá la de AppTDAH hacia la derecha para descartarla.</div>
+          </div>
+        </section>
+      </div></div>
+      <div class="screen-note" id="note"></div>
+    </div>
+
+    <div class="side">
+      <fieldset>
+        <legend>Apariencia (en Ajustes)</legend>
+        <p class="help">Automático: cambia de a poco con la luz del día. Siempre día: fijo en el color de las 9:30. Siempre noche: bosque fijo.</p>
+        <div class="chips">
+          <input type="radio" name="apariencia" id="ap-0" value="auto"><label for="ap-0">Automático</label>
+          <input type="radio" name="apariencia" id="ap-1" value="dia"><label for="ap-1">Siempre día</label>
+          <input type="radio" name="apariencia" id="ap-2" value="noche"><label for="ap-2">Siempre noche</label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Hora del día (para probar)</legend>
+        <p class="help">Amanece entre las 6 y las 8, la tarde se entibia hasta las 18 y oscurece de a poco hasta las 21:30.</p>
+        <div class="range"><input type="range" id="hora" min="5" max="23.75" step="0.25" aria-label="Hora simulada"><output id="horaOut"></output></div>
+      </fieldset>
+
+      <section class="decided" aria-labelledby="decTitle">
+        <h2 id="decTitle">Ya decidido</h2>
+        <ul>
+          <li>Tipografía Fraunces para títulos y números, SF para el resto.</li>
+          <li>Paleta Salvia y crema de día, Bosque de noche, con paso continuo entre ambas.</li>
+          <li>Color de energía verde luminoso, más terroso hacia la tarde.</li>
+          <li>Círculo sin línea: halo amplio e irregular hacia afuera y, más corto, hacia adentro; 7 s por respiración.</li>
+          <li>Decidir: punto que late; deslizar para empezar, mantener para “Ahora no”.</li>
+          <li>¿Cuándo?: 3 slots concretos según tu calendario y el horario del lugar, más “Otra hora”.</li>
+          <li>En curso: solo la cuenta regresiva y la ruleta de pasos.</li>
+          <li>Fin del slot: recompensa, +10 / +15 / +30.</li>
+          <li>Aviso: notificación; si la descartás vuelve a los 3 min; al tercer descarte el slot se cierra.</li>
+        </ul>
+      </section>
+
+      <section class="save" aria-labelledby="saveTitle">
+        <h2 id="saveTitle">Comentarios y pendientes</h2>
+        <label for="nota">Lo que quieras cambiar de esta versión</label>
+        <textarea id="nota" placeholder="Por ejemplo: el atardecer un poco más largo…"></textarea>
+        <button class="primary" type="button" id="saveBtn">Guardar</button>
+        <div class="status-msg" id="saveMsg" role="status"></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script>
+/* ---------- Color a lo largo del día: puntos de referencia y mezcla continua entre ellos ---------- */
+const NOCHE = { bg: "#141A16", surface: "#1D2520", ink: "#E6E9E1", muted: "#99A49A", primary: "#8FB197", line: "#2F3B33", glow: "#4A6B55", energy: "#7FAE8B" };
+const MANANA = { bg: "#F1F1EA", surface: "#FBF8F1", ink: "#35302A", muted: "#7B746A", primary: "#4E6B55", line: "#DAD1C2", glow: "#A9C2A5", energy: "#86B892" };
+const TARDE = { ...MANANA, bg: "#F2E9DB", line: "#DCCFBC", glow: "#C3B591", energy: "#BCA96C" };
+const OCASO = { bg: "#D9CDB8", surface: "#E8DFCF", ink: "#35302A", muted: "#6E665A", primary: "#4E6553", line: "#C7B9A2", glow: "#B4A27E", energy: "#AD9C66" };
+const CREPUSCULO = { bg: "#56604F", surface: "#606A59", ink: "#EEF0E8", muted: "#C3C8BC", primary: "#B9D0BE", line: "#6D7766", glow: "#7A8C6F", energy: "#9DB48A" };
+// [hora, paleta]
+const ALBA = { ...OCASO, bg: "#E4DFCF", surface: "#EFEBDF", line: "#CEC6B3", glow: "#AEB79A", energy: "#9DB28A" };
+const KEYS_DIA = [[5, NOCHE], [5.8, CREPUSCULO], [6.6, ALBA], [8, MANANA], [13, { ...MANANA, bg: "#F2EDE2", glow: "#B6BE9B", energy: "#A2B07E" }], [18, TARDE], [20.2, OCASO], [21.1, CREPUSCULO], [21.8, NOCHE], [24, NOCHE]];
+const AMP = 1.75, RESP = 7;
+
+function mix(a, b, t) {
+  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  return "#" + [16, 8, 0].map(s => { const x = pa >> s & 255, y = pb >> s & 255; return Math.round(x + (y - x) * t).toString(16).padStart(2, "0"); }).join("");
+}
+const smooth = t => t * t * (3 - 2 * t);
+function paletteAt(h) {
+  for (let i = 0; i < KEYS_DIA.length - 1; i++) {
+    const [h0, p0] = KEYS_DIA[i], [h1, p1] = KEYS_DIA[i + 1];
+    if (h >= h0 && h <= h1) {
+      const t = smooth((h - h0) / (h1 - h0)), out = {};
+      Object.keys(NOCHE).forEach(k => out[k] = mix(p0[k], p1[k], t));
+      return out;
+    }
+  }
+  return { ...NOCHE };
+}
+function momento(h) { return h < 5.8 || h >= 21.8 ? "noche" : h < 8 ? "amanecer" : h < 12 ? "mañana" : h < 16 ? "mediodía" : h < 19 ? "tarde" : "atardecer"; }
+const fmtHora = h => `${Math.floor(h)}:${String(Math.round((h % 1) * 60)).padStart(2, "0")}`;
+
+let state = { apariencia: "auto", hora: 9.5, progreso: "nada" };
+try { const s = JSON.parse(localStorage.getItem("respiro-config-v6") || "null"); if (s) state = { ...state, ...s }; } catch (e) {}
+
+const NOTES = {
+  espera: "Solo el próximo slot. Deslizá al costado para ver los dos siguientes; vuelve solo.",
+  decidir: "Apretá y deslizá hacia arriba: empezás. Apretá y quedate quieto: posponés.",
+  cuando: "Tocá una opción: se agranda y muestra por qué te la propongo. “Otra hora” abre días y horarios libres.",
+  curso: "Solo la cuenta regresiva. Deslizá la lista y tocá un círculo para tachar.",
+  fin: "Recompensa primero, decisión después. Probá +30 para ver el aviso de choque.",
+  aviso: "Si la descartás, vuelve a los 3 minutos. Al tercer descarte, el slot se cierra."
+};
+
+const screen = document.getElementById("screen");
+let colors = {};
+function apply() {
+  document.querySelectorAll('.side input[type="radio"]').forEach(i => { i.checked = String(state[i.name]) === i.value; });
+  const h = Number(state.hora);
+  const p = state.apariencia === "noche" ? NOCHE : state.apariencia === "dia" ? paletteAt(9.5) : paletteAt(h);
+  document.getElementById("hora").value = h;
+  document.getElementById("hora").disabled = state.apariencia !== "auto";
+  document.getElementById("horaOut").textContent = state.apariencia === "auto" ? `${fmtHora(h)} · ${momento(h)}` : state.apariencia === "dia" ? "día fijo" : "noche fija";
+  const s = screen.style;
+  Object.entries(p).forEach(([k, v]) => s.setProperty("--s-" + k, v));
+  s.setProperty("--s-warn", "#B0812F");
+  s.setProperty("--s-dot", mix(p.primary, p.glow, .35));
+  s.setProperty("--s-display", '"Fraunces", ui-serif, Georgia, serif');
+  s.setProperty("--s-body", '-apple-system, "SF Pro Text", system-ui, sans-serif');
+  screen.dataset.progreso = "nada";
+  colors = { glow: p.glow, energy: p.energy, bg: p.bg };
+  try { localStorage.setItem("respiro-config-v6", JSON.stringify(state)); } catch (e) {}
+}
+document.querySelector(".side").addEventListener("change", e => { if (e.target.name) { state[e.target.name] = e.target.value; apply(); } });
+document.getElementById("hora").addEventListener("input", e => { state.hora = Number(e.target.value); apply(); });
+
+/* ---------- Halo: banda del color del halo pegada al borde, capas casi transparentes sin borde final.
+   En el mínimo de la respiración, el halo entra unos milímetros hacia adentro, con la misma forma irregular. ---------- */
+const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+const halos = [...document.querySelectorAll("canvas[data-halo]")].map((c, i) => ({ c, ctx: c.getContext("2d"), A: seed(), B: seed(), cycle: -1, off: i * .37 }));
+function seed() { return [2, 3, 4, 5].map(k => ({ k, a: .35 + Math.random() * .65, p: Math.random() * Math.PI * 2 })); }
+function rgba(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`; }
+const ease = x => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+const LAYERS = 22;
+function blob(ctx, c, radius) {
+  ctx.beginPath();
+  for (let i = 0; i <= 120; i++) {
+    const t = i / 120 * Math.PI * 2, r = radius(i);
+    const x = c + r * Math.cos(t), y = c + r * Math.sin(t);
+    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  }
+}
+function draw(now) {
+  const T = RESP * 1000;
+  halos.forEach(h => {
+    if (!h.c.offsetParent) return;
+    const tt = now + h.off * T, cyc = Math.floor(tt / T), ph = (tt % T) / T;
+    const b = reduce.matches ? .6 : (ph < .43 ? ease(ph / .43) : ease(1 - (ph - .43) / .57));
+    const rot = reduce.matches ? 0 : tt * .00006;
+    const dpr = Math.min(2, devicePixelRatio || 1), w = h.c.clientWidth;
+    if (h.c.width !== Math.round(w * dpr)) h.c.width = h.c.height = Math.round(w * dpr);
+    if (h.cycle !== cyc) { h.A = h.cycle === -1 ? seed() : h.B; h.B = seed(); h.cycle = cyc; }
+    const ctx = h.ctx, W = h.c.width, c = W / 2, R = W / 4;
+    const band = 5 * dpr, maxExt = R * (AMP - 1) * 1.6, ext = maxExt * (.15 + .85 * b);
+    const inDepth = (9 + 5 * (1 - b)) * dpr;                   // siempre presente, un poco más al exhalar
+    const m = ease(ph), col = colors[h.c.dataset.halo] || colors.glow;
+    const shape = new Float32Array(121);
+    for (let i = 0; i <= 120; i++) {
+      const t = i / 120 * Math.PI * 2; let n = 0, sum = 0;
+      for (let j = 0; j < 4; j++) {
+        const a = h.A[j].a + (h.B[j].a - h.A[j].a) * m, p = h.A[j].p + (h.B[j].p - h.A[j].p) * m;
+        n += a * Math.sin(h.A[j].k * t + p + rot); sum += a;
+      }
+      shape[i] = .5 + .5 * n / sum;
+    }
+    ctx.clearRect(0, 0, W, W);
+    blob(ctx, c, () => R + band); ctx.fillStyle = rgba(col, .95); ctx.fill();
+    for (let L = 1; L <= LAYERS; L++) {
+      const q = Math.pow(L / LAYERS, 1.6);
+      blob(ctx, c, i => R + band + ext * q * (.35 + .65 * shape[i]));
+      ctx.fillStyle = rgba(col, (.08 + .1 * b) * (1 - q * .5)); ctx.fill();
+    }
+    // Hacia adentro: el fondo va tapando el halo en capas, con la misma forma irregular, sin borde visible
+    const IN = 18;
+    for (let L = 0; L <= IN; L++) {
+      const q = L / IN;
+      blob(ctx, c, i => R - inDepth * q * (.35 + .65 * shape[(i + 40) % 120]));
+      ctx.fillStyle = rgba(colors.bg, .2); ctx.fill();
+    }
+    blob(ctx, c, i => R - inDepth * (.35 + .65 * shape[(i + 40) % 120]) - 1);
+    ctx.fillStyle = colors.bg; ctx.fill();
+  });
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+
+/* ---------- Pantallas ---------- */
+function show(view) {
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.dataset.view === view));
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === view)));
+  screen.dataset.view = view;
+  document.getElementById("note").textContent = NOTES[view];
+  document.getElementById("sclock").textContent = { espera: "17:55", fin: "18:45" }[view] || "18:00";
+  resetDrag();
+  document.getElementById("warn").classList.remove("on");
+  if (view === "curso") requestAnimationFrame(() => scrollToCurrent(false));
+  if (view === "espera") carousel.scrollTo({ left: 0 });
+  if (view === "fin") cheer();
+  if (view === "aviso") resetAviso();
+}
+document.querySelector(".tabs").addEventListener("click", e => { const b = e.target.closest("button[data-view]"); if (b) show(b.dataset.view); });
+
+const fmtCd = n => n >= 3600 ? `${Math.floor(n / 3600)} h ${String(Math.floor(n % 3600 / 60)).padStart(2, "0")}` : Math.floor(n / 60) + ":" + String(n % 60).padStart(2, "0");
+let left = 1960;
+const water = document.getElementById("water"), waveSvg = document.getElementById("waveSvg");
+function updLevel() {
+  const k = 1 - left / 2700, hpx = 168 * k;
+  water.style.height = Math.max(0, hpx - 12) + "px";
+  waveSvg.style.top = (168 - hpx - 12) + "px";
+}
+setInterval(() => {
+  document.querySelectorAll("[data-cd]").forEach(el => { let v = Number(el.dataset.cd); v = v > 0 ? v - 1 : 272; el.dataset.cd = v; el.textContent = fmtCd(v); });
+  left = left > 0 ? left - 1 : 2700;
+  document.getElementById("left").textContent = fmtCd(left);
+  updLevel();
+}, 1000);
+updLevel();
+
+/* Espera: carrusel */
+const carousel = document.getElementById("carousel"), dots = [...document.querySelectorAll("#dots i")];
+let backT = null;
+carousel.addEventListener("scroll", () => {
+  const i = Math.round(carousel.scrollLeft / carousel.clientWidth);
+  dots.forEach((d, k) => d.classList.toggle("on", k === i));
+  clearTimeout(backT);
+  if (i > 0) backT = setTimeout(() => carousel.scrollTo({ left: 0, behavior: "smooth" }), 6000);
+}, { passive: true });
+
+function toastIn(id, text, then) {
+  const t = document.getElementById(id); t.textContent = text; t.classList.add("on");
+  setTimeout(() => { t.classList.remove("on"); if (then) then(); }, 1800);
+}
+
+/* ¿Cuándo? */
+const sheet = document.getElementById("sheet");
+const DIAS = [["Lun 9", ["9:00", "9:15", "9:30", "9:45", "10:00", "12:30", "12:45", "13:00", "13:15", "15:00"], ["10:00", "12:30"]],
+              ["Mar 10", ["9:00", "9:15", "9:30", "10:30", "11:00", "14:00", "14:15", "14:30"], []],
+              ["Mié 11", ["9:30", "9:45", "10:00", "13:00", "13:15", "13:30", "15:00"], ["9:30"]]];
+let pickDay = 0, pickTime = null;
+function renderPicker() {
+  document.getElementById("days").innerHTML = DIAS.map(([d], i) => `<button type="button" data-day="${i}" aria-pressed="${i === pickDay}">${d}</button>`).join("");
+  const [, times, busy] = DIAS[pickDay];
+  document.getElementById("times").innerHTML = times.map(t => `<button type="button" data-time="${t}" ${busy.includes(t) ? "disabled" : ""} aria-pressed="${t === pickTime}">${t}</button>`).join("");
+}
+renderPicker();
+sheet.addEventListener("click", e => {
+  const day = e.target.closest("[data-day]"), time = e.target.closest("[data-time]");
+  if (day) { e.stopPropagation(); pickDay = Number(day.dataset.day); pickTime = null; renderPicker(); return; }
+  if (time) { e.stopPropagation(); pickTime = time.dataset.time; renderPicker(); return; }
+  if (e.target.id === "pickOk") {
+    if (!pickTime) { document.getElementById("pickNote").textContent = "Elegí un horario primero."; return; }
+    return toastIn("toast", `Listo, queda para el ${DIAS[pickDay][0].split(" ")[0].toLowerCase()} a las ${pickTime}.`, () => show("espera"));
+  }
+  if (e.target.classList.contains("confirm")) { const s = e.target.closest(".slot"); return toastIn("toast", `Listo, queda para ${s.dataset.t}.`, () => show("espera")); }
+  const slot = e.target.closest(".slot");
+  if (slot) { sheet.querySelectorAll(".slot").forEach(s => s.classList.toggle("sel", s === slot)); return; }
+  const arch = e.target.closest("[data-t='archivo']");
+  if (arch) toastIn("toast", "Archivada. La podés recuperar cuando quieras.", () => show("espera"));
+});
+
+/* Fin del slot */
+const CHEERS = [
+  ["45 minutos de foco. Lo sostuviste.", "Arrancar era lo difícil, y lo hiciste. 3 de 7 pasos tachados."],
+  ["Lo hiciste. 45 minutos enteros.", "Cada slot cumplido le enseña a tu cabeza que arrancar se puede."],
+  ["Bien ahí. Esto ya está en marcha.", "3 pasos menos. El resto ya no pesa lo mismo."]
+];
+let cheerI = 0;
+function cheer() { const [a, b] = CHEERS[cheerI++ % CHEERS.length]; document.getElementById("cheer").textContent = a; document.getElementById("cheerSub").textContent = b; }
+document.querySelector(".fin").addEventListener("click", e => {
+  const mas = e.target.closest("button[data-mas]"), fin = e.target.closest("button[data-fin]");
+  if (mas) {
+    if (mas.dataset.mas === "30") { document.getElementById("warn").classList.add("on"); return; }
+    toastIn("toastFin", `Sumé ${mas.dataset.mas} minutos. Seguís hasta ${mas.dataset.mas === "10" ? "18:55" : "19:00"}.`, () => show("curso"));
+  }
+  if (fin) {
+    const v = fin.dataset.fin;
+    if (v === "paro") return show("cuando");
+    toastIn("toastFin", v === "terminé" ? "Listo. 45 minutos reales, quedó registrado." : v === "corrido" ? "Sumé 30 min y corrí el menú semanal a 19:20." : "Sumé 15 minutos. Seguís hasta 19:00.", () => show(v === "terminé" ? "espera" : "curso"));
+  }
+});
+
+/* Aviso: descartar la notificación la hace volver a los 3 min; al tercer descarte, el slot se cierra */
+const notif = document.getElementById("ourNotif"), hint = document.getElementById("hintline");
+let descartes = 0, nStart = null;
+const AVISOS = [["18:00", "ahora", "Llamar al banco comienza ahora", "Abrí para decidir."],
+                ["18:03", "ahora", "Llamar al banco te está esperando", "Segundo aviso. Abrí para decidir."],
+                ["18:06", "ahora", "Último aviso: llamar al banco", "Si la descartás, cierro este slot y te pregunto cuándo."]];
+function setAviso(i) {
+  const [clock, when, title, body] = AVISOS[i];
+  document.getElementById("lockClock").textContent = clock; document.getElementById("sclock").textContent = clock;
+  document.getElementById("notifWhen").textContent = when; document.getElementById("notifTitle").textContent = title; document.getElementById("notifBody").textContent = body;
+}
+function resetAviso() { descartes = 0; setAviso(0); notif.classList.remove("gone"); notif.style.transform = ""; hint.textContent = "Deslizá la de AppTDAH hacia la derecha para descartarla."; }
+notif.addEventListener("pointerdown", e => { nStart = e.clientX; notif.setPointerCapture(e.pointerId); notif.classList.add("dragging"); });
+notif.addEventListener("pointermove", e => { if (nStart !== null) notif.style.transform = `translateX(${Math.max(0, e.clientX - nStart)}px)`; });
+notif.addEventListener("pointerup", e => {
+  if (nStart === null) return;
+  const dx = e.clientX - nStart; nStart = null; notif.classList.remove("dragging"); notif.style.transform = "";
+  if (dx < 80) return;
+  descartes++; notif.classList.add("gone");
+  if (descartes < 3) {
+    hint.textContent = `Descartada. Vuelve en 3 minutos (${descartes} de 3).`;
+    setTimeout(() => { setAviso(descartes); notif.classList.remove("gone"); hint.textContent = "Volvió. Podés abrirla o descartarla otra vez."; }, 1600);
+  } else {
+    hint.textContent = "Tercer descarte: el slot de las 18:00 se cerró. Al abrir la app te pregunto cuándo.";
+    setTimeout(() => show("cuando"), 2600);
+  }
+});
+notif.addEventListener("click", () => { if (!notif.classList.contains("gone")) show("decidir"); });
+
+/* ---------- Decidir ---------- */
+const drag = document.getElementById("drag"), flash = document.getElementById("flash"), arcH = document.getElementById("holdArc");
+const fbYes = document.getElementById("fbYes"), fbNo = document.getElementById("fbNo"), icon = document.getElementById("icon"), guide = document.getElementById("guide");
+let press = null, raf = null;
+const HOLD = 1500, DEAD = 220, MOVE = 10, GO = 90;
+function resetDrag() {
+  cancelAnimationFrame(raf); press = null;
+  drag.classList.remove("dragging"); drag.style.transform = "";
+  flash.classList.remove("go"); flash.style.opacity = "";
+  arcH.setAttribute("stroke-dashoffset", "547"); fbYes.style.opacity = 0; fbNo.style.opacity = 0; icon.style.opacity = 1; guide.style.opacity = 1;
+}
+function holdTick(now) {
+  if (!press || press.moved) return;
+  const k = Math.max(0, Math.min(1, (now - press.t - DEAD) / (HOLD - DEAD)));
+  arcH.setAttribute("stroke-dashoffset", String(547 * (1 - k)));
+  fbNo.style.opacity = k; icon.style.opacity = 1 - k; guide.style.opacity = 1 - k;
+  if (k >= 1) { press = null; setTimeout(() => show("cuando"), 200); return; }
+  raf = requestAnimationFrame(holdTick);
+}
+drag.addEventListener("pointerdown", e => {
+  press = { x: e.clientX, y: e.clientY, t: performance.now(), moved: false };
+  drag.setPointerCapture(e.pointerId); drag.classList.add("dragging");
+  raf = requestAnimationFrame(holdTick);
+});
+drag.addEventListener("pointermove", e => {
+  if (!press) return;
+  const dx = e.clientX - press.x, dy = e.clientY - press.y;
+  if (!press.moved && Math.hypot(dx, dy) > MOVE) { press.moved = true; cancelAnimationFrame(raf); arcH.setAttribute("stroke-dashoffset", "547"); fbNo.style.opacity = 0; }
+  if (!press.moved) return;
+  drag.style.transform = `translateY(${dy < 0 ? dy : dy * .25}px)`;
+  const k = Math.min(1, Math.max(0, -dy / GO));
+  fbYes.style.opacity = k; icon.style.opacity = 1 - k; guide.style.opacity = 1 - k; flash.style.opacity = String(k * .3);
+});
+drag.addEventListener("pointerup", e => {
+  if (!press) return;
+  const dy = e.clientY - press.y, moved = press.moved;
+  cancelAnimationFrame(raf); press = null;
+  if (moved && dy < -GO) {
+    drag.classList.remove("dragging"); drag.style.transform = "translateY(-420px)";
+    flash.style.opacity = ""; flash.classList.add("go");
+    setTimeout(() => show("curso"), 600); return;
+  }
+  resetDrag();
+});
+drag.addEventListener("pointercancel", resetDrag);
+drag.addEventListener("keydown", e => { if (e.key === "ArrowUp" || e.key === "Enter") show("curso"); if (e.key === "ArrowDown" || e.key === "Escape") show("cuando"); });
+
+/* ---------- En curso: ruleta ---------- */
+const PASOS = ["Buscar el número de cliente", "Encontrar el teléfono de atención", "Llamar y pedir el turno", "Anotar fecha y hora", "Pasarlo al calendario", "Juntar los documentos", "Confirmar por mail"];
+let hechos = 2;
+const wheel = document.getElementById("wheel"), stepsEl = document.getElementById("steps");
+function renderSteps() {
+  stepsEl.innerHTML = PASOS.map((p, i) => `<li class="${i < hechos ? "done" : ""} ${i === hechos ? "next" : ""}"><button type="button" data-i="${i}" aria-label="${i < hechos ? "Destachar" : "Tachar"}: ${p}"></button><span>${p}</span></li>`).join("");
+  shapeWheel();
+}
+function scrollToCurrent(smooth) { wheel.scrollTo({ top: Math.max(0, hechos - 1) * 44, behavior: smooth ? "smooth" : "auto" }); }
+function shapeWheel() {
+  const mid = wheel.scrollTop + 66;
+  stepsEl.querySelectorAll("li").forEach((li, i) => {
+    const d = Math.min(Math.abs(i * 44 + 22 - mid) / 66, 1.5);
+    li.style.transform = `scale(${1 - d * .08})`; li.style.opacity = String(1 - d * .35);
+  });
+}
+wheel.addEventListener("scroll", shapeWheel, { passive: true });
+stepsEl.addEventListener("click", e => {
+  const b = e.target.closest("button[data-i]"); if (!b) return;
+  const i = Number(b.dataset.i); hechos = i < hechos ? i : i + 1;
+  renderSteps(); scrollToCurrent(true);
+});
+renderSteps();
+
+/* ---------- Guardar comentarios ---------- */
+const saveMsg = document.getElementById("saveMsg");
+let db = null;
+document.getElementById("saveBtn").addEventListener("click", async () => {
+  const data = { version: 6, apariencia: state.apariencia, progreso: state.progreso, nota: document.getElementById("nota").value.trim(), guardado: new Date().toISOString() };
+  if (!db) { saveMsg.textContent = "No pude guardar desde acá. Copiá tus comentarios y pegámelos en Claude Code."; return; }
+  saveMsg.textContent = "Guardando…";
+  try { await db.doc("elecciones/v6").set(data); saveMsg.textContent = "Guardado. Avisame en Claude Code y lo leo."; }
+  catch (err) { saveMsg.textContent = "No se pudo guardar. Copiá tus comentarios y pegámelos en Claude Code."; }
+});
+(async () => {
+  try {
+    for (let i = 0; i < 30 && !(window.claude && window.claude.use); i++) await new Promise(r => setTimeout(r, 100));
+    if (!window.claude || !window.claude.use) return;
+    db = await window.claude.use("db");
+    if (!db) return;
+    const snap = await Promise.race([db.doc("elecciones/v6").get(), new Promise(r => setTimeout(() => r(null), 10000))]);
+    const prev = snap && (snap.data ? (typeof snap.data === "function" ? snap.data() : snap.data) : snap);
+    if (prev && prev.version === 6) {
+      if (prev.apariencia) state.apariencia = prev.apariencia;
+      if (prev.progreso) state.progreso = prev.progreso;
+      if (prev.nota) document.getElementById("nota").value = prev.nota;
+      apply(); saveMsg.textContent = "Cargué lo último que guardaste.";
+    }
+  } catch (e) { /* sin base: la página funciona igual */ }
+})();
+
+apply();
+show("espera");
+requestAnimationFrame(() => screen.classList.add("ready"));
+</script>
+</body>
+</html>

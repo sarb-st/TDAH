@@ -3,6 +3,10 @@ name: Compilar y publicar
 on:
   push:
     branches: [main]
+    # Cambios solo de documentación no generan una compilación nueva.
+    paths-ignore:
+      - '**.md'
+      - 'diseno/**'
   workflow_dispatch:
 
 # Solo se necesita permiso para crear Releases. Se usa el token automático

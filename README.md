@@ -25,6 +25,8 @@ Este enlace siempre apunta a la última versión compilada.
 | `project.yml` | Receta del proyecto: XcodeGen la usa para crear el proyecto de Xcode en la nube. |
 | `.github/workflows/compilar.yml` | Instrucciones para la Mac en la nube: probar, compilar, empaquetar y publicar. |
 | `.gitignore` | Lista de archivos que nunca se suben (compilaciones, archivos temporales, claves). |
+| `diseno/DISENO.md` | Guía de diseño: colores, tipografía, el círculo que respira y cada pantalla. |
+| `diseno/configurador.html` | Muestra interactiva de la estética (se abre en el navegador). |
 | `CLAUDE.md` | Reglas permanentes del proyecto (por ejemplo: nunca subir claves ni datos personales). |
 | `README.md` | Este documento. |
 

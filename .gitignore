@@ -40,3 +40,9 @@ desktop.ini
 *.mobileprovision
 *.provisionprofile
 secrets/
+
+# --- Datos personales de Claude Code (solo en esta PC) ---
+CLAUDE.local.md
+
+# --- Bocetos de diseño (no son parte de la app) ---
+.diseno/
