@@ -68,6 +68,16 @@ Si la fecha coincide con la de la última compilación en GitHub, estás viendo 
 - Podés tener hasta **3 apps** instaladas así a la vez (SideStore cuenta como una).
 - Instalar una versión nueva reemplaza a la anterior.
 
+## Si SideStore da el error -80045 al iniciar sesión
+
+Es un rechazo de Apple, no un problema de tu contraseña. Lo que funcionó, en SideStore:
+
+1. **Settings → User Customizations:** apagá **On-Device Anisette**.
+2. **Anisette Servers:** elegí **SideStore (New)** y apagá **Enable Auto Rotation**.
+3. **User Customizations → Anisette Client Configuration → Remote Server Sync:** tocá **Fetch** y después **Save as Overrides**.
+4. **User Customizations:** tocá **Reset adi.pb**.
+5. Con **LocalDevVPN activada**, iniciá sesión una sola vez. Para el código, elegí **dispositivo Apple**, no SMS.
+
 ## Seguridad
 
 Este repositorio es público. No contiene claves, contraseñas ni datos personales, y no debe

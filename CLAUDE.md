@@ -245,7 +245,7 @@ Sin una Mac al lado no se ven los errores en el momento. Estas reglas lo compens
 
 ## 10. Pendientes
 
-- [ ] **Probar el camino de instalación** con una app vacía. La compilación en la nube y el `.ipa` funcionan; falta instalarla: el inicio de sesión de SideStore está bloqueado por Apple (error -80045, problema general desde octubre de 2026).
+- [x] **Probar el camino de instalación**: funciona de punta a punta (repositorio → compilación en la nube → instalación con SideStore). Si SideStore da -80045 al iniciar sesión, los pasos están en el README.
 - [x] **Orden de construcción** (cada fase se usa unos días y se ajusta antes de pasar a la siguiente):
   1. **Arranque sin IA**: base técnica (capturas del simulador, Diagnóstico, aviso de firma), tareas cargadas a mano, Espera, Decidir, ¿Cuándo?, En curso, Fin del slot, notificaciones y copia de seguridad.
   2. **Captura**: dictado, clasificación con IA, INBOX.
