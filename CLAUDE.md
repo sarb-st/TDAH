@@ -46,17 +46,18 @@ Cada acción es una cita con **hora de arranque**, no con fecha de entrega. A es
 
 ### 2.3 "Empiezo" o "Ahora no"
 A la hora del slot, la app pide una decisión binaria. **No existe snooze ni recordatorio que se silencia.** La decisión se toma con un gesto consciente sobre el círculo (ver `diseno/DISENO.md`), no con un toque reflejo.
-- **Empiezo** (apretar el círculo y deslizar hacia arriba) → empieza el timer del slot.
-- **Ahora no** (apretar el círculo y mantenerlo quieto 1,5 s) → acto explícito y registrado: el slot queda cerrado y la app pregunta **"¿Cuándo, entonces?"**. Nada queda en el aire:
+- **Empiezo** (el círculo sigue al dedo; deslizar hacia arriba) → empieza el timer del slot.
+- **Ahora no** (deslizar hacia abajo hasta el borde y sostener 2 s, mientras el halo se agranda) → acto explícito y registrado. Primero aparece "Está bien, lo movemos." solo y grande; después el slot queda cerrado y la app pregunta **"¿Cuándo, entonces?"**. Nada queda en el aire:
   - Propone **3 slots concretos** que respetan el calendario del usuario y el **horario del lugar** (ver 5.1), cada uno con un renglón que explica por qué.
   - **Otra hora**: días y horarios libres para elegir a mano.
   - **Ya no la voy a hacer**: archiva la tarea a propósito (se puede recuperar).
   - La pantalla es liviana: quien pospone suele estar cansado o abrumado.
+- **Alarma**: con iOS 26 o más nuevo, el comienzo (y sus repeticiones) y el fin del slot **suenan como un despertador aunque el iPhone esté en silencio** (AlarmKit), porque con hiperfoco una vibración no alcanza. Se puede apagar en Ajustes; sin AlarmKit llega una notificación común.
 - **Notificación**: a la hora llega una notificación común. Si se descarta sin decidir, vuelve a los **3 minutos**; al **tercer descarte** el slot se cierra como "Ahora no" y, al abrir la app, lo primero es "¿Cuándo, entonces?". Los tres avisos se programan de antemano y se cancelan apenas el usuario decide (iOS no permite impedir que se descarte una notificación).
 
 ### 2.4 Fin del slot
 Cinco minutos antes del final llega un aviso suave. Cuando se cumple la duración, la app muestra primero una **recompensa** (animación y mensaje de ánimo que varía) y después pregunta "¿Cómo seguimos?":
-1. **Terminé** → se cierra y se registra el tiempo real.
+1. **Terminé** → se cierra, se registra el tiempo real y aparece una **celebración** de unos segundos (halo verde grande, un brote que crece y los minutos de foco del día y totales). "Terminé" también está disponible durante el slot, para terminar antes.
 2. **Necesito más** → +10, +15 o +30 min. Se puede extender varias veces. Cada extensión suma al tiempo real.
    - Si la extensión choca con el próximo slot, avisa y ofrece correrlo: "Con +30 pisás 'preparar el menú semanal' de las 19:00. ¿Lo corro?".
 3. **Paro por hoy** → pide **obligatoriamente** la próxima hora para retomar.
@@ -106,6 +107,9 @@ Un ajuste que regula cuánto cuesta decir "Ahora no". Existe porque el cerebro s
 ### Pantalla principal: "la una cosa"
 - Muestra solo lo próximo (slot o cita), con su countdown y descripción.
 - Deslizando hacia el costado se ven los **dos siguientes**; a los pocos segundos vuelve sola a lo próximo.
+- Debajo del título se ven el **lugar** y las **notas** de la tarea (qué llevar, qué no olvidar).
+- Abajo, tres accesos que se abren a propósito: **listado de tareas en tarjetas**, **nueva tarea** y **calendario por día** (con franjas horarias y el rastro de los slots cerrados). Tocando una tarea se ve su detalle, se edita, se archiva o se borra.
+- Al cargar o editar una tarea, la app avisa si se pisa con otra y ofrece el próximo hueco libre.
 - Lo pendiente de resolver **ocupa esta pantalla hasta resolverlo**: una tarea sin hora, una sesión pausada sin respuesta.
 
 ---
@@ -122,6 +126,7 @@ Cosas de corto plazo, que se terminan en el día o en una o dos sesiones. Ejempl
   - La IA decide sola si la tarea necesita desglose.
   - Botón para desglosar más, **por paso** (no toda la lista), hasta **3 niveles** de profundidad. El tope evita que desglosar se vuelva una forma de no arrancar.
 - **Horario del lugar.** Si la tarea depende de que algo esté abierto (llamar al banco, ir a una oficina), la IA estima el horario de atención, el usuario lo confirma o corrige una vez, y la app lo recuerda. Las horas propuestas siempre lo respetan.
+- **Lugar, dirección y notas.** Opcionales y distintos de los pasos. La dirección se abre en Mapas.
 - **Slot.** Cubre la tarea entera, con duración. Adentro el usuario va tachando pasos en una ruleta.
 - **Cierre.** Terminé / necesito más / paro por hoy (con nueva hora obligatoria). Ver 2.4.
 - **Recurrencia.** Para tareas que se repiten (regar plantas, surtido semanal).
@@ -202,6 +207,7 @@ App iOS nativa en **SwiftUI**, iOS 17 en adelante. **Sin servidor y sin servicio
 | **SwiftData** | Base de datos en el iPhone: las 5 categorías, estados (viva, arrancada, pausada, cerrada, terminada), tiempos estimados y reales, rastro de slots, configuración del dial. |
 | **EventKit → Google Calendar** | Escribe citas y slots de tareas en el calendario de Google del usuario, a través de su cuenta de Google agregada en el iPhone. Solo lo que tiene hora: IDEA e INBOX nunca salen al calendario. No usar OAuth ni la API de Google. |
 | **Notificaciones locales** | Countdown, aviso de la hora (repetido a los 3 y 6 min si se descarta), aviso 5 min antes del final, fin de slot, aviso de salida, resumen nocturno, aviso de vencimiento de firma. |
+| **AlarmKit** (iOS 26+) | Alarmas que suenan en silencio al comienzo y al fin de cada slot. Pide permiso al cargar la primera tarea. |
 | **WidgetKit** | Los dos widgets. |
 | **MapKit** | Tiempo de trayecto en transporte público para el aviso de salida. |
 | **Bot de Telegram** | La app llama directamente a la Bot API de Telegram para avisar a la persona de accountability. |
@@ -254,6 +260,7 @@ Sin una Mac al lado no se ven los errores en el momento. Estas reglas lo compens
   5. **Desglose y proyectos**: estimado vs. real, factor personal.
   6. **Ideas, dial y persona de accountability**.
 - [x] **Estética**: cerrada, ver 6b.
+- [ ] **Minutos de foco**: ya se suman y se muestran en la celebración y en Ajustes; falta definir para qué más se usan.
 - [ ] **Proveedor de IA**: Claude u OpenAI.
 - [ ] **Nombre definitivo de la app** (provisorio: AppTDAH).
 

@@ -9,10 +9,17 @@ struct NuevaTareaView: View {
 
     @Environment(\.modelContext) private var ctx
     @Environment(\.dismiss) private var cerrar
+    @Query private var todas: [Tarea]
+
     @State private var titulo = ""
     @State private var inicio = MotorSlots.redondearArriba(.now.addingTimeInterval(30 * 60), minutos: 15)
     @State private var duracion = 30
     @State private var pasos: [String] = []
+    @State private var lugar = ""
+    @State private var direccion = ""
+    @State private var notas = ""
+    @State private var choque: (con: Tarea, sugerida: Date?)?
+    @FocusState private var foco: Bool
 
     private let duraciones = [10, 15, 20, 30, 45, 60, 90, 120]
 
@@ -22,6 +29,7 @@ struct NuevaTareaView: View {
                 Section {
                     TextField("Qué vas a hacer", text: $titulo, axis: .vertical)
                         .font(.serif(20, relativoA: .title3))
+                        .focused($foco)
                 }
                 Section {
                     DatePicker("Comienza", selection: $inicio, in: Date()...)
@@ -29,24 +37,53 @@ struct NuevaTareaView: View {
                         ForEach(duraciones, id: \.self) { Text("\($0) min").tag($0) }
                     }
                 }
+                Section {
+                    TextField("Lugar", text: $lugar).focused($foco)
+                    TextField("Dirección", text: $direccion).focused($foco).textContentType(.fullStreetAddress)
+                    TextField("Notas: qué llevar, qué no olvidar…", text: $notas, axis: .vertical)
+                        .lineLimit(2...5)
+                        .focused($foco)
+                } header: {
+                    Text("Lugar y notas (opcional)")
+                } footer: {
+                    Text("Las notas aparecen antes de empezar, junto a la cuenta regresiva.")
+                }
                 Section("Pasos (opcional)") {
                     ForEach(pasos.indices, id: \.self) { i in
-                        TextField("Paso \(i + 1)", text: $pasos[i])
+                        TextField("Paso \(i + 1)", text: $pasos[i]).focused($foco)
                     }
                     .onDelete { pasos.remove(atOffsets: $0) }
                     Button("Agregar paso") { pasos.append("") }
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle(tarea == nil ? "Nueva tarea" : "Editar tarea")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { cerrar() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Guardar", action: guardar).disabled(titulo.trimmingCharacters(in: .whitespaces).isEmpty)
+                    Button("Guardar", action: revisarYGuardar).disabled(titulo.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button { foco = false } label: { Image(systemName: "keyboard.chevron.compact.down") }
+                        .accessibilityLabel("Ocultar teclado")
+                }
+            }
+            .alert(textoChoque, isPresented: Binding(get: { choque != nil }, set: { if !$0 { choque = nil } })) {
+                if let sugerida = choque?.sugerida {
+                    Button("Ponerla a las \(Formato.hora(sugerida))") { inicio = sugerida; guardar() }
+                }
+                Button("Guardar igual") { guardar() }
+                Button("Cambiar la hora", role: .cancel) {}
             }
             .onAppear(perform: cargar)
         }
+    }
+
+    private var textoChoque: String {
+        guard let c = choque?.con else { return "" }
+        return "Se pisa con “\(c.titulo)” de las \(Formato.hora(c.inicio))."
     }
 
     private func cargar() {
@@ -55,6 +92,23 @@ struct NuevaTareaView: View {
         inicio = max(t.inicio, .now)
         duracion = duraciones.contains(t.duracionMinutos) ? t.duracionMinutos : 30
         pasos = t.pasosOrdenados.map(\.texto)
+        lugar = t.lugar
+        direccion = t.direccion
+        notas = t.notas
+    }
+
+    /// Antes de guardar, revisa que no se pise con otra tarea; si se pisa, ofrece el próximo hueco libre.
+    private func revisarYGuardar() {
+        let otras = todas.filter { $0.uid != tarea?.uid && $0.ocupaAgenda }
+        let propuesta = DateInterval(start: inicio, duration: Double(duracion) * 60)
+        if let con = otras.first(where: { MotorSlots.solapa(propuesta, con: [$0.intervalo]) }) {
+            let sugerida = MotorSlots.sugerencias(duracion: duracion, ocupados: otras.map(\.intervalo),
+                                                  desde: inicio.addingTimeInterval(-10 * 60), apertura: 0, cierre: 23,
+                                                  cantidad: 1).first?.inicio
+            choque = (con, sugerida)
+        } else {
+            guardar()
+        }
     }
 
     private func guardar() {
@@ -63,6 +117,9 @@ struct NuevaTareaView: View {
         t.titulo = titulo.trimmingCharacters(in: .whitespacesAndNewlines)
         t.inicio = inicio
         t.duracionMinutos = duracion
+        t.lugar = lugar.trimmingCharacters(in: .whitespacesAndNewlines)
+        t.direccion = direccion.trimmingCharacters(in: .whitespacesAndNewlines)
+        t.notas = notas.trimmingCharacters(in: .whitespacesAndNewlines)
         if t.estado != .enCurso { t.estado = .programada }
         let hechos = Set(t.pasos.filter(\.hecho).map(\.texto))
         for p in t.pasos { ctx.delete(p) }
@@ -73,7 +130,11 @@ struct NuevaTareaView: View {
         }
         Acciones.guardar(ctx)
         Avisos.pedirPermiso()
-        if t.estado == .programada { Avisos.programarInicio(t) }
+        let programar = t.estado == .programada
+        Task {
+            await Alarmas.pedirPermiso()
+            if programar { Avisos.programarInicio(t) }
+        }
         cerrar()
     }
 }
@@ -81,13 +142,25 @@ struct NuevaTareaView: View {
 struct AjustesView: View {
     @Environment(\.modelContext) private var ctx
     @Environment(\.dismiss) private var cerrar
+    @Query private var registros: [SlotRegistro]
     @AppStorage("apariencia") private var apariencia = Apariencia.automatico.rawValue
+    @AppStorage("alarmas") private var alarmas = true
     @State private var importando = false
     @State private var mensaje: String?
+
+    private var minutosDeFoco: Int {
+        registros.filter { MotorSlots.resultadosConFoco.contains($0.resultado) }.map(\.minutosReales).reduce(0, +)
+    }
 
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    LabeledContent("Minutos de foco", value: Formato.minutos(minutosDeFoco))
+                } footer: {
+                    Text("Todo el tiempo que trabajaste en tus slots desde que usás la app.")
+                }
+
                 Section {
                     Picker("Apariencia", selection: $apariencia) {
                         ForEach(Apariencia.allCases) { Text($0.nombre).tag($0.rawValue) }
@@ -96,6 +169,24 @@ struct AjustesView: View {
                     Text("Apariencia")
                 } footer: {
                     Text("Automático cambia de a poco con la luz del día. Siempre día queda en el color de la mañana.")
+                }
+
+                Section {
+                    Toggle("Sonar como alarma", isOn: $alarmas)
+                        .disabled(!Alarmas.soportadas)
+                        .onChange(of: alarmas) { _, activa in
+                            if activa { Task { await Alarmas.pedirPermiso() } }
+                        }
+                    if Alarmas.soportadas && alarmas && !Alarmas.autorizadas {
+                        Text("Falta el permiso: cuando cargues una tarea te lo va a pedir, o activalo en Ajustes del iPhone → AppTDAH.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("Avisos")
+                } footer: {
+                    Text(Alarmas.soportadas
+                         ? "El comienzo y el fin de cada slot suenan como un despertador, aunque el iPhone esté en silencio."
+                         : "Para que suene como alarma hace falta iOS 26 o más nuevo. Por ahora llegan como notificación.")
                 }
 
                 Section {
@@ -180,6 +271,7 @@ struct DiagnosticoView: View {
 
     private var diagnosticoCompleto: String {
         let version = "AppTDAH \(BuildInfo.commit ?? "local") · iOS \(UIDevice.current.systemVersion) · \(UIDevice.current.model)"
-        return version + "\n\n" + texto
+        let alarmas = "Alarmas: \(Alarmas.soportadas ? (Alarmas.autorizadas ? "autorizadas" : "sin permiso") : "no soportadas")"
+        return version + "\n" + alarmas + "\n\n" + texto
     }
 }

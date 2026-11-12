@@ -46,3 +46,6 @@ CLAUDE.local.md
 
 # --- Bocetos de diseño (no son parte de la app) ---
 .diseno/
+
+# --- Generado por XcodeGen en la nube ---
+Soporte/Info.plist

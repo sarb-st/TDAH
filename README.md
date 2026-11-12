@@ -22,8 +22,10 @@ Este enlace siempre apunta a la última versión compilada.
 | `AppTDAH/Logica/MotorSlots.swift` | Las reglas: qué pantalla toca, los avisos, los choques y los huecos libres para "¿Cuándo?". |
 | `AppTDAH/Diseno/Paleta.swift` | Los colores de la estética "Respiro" y cómo cambian a lo largo del día. |
 | `AppTDAH/Diseno/CirculoQueRespira.swift` | El círculo que respira y las piezas comunes de las pantallas. |
-| `AppTDAH/Pantallas/Flujo.swift` | Las pantallas principales: Espera, Decidir, ¿Cuándo?, En curso y Fin del slot. |
-| `AppTDAH/Pantallas/Formularios.swift` | Nueva tarea, Ajustes y Diagnóstico. |
+| `AppTDAH/Pantallas/Principal.swift` | Las pantallas principales: Espera, Decidir, ¿Cuándo?, En curso, Fin del slot y las transiciones. |
+| `AppTDAH/Pantallas/Agenda.swift` | El listado de tareas en tarjetas, el calendario por día y el detalle de cada tarea. |
+| `AppTDAH/Pantallas/Edicion.swift` | Nueva tarea, Ajustes y Diagnóstico. |
+| `AppTDAH/Servicios/Alarmas.swift` | Las alarmas que suenan aunque el iPhone esté en silencio (iOS 26 en adelante). |
 | `AppTDAH/Servicios/Servicios.swift` | Avisos, firma, copia de seguridad, registro de errores y datos de muestra para las capturas. |
 | `AppTDAH/Fuentes/` | La tipografía Fraunces y su licencia libre (SIL Open Font License). |
 | `AppTDAH/Textos.swift` | Cómo se escribe la fecha de compilación. |

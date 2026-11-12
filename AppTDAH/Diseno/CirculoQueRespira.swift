@@ -5,6 +5,8 @@ struct CirculoQueRespira<Contenido: View>: View {
     var halo: RGB
     var fondo: RGB
     var diametro: CGFloat = Medidas.circulo
+    /// 0 = respiración normal; 1 = el halo se agranda (al sostener "Ahora no" o al celebrar).
+    var intensidad: Double = 0
     @ViewBuilder var contenido: () -> Contenido
 
     @State private var motor = MotorHalo()
@@ -16,7 +18,7 @@ struct CirculoQueRespira<Contenido: View>: View {
             .background {
                 TimelineView(.animation(minimumInterval: 1.0 / 30, paused: false)) { linea in
                     Canvas { gc, tamano in
-                        motor.dibujar(gc, tamano: tamano, fecha: linea.date, halo: halo, fondo: fondo, quieto: reducirMovimiento)
+                        motor.dibujar(gc, tamano: tamano, fecha: linea.date, halo: halo, fondo: fondo, quieto: reducirMovimiento, intensidad: intensidad)
                     }
                 }
                 .frame(width: diametro * 2, height: diametro * 2)
@@ -57,7 +59,7 @@ final class MotorHalo {
         fase < inhala ? suave(fase / inhala) : suave(1 - (fase - inhala) / (1 - inhala))
     }
 
-    func dibujar(_ gc: GraphicsContext, tamano: CGSize, fecha: Date, halo: RGB, fondo: RGB, quieto: Bool) {
+    func dibujar(_ gc: GraphicsContext, tamano: CGSize, fecha: Date, halo: RGB, fondo: RGB, quieto: Bool, intensidad: Double = 0) {
         let tt = fecha.timeIntervalSinceReferenceDate + desfase * Self.periodo
         let n = Int((tt / Self.periodo).rounded(.down))
         let fase = tt / Self.periodo - Double(n)
@@ -75,7 +77,8 @@ final class MotorHalo {
         let r = Double(tamano.width) / 4
         let banda = 5.0
         let maxExt = r * (Self.expansion - 1) * 1.6
-        let ext = maxExt * (0.15 + 0.85 * respiro)
+        let k = max(0, min(1, intensidad))
+        let ext = maxExt * (0.15 + 0.85 * respiro) * (1 + 0.9 * k) + maxExt * 0.4 * k
         let haciaAdentro = 9 + 5 * (1 - respiro)
 
         var forma = [Double](repeating: 0.5, count: 121)
@@ -109,7 +112,7 @@ final class MotorHalo {
         for capa in 1...22 {
             let q = pow(Double(capa) / 22, 1.6)
             gc.fill(mancha { i in r + banda + ext * q * (0.35 + 0.65 * forma[i]) },
-                    with: .color(colorHalo.opacity((0.08 + 0.1 * respiro) * (1 - q * 0.5))))
+                    with: .color(colorHalo.opacity((0.08 + 0.1 * respiro + 0.06 * k) * (1 - q * 0.5))))
         }
         for capa in 0...18 {
             let q = Double(capa) / 18

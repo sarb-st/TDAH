@@ -63,8 +63,14 @@ enum Avisos {
             (t.titulo, "Te está esperando. Abrí para decidir."),
             ("Último aviso: \(t.titulo)", "Si la descartás, cierro este slot y te pregunto cuándo.")
         ]
+        let alarmas = Alarmas.disponibles
         for (i, fecha) in MotorSlots.horariosAviso(t.inicio).enumerated() where fecha > .now {
-            agregar(id: ids(t, "inicio", textos.count)[i], fecha: fecha, titulo: textos[i].0, cuerpo: textos[i].1)
+            // Con alarmas disponibles, el comienzo suena como un despertador aunque el iPhone esté en silencio.
+            if alarmas {
+                Alarmas.programar(id: Alarmas.id(t.uid, UInt8(i)), fecha: fecha, titulo: textos[i].0)
+            } else {
+                agregar(id: ids(t, "inicio", textos.count)[i], fecha: fecha, titulo: textos[i].0, cuerpo: textos[i].1)
+            }
         }
     }
 
@@ -74,11 +80,23 @@ enum Avisos {
         let ids = ids(t, "fin", 2)
         let antes = fin.addingTimeInterval(-5 * 60)
         if antes > .now { agregar(id: ids[0], fecha: antes, titulo: "Quedan 5 minutos", cuerpo: t.titulo) }
-        if fin > .now { agregar(id: ids[1], fecha: fin, titulo: "Terminó el tiempo", cuerpo: "\(t.titulo). ¿Cómo seguimos?") }
+        guard fin > .now else { return }
+        if Alarmas.disponibles {
+            Alarmas.programar(id: Alarmas.id(t.uid, 3), fecha: fin, titulo: "Terminó el tiempo: \(t.titulo)")
+        } else {
+            agregar(id: ids[1], fecha: fin, titulo: "Terminó el tiempo", cuerpo: "\(t.titulo). ¿Cómo seguimos?")
+        }
     }
 
-    static func cancelarInicio(_ t: Tarea) { centro.removePendingNotificationRequests(withIdentifiers: ids(t, "inicio", 3)) }
-    static func cancelarFin(_ t: Tarea) { centro.removePendingNotificationRequests(withIdentifiers: ids(t, "fin", 2)) }
+    static func cancelarInicio(_ t: Tarea) {
+        centro.removePendingNotificationRequests(withIdentifiers: ids(t, "inicio", 3))
+        Alarmas.cancelar((0..<3).map { Alarmas.id(t.uid, UInt8($0)) })
+    }
+
+    static func cancelarFin(_ t: Tarea) {
+        centro.removePendingNotificationRequests(withIdentifiers: ids(t, "fin", 2))
+        Alarmas.cancelar([Alarmas.id(t.uid, 3)])
+    }
     static func cancelarTodo(_ t: Tarea) { cancelarInicio(t); cancelarFin(t) }
 
     static func agregar(id: String, fecha: Date, titulo: String, cuerpo: String) {
@@ -133,6 +151,9 @@ enum CopiaSeguridad {
         var estado: String
         var inicioReal: Date?
         var minutosExtra: Int
+        var lugar: String?
+        var direccion: String?
+        var notas: String?
         var pasos: [CopiaPaso]
     }
     struct Copia: Codable { var version = 1; var creada: Date; var tareas: [CopiaTarea] }
@@ -150,6 +171,7 @@ enum CopiaSeguridad {
             let copia = Copia(creada: .now, tareas: tareas.map { t in
                 CopiaTarea(uid: t.uid, titulo: t.titulo, inicio: t.inicio, duracionMinutos: t.duracionMinutos,
                            estado: t.estadoRaw, inicioReal: t.inicioReal, minutosExtra: t.minutosExtra,
+                           lugar: t.lugar, direccion: t.direccion, notas: t.notas,
                            pasos: t.pasosOrdenados.map { CopiaPaso(texto: $0.texto, hecho: $0.hecho, orden: $0.orden) })
             })
             let codificador = JSONEncoder()
@@ -177,6 +199,9 @@ enum CopiaSeguridad {
             t.estadoRaw = c.estado
             t.inicioReal = c.inicioReal
             t.minutosExtra = c.minutosExtra
+            t.lugar = c.lugar ?? ""
+            t.direccion = c.direccion ?? ""
+            t.notas = c.notas ?? ""
             ctx.insert(t)
             for p in c.pasos {
                 let paso = Paso(texto: p.texto, orden: p.orden, hecho: p.hecho)
@@ -198,10 +223,14 @@ enum Acciones {
         do { try ctx.save() } catch { Registro.anotar("Error al guardar: \(error.localizedDescription)") }
     }
 
-    private static func registrar(_ t: Tarea, _ resultado: String, ctx: ModelContext, ahora: Date = .now) {
-        let minutos = t.inicioReal.map { Int((ahora.timeIntervalSince($0) / 60).rounded()) } ?? 0
+    @discardableResult
+    private static func registrar(_ t: Tarea, _ resultado: String, ctx: ModelContext, ahora: Date = .now) -> Int {
+        // Si el tiempo terminó y no hubo respuesta enseguida, cuenta hasta el fin previsto, no hasta ahora.
+        let fin = min(ahora, t.finPrevisto.map { $0.addingTimeInterval(15 * 60) } ?? ahora)
+        let minutos = t.inicioReal.map { max(0, Int((fin.timeIntervalSince($0) / 60).rounded())) } ?? 0
         ctx.insert(SlotRegistro(uidTarea: t.uid, titulo: t.titulo, inicioPlaneado: t.inicio, inicioReal: t.inicioReal,
                                 fin: ahora, resultado: resultado, minutosReales: minutos))
+        return minutos
     }
 
     static func empezar(_ t: Tarea, ctx: ModelContext) {
@@ -236,17 +265,21 @@ enum Acciones {
         guardar(ctx)
     }
 
-    static func terminarAntes(_ t: Tarea, ctx: ModelContext) {
-        guard let real = t.inicioReal else { return }
-        t.minutosExtra = Int(Date.now.timeIntervalSince(real) / 60) - t.duracionMinutos
-        Avisos.cancelarFin(t)
-        guardar(ctx)
-    }
-
-    static func terminar(_ t: Tarea, ctx: ModelContext) {
-        registrar(t, "terminada", ctx: ctx)
+    /// Devuelve los minutos de foco de este slot.
+    @discardableResult
+    static func terminar(_ t: Tarea, ctx: ModelContext) -> Int {
+        let minutos = registrar(t, "terminada", ctx: ctx)
         t.estado = .terminada
         Avisos.cancelarTodo(t)
+        guardar(ctx)
+        return minutos
+    }
+
+    /// Una tarea archivada vuelve sin hora: la app pregunta "¿Cuándo, entonces?".
+    static func restaurar(_ t: Tarea, ctx: ModelContext) {
+        t.estado = .faltaHora
+        t.inicioReal = nil
+        t.minutosExtra = 0
         guardar(ctx)
     }
 
@@ -299,8 +332,11 @@ enum DatosDemo {
                      "Anotar fecha y hora", "Pasarlo al calendario", "Juntar los documentos", "Confirmar por mail"]
 
         @discardableResult
-        func tarea(_ titulo: String, en segundos: Double, _ duracion: Int, conPasos: Bool = false, hechos: Int = 0) -> Tarea {
+        func tarea(_ titulo: String, en segundos: Double, _ duracion: Int, conPasos: Bool = false, hechos: Int = 0,
+                   lugar: String = "", notas: String = "") -> Tarea {
             let t = Tarea(titulo: titulo, inicio: ahora.addingTimeInterval(segundos), duracionMinutos: duracion)
+            t.lugar = lugar
+            t.notas = notas
             ctx.insert(t)
             if conPasos {
                 for (i, texto) in pasos.enumerated() {
@@ -312,11 +348,25 @@ enum DatosDemo {
             return t
         }
 
+        let notasBanco = "Tener a mano el número de cliente. Preguntar también por la tarjeta nueva."
         switch p {
         case "vacio":
             break
+        case "lista", "calendario":
+            let hecha = tarea("Responder el mail del estudio", en: -3 * 3600, 30)
+            hecha.estado = .terminada
+            hecha.inicioReal = hecha.inicio
+            ctx.insert(SlotRegistro(uidTarea: hecha.uid, titulo: hecha.titulo, inicioPlaneado: hecha.inicio, inicioReal: hecha.inicio,
+                                    fin: hecha.inicio.addingTimeInterval(32 * 60), resultado: "terminada", minutosReales: 32))
+            ctx.insert(SlotRegistro(uidTarea: UUID(), titulo: "Ordenar el escritorio", inicioPlaneado: ahora.addingTimeInterval(-5400),
+                                    inicioReal: nil, fin: ahora.addingTimeInterval(-5400), resultado: "ahora no", minutosReales: 0))
+            tarea("Llamar al banco", en: 272, 45, conPasos: true, lugar: "Banco", notas: notasBanco)
+            tarea("Preparar el menú semanal", en: 3872, 30, notas: "Mirar qué hay en la heladera antes.")
+            tarea("Regar las plantas", en: 9272, 15)
+            tarea("Comprar regalo de cumpleaños", en: 26 * 3600, 60, lugar: "Centro")
+            tarea("Pagar las cuentas", en: 50 * 3600, 20)
         case "decidir":
-            tarea("Llamar al banco", en: -20, 45, conPasos: true)
+            tarea("Llamar al banco", en: -20, 45, conPasos: true, notas: notasBanco)
             tarea("Preparar el menú semanal", en: 3600, 30)
         case "cuando":
             let t = tarea("Llamar al banco", en: -1200, 45, conPasos: true)
@@ -328,7 +378,7 @@ enum DatosDemo {
             t.inicioReal = t.inicio
             tarea("Preparar el menú semanal", en: p == "fin" ? 10 * 60 : 45 * 60, 30)
         default:
-            tarea("Llamar al banco", en: 272, 45, conPasos: true)
+            tarea("Llamar al banco", en: 272, 45, conPasos: true, lugar: "Banco", notas: notasBanco)
             tarea("Preparar el menú semanal", en: 3872, 30)
             tarea("Regar las plantas", en: 9272, 15)
         }

@@ -112,6 +112,27 @@ final class MotorSlotsTests: XCTestCase {
         }
     }
 
+    func testSolapaSoloSiSePisan() {
+        let ocupado = DateInterval(start: fecha(6, 18), end: fecha(6, 18, 45))
+        XCTAssertTrue(MotorSlots.solapa(DateInterval(start: fecha(6, 18, 30), duration: 1800), con: [ocupado]))
+        XCTAssertFalse(MotorSlots.solapa(DateInterval(start: fecha(6, 18, 45), duration: 1800), con: [ocupado]))
+        XCTAssertFalse(MotorSlots.solapa(DateInterval(start: fecha(6, 17, 30), duration: 1800), con: [ocupado]))
+    }
+
+    func testMinutosEnPalabras() {
+        XCTAssertEqual(Formato.minutos(45), "45 min")
+        XCTAssertEqual(Formato.minutos(60), "1 h")
+        XCTAssertEqual(Formato.minutos(80), "1 h 20 min")
+    }
+
+    func testAlarmasTienenIdentificadoresDistintosYEstables() {
+        let base = UUID()
+        let ids = (0..<4).map { Alarmas.id(base, UInt8($0)) }
+        XCTAssertEqual(Set(ids).count, 4)
+        XCTAssertFalse(ids.contains(base))
+        XCTAssertEqual(Alarmas.id(base, 2), ids[2])
+    }
+
     func testRedondeoACuartoDeHora() {
         XCTAssertEqual(MotorSlots.redondearArriba(fecha(6, 18, 1), minutos: 15, calendario: cal), fecha(6, 18, 15))
         XCTAssertEqual(MotorSlots.redondearArriba(fecha(6, 18, 15), minutos: 15, calendario: cal), fecha(6, 18, 15))

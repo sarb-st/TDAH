@@ -26,6 +26,10 @@ final class Tarea {
     var inicioReal: Date?
     var minutosExtra: Int = 0
     var creada: Date = Date()
+    /// Datos agregados a la tarea, distintos de los pasos: dónde es y qué no olvidar.
+    var lugar: String = ""
+    var direccion: String = ""
+    var notas: String = ""
     @Relationship(deleteRule: .cascade, inverse: \Paso.tarea) var pasos: [Paso] = []
 
     init(titulo: String, inicio: Date, duracionMinutos: Int) {
@@ -79,4 +83,30 @@ final class SlotRegistro {
     }
 }
 
-extension Tarea: DatosSlot {}
+extension Tarea: DatosSlot {
+    var intervalo: DateInterval {
+        DateInterval(start: inicioReal ?? inicio, duration: Double(max(1, duracionMinutos + minutosExtra)) * 60)
+    }
+
+    /// Ocupa lugar en la agenda: lo que todavía va a pasar o está pasando.
+    var ocupaAgenda: Bool { estado == .programada || estado == .enCurso }
+
+    var mapa: URL? {
+        let texto = direccion.isEmpty ? lugar : direccion
+        guard !texto.isEmpty, let q = texto.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else { return nil }
+        return URL(string: "maps://?q=\(q)")
+    }
+}
+
+extension EstadoTarea {
+    var nombre: String {
+        switch self {
+        case .programada: "Programada"
+        case .enCurso: "En curso"
+        case .pausada: "En pausa"
+        case .faltaHora: "Falta hora"
+        case .terminada: "Hecha"
+        case .archivada: "Archivada"
+        }
+    }
+}

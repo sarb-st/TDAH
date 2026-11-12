@@ -59,13 +59,15 @@ Paleta **Salvia y crema** de día y **Bosque** de noche. Nunca rojo: los avisos 
 
 ### Decidir (a la hora del slot)
 - En el centro del círculo, un **punto que late** (color entre el primario y el halo; nunca el verde más intenso).
-- **Apretar y deslizar hacia arriba (90 pt) → Empiezo.** Mientras subís, "Empiezo" aparece dentro del círculo y la pantalla se tiñe de energía.
-- **Apretar y quedarse quieto 1,5 s → Ahora no.** Una línea rodea el círculo y "Ahora no" aparece dentro.
-  Si el dedo se mueve más de 10 pt, cuenta como deslizar.
+- **El círculo sigue al dedo** en cualquier dirección; lo que decide es cuánto sube o baja.
+- **Hacia arriba (90 pt) → Empiezo.** Mientras subís, "Empiezo" aparece dentro del círculo y la pantalla se tiñe de energía.
+- **Hacia abajo hasta el borde (170 pt) y sostener 2 s → Ahora no.** Mientras sostenés, el halo se agranda y "Ahora no" aparece dentro.
+  Si subís el dedo antes de los 2 s, vuelve a su lugar.
 - Indicaciones mínimas abajo ("deslizá: empiezo · mantené: ahora no") solo las primeras veces.
 
 ### ¿Cuándo, entonces? (después de "Ahora no" o "Paro por hoy")
-- La tarea en grande y "Está bien, lo movemos." en verde e itálica. Poca información: la persona probablemente está cansada.
+- Primero, una transición: "Está bien, lo movemos." solo, grande, en verde e itálica.
+- Después, la tarea en grande y "¿Cuándo, entonces?" como protagonista. Poca información: la persona probablemente está cansada.
 - **3 slots concretos** que respetan el calendario y el horario del lugar. Al tocar uno se agranda, muestra un renglón de por qué y el botón **Agendar**.
 - **Otra hora:** días disponibles y horarios libres; los ocupados aparecen tachados.
 - **Ya no la voy a hacer:** archiva la tarea (se puede recuperar).
@@ -76,7 +78,8 @@ Paleta **Salvia y crema** de día y **Bosque** de noche. Nunca rojo: los avisos 
 - Aviso suave 5 min antes del final.
 
 ### Fin del slot
-- Primero la **recompensa**: círculo con tilde y ondas de energía, y un mensaje de ánimo que varía.
+- Primero la **recompensa**, grande y al centro: círculo con tilde y ondas de energía, y un mensaje de ánimo que varía.
+- Al tocar **Terminé** (al final o antes, desde En curso): celebración de unos segundos con el halo verde grande, un brote que crece y los minutos de foco.
 - Después "¿Cómo seguimos?" con íconos lineales: brote (Terminé), reloj redondo (Necesito más: +10, +15, +30), luna (Paro por hoy).
 - Si la extensión choca con el slot siguiente, aviso en ocre con "Correrlo" o una extensión menor.
 

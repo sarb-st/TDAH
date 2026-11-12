@@ -92,7 +92,7 @@ jobs:
           mkdir -p capturas
           i=1
           # pantalla:hora del día con la que se pintan los colores
-          for item in espera:9.5 decidir:9.5 cuando:9.5 encurso:16 fin:17 vacio:9.5 ajustes:9.5 espera:20.6 espera:23; do
+          for item in espera:9.5 decidir:9.5 movida:9.5 cuando:9.5 encurso:16 fin:17 celebracion:17 lista:9.5 calendario:9.5 vacio:9.5 ajustes:9.5 espera:20.6 espera:23; do
             p="${item%%:*}"; h="${item##*:}"
             xcrun simctl launch --terminate-running-process "$UDID" app.tdah.AppTDAH -demo "$p" -hora "$h"
             sleep 6

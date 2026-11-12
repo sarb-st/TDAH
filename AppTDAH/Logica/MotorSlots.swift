@@ -66,6 +66,14 @@ enum MotorSlots {
         return s.inicio < finNuevo
     }
 
+    /// Si un slot nuevo pisa a otro ya ocupado.
+    static func solapa(_ propuesta: DateInterval, con ocupados: [DateInterval]) -> Bool {
+        ocupados.contains { $0.start < propuesta.end && propuesta.start < $0.end }
+    }
+
+    /// Minutos de foco: lo trabajado en slots terminados o parados por hoy.
+    static let resultadosConFoco: Set<String> = ["terminada", "paro por hoy"]
+
     static func redondearArriba(_ fecha: Date, minutos: Int, calendario cal: Calendar = .current) -> Date {
         let dia = cal.startOfDay(for: fecha)
         let paso = Double(minutos * 60)
@@ -125,6 +133,13 @@ enum Formato {
     }()
 
     static func hora(_ d: Date) -> String { formatoHora.string(from: d) }
+
+    /// "45 min", "1 h", "1 h 20 min".
+    static func minutos(_ m: Int) -> String {
+        let m = max(0, m)
+        if m < 60 { return "\(m) min" }
+        return m % 60 == 0 ? "\(m / 60) h" : "\(m / 60) h \(m % 60) min"
+    }
 
     static func diaYHora(_ d: Date, ahora: Date, calendario cal: Calendar = .current) -> String {
         if cal.isDate(d, inSameDayAs: ahora) { return "Hoy \(hora(d))" }

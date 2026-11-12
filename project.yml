@@ -19,6 +19,11 @@ targets:
     type: application
     platform: iOS
     sources: [AppTDAH]
+    # Se genera en la nube; solo agrega lo que no se puede poner como INFOPLIST_KEY.
+    info:
+      path: Soporte/Info.plist
+      properties:
+        NSAlarmKitUsageDescription: "Para que el comienzo y el fin de cada tarea suenen como un despertador, aunque el iPhone esté en silencio."
     settings:
       base:
         # SideStore reemplaza este identificador al instalar con tu Apple ID.
