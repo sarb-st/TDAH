@@ -63,7 +63,8 @@ enum Alarmas {
     static func cancelar(_ ids: [UUID]) {
         #if canImport(AlarmKit)
         if #available(iOS 26.0, *) {
-            for id in ids where AlarmManager.shared.alarms.contains(where: { $0.id == id }) {
+            let programadas = (try? AlarmManager.shared.alarms) ?? []
+            for id in ids where programadas.contains(where: { $0.id == id }) {
                 do { try AlarmManager.shared.cancel(id: id) }
                 catch { Registro.anotar("No se pudo cancelar una alarma: \(error.localizedDescription)") }
             }
@@ -91,16 +92,20 @@ struct AbrirAppIntent: LiveActivityIntent {
 enum MotorAlarmas {
     static func programar(id: UUID, fecha: Date, titulo: String) async {
         let abrir = AlarmButton(text: "Abrir", textColor: .white, systemImageName: "circle.circle")
-        let alerta = AlarmPresentation.Alert(title: LocalizedStringResource(stringLiteral: titulo),
-                                             secondaryButton: abrir,
-                                             secondaryButtonBehavior: .custom)
+        let nombre = LocalizedStringResource(stringLiteral: titulo)
+        let alerta: AlarmPresentation.Alert
+        if #available(iOS 26.1, *) {
+            alerta = AlarmPresentation.Alert(title: nombre, secondaryButton: abrir, secondaryButtonBehavior: .custom)
+        } else {
+            let detener = AlarmButton(text: "Detener", textColor: .white, systemImageName: "stop.circle")
+            alerta = AlarmPresentation.Alert(title: nombre, stopButton: detener, secondaryButton: abrir, secondaryButtonBehavior: .custom)
+        }
         let atributos = AlarmAttributes<MetadatosAlarma>(presentation: AlarmPresentation(alert: alerta),
                                                          metadata: MetadatosAlarma(),
                                                          tintColor: Color(red: 0.31, green: 0.42, blue: 0.33))
         let configuracion = AlarmManager.AlarmConfiguration<MetadatosAlarma>.alarm(
             schedule: .fixed(fecha),
             attributes: atributos,
-            appEntityIdentifier: nil,
             stopIntent: nil,
             secondaryIntent: AbrirAppIntent(),
             sound: .default)
