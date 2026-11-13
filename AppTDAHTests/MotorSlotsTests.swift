@@ -8,6 +8,7 @@ private struct SlotPrueba: DatosSlot {
     var estado: EstadoTarea = .programada
     var inicioReal: Date?
     var minutosExtra = 0
+    var esCita = false
 }
 
 final class MotorSlotsTests: XCTestCase {
@@ -73,6 +74,19 @@ final class MotorSlotsTests: XCTestCase {
                            inicioReal: fecha(6, 18), minutosExtra: 15)
         XCTAssertEqual(t.finPrevisto, fecha(6, 19))
         XCTAssertEqual(nombre(MotorSlots.pantalla([t], ahora: fecha(6, 18, 50))), "enCurso banco")
+    }
+
+    func testLasCitasNoPidenDecisionYSeVenHastaTerminar() {
+        let cita = SlotPrueba(nombre: "dentista", inicio: fecha(6, 18), duracionMinutos: 60, esCita: true)
+        XCTAssertEqual(nombre(MotorSlots.pantalla([cita], ahora: fecha(6, 18, 5))), "espera dentista")
+        XCTAssertEqual(nombre(MotorSlots.pantalla([cita], ahora: fecha(6, 19, 5))), "vacio")
+    }
+
+    func testSugerenciasSoloEnDiasHabiles() {
+        // El 7 de noviembre de 2026 es sábado: la primera sugerencia tiene que ser el lunes 9.
+        let s = MotorSlots.sugerencias(duracion: 30, ocupados: [], desde: fecha(7, 10), calendario: cal,
+                                       apertura: 9, cierre: 16, soloDiasHabiles: true)
+        XCTAssertEqual(s.first?.inicio, fecha(9, 9))
     }
 
     // MARK: Avisos y choques

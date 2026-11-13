@@ -24,6 +24,10 @@ targets:
       path: Soporte/Info.plist
       properties:
         NSAlarmKitUsageDescription: "Para que el comienzo y el fin de cada tarea suenen como un despertador, aunque el iPhone esté en silencio."
+        NSMicrophoneUsageDescription: "Para que puedas dictar lo que tenés en la cabeza."
+        NSSpeechRecognitionUsageDescription: "Para pasar a texto lo que dictás."
+        NSCalendarsFullAccessUsageDescription: "Para poner tus tareas y citas en tu calendario y no proponerte horas que ya tenés ocupadas."
+        NSLocationWhenInUseUsageDescription: "Para calcular cuánto tardás en llegar a una cita."
     settings:
       base:
         # SideStore reemplaza este identificador al instalar con tu Apple ID.

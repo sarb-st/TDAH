@@ -57,6 +57,7 @@ enum Avisos {
     }
 
     static func programarInicio(_ t: Tarea) {
+        if t.esCita { return programarCita(t) }
         cancelarInicio(t)
         let textos = [
             (t.titulo, "Comienza ahora. Abrí para decidir."),
@@ -72,6 +73,48 @@ enum Avisos {
                 agregar(id: ids(t, "inicio", textos.count)[i], fecha: fecha, titulo: textos[i].0, cuerpo: textos[i].1)
             }
         }
+    }
+
+    /// Una cita no pide decisión: avisa cuándo salir (viaje + 10 min) o, sin viaje, 10 minutos antes.
+    static func programarCita(_ t: Tarea) {
+        cancelarInicio(t)
+        let ids = ids(t, "inicio", 3)
+        if let salida = t.salida {
+            let antes = salida.addingTimeInterval(-15 * 60)
+            if antes > .now { agregar(id: ids[0], fecha: antes, titulo: "En 15 min salís: \(t.titulo)", cuerpo: "Cita a las \(Formato.hora(t.inicio)). Viaje de \(t.minutosViaje) min.") }
+            guard salida > .now else { return }
+            if Alarmas.disponibles {
+                Alarmas.programar(id: Alarmas.id(t.uid, 1), fecha: salida, titulo: "Salí ahora: \(t.titulo)")
+            } else {
+                agregar(id: ids[1], fecha: salida, titulo: "Salí ahora: \(t.titulo)", cuerpo: "Cita a las \(Formato.hora(t.inicio)).")
+            }
+        } else {
+            let aviso = t.inicio.addingTimeInterval(-10 * 60)
+            guard aviso > .now else { return }
+            if Alarmas.disponibles {
+                Alarmas.programar(id: Alarmas.id(t.uid, 1), fecha: aviso, titulo: "En 10 min: \(t.titulo)")
+            } else {
+                agregar(id: ids[1], fecha: aviso, titulo: "En 10 min: \(t.titulo)", cuerpo: t.lugar.isEmpty ? "Cita a las \(Formato.hora(t.inicio))." : t.lugar)
+            }
+        }
+    }
+
+    /// Cada noche a las 21: las citas de mañana, con la hora de salida.
+    @MainActor
+    static func programarResumen(_ tareas: [Tarea]) {
+        guard activos else { return }
+        centro.removePendingNotificationRequests(withIdentifiers: ["resumen"])
+        let cal = Calendar.current
+        var hoy21 = cal.date(bySettingHour: 21, minute: 0, second: 0, of: .now) ?? .now
+        if hoy21 < .now { hoy21 = cal.date(byAdding: .day, value: 1, to: hoy21) ?? hoy21 }
+        guard let manana = cal.date(byAdding: .day, value: 1, to: hoy21) else { return }
+        let citas = tareas.filter { $0.esCita && $0.estado == .programada && cal.isDate($0.inicio, inSameDayAs: manana) }
+            .sorted { $0.inicio < $1.inicio }
+        guard !citas.isEmpty else { return }
+        let texto = citas.map { c in
+            "\(Formato.hora(c.inicio)) \(c.titulo)" + (c.salida.map { " (salí \(Formato.hora($0)))" } ?? "")
+        }.joined(separator: " · ")
+        agregar(id: "resumen", fecha: hoy21, titulo: "Mañana", cuerpo: texto)
     }
 
     static func programarFin(_ t: Tarea) {
@@ -154,9 +197,12 @@ enum CopiaSeguridad {
         var lugar: String?
         var direccion: String?
         var notas: String?
+        var esCita: Bool?
+        var minutosViaje: Int?
         var pasos: [CopiaPaso]
     }
-    struct Copia: Codable { var version = 1; var creada: Date; var tareas: [CopiaTarea] }
+    struct CopiaCaptura: Codable { var uid: UUID; var tipo: String; var texto: String; var titulo: String; var tema: String; var creada: Date; var archivada: Bool }
+    struct Copia: Codable { var version = 1; var creada: Date; var tareas: [CopiaTarea]; var capturas: [CopiaCaptura]? }
 
     static var url: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("AppTDAH-copia.json")
@@ -172,7 +218,10 @@ enum CopiaSeguridad {
                 CopiaTarea(uid: t.uid, titulo: t.titulo, inicio: t.inicio, duracionMinutos: t.duracionMinutos,
                            estado: t.estadoRaw, inicioReal: t.inicioReal, minutosExtra: t.minutosExtra,
                            lugar: t.lugar, direccion: t.direccion, notas: t.notas,
+                           esCita: t.esCita, minutosViaje: t.minutosViaje,
                            pasos: t.pasosOrdenados.map { CopiaPaso(texto: $0.texto, hecho: $0.hecho, orden: $0.orden) })
+            }, capturas: (try ctx.fetch(FetchDescriptor<Captura>())).map {
+                CopiaCaptura(uid: $0.uid, tipo: $0.tipo, texto: $0.texto, titulo: $0.titulo, tema: $0.tema, creada: $0.creada, archivada: $0.archivada)
             })
             let codificador = JSONEncoder()
             codificador.dateEncodingStrategy = .iso8601
@@ -202,6 +251,8 @@ enum CopiaSeguridad {
             t.lugar = c.lugar ?? ""
             t.direccion = c.direccion ?? ""
             t.notas = c.notas ?? ""
+            t.esCita = c.esCita ?? false
+            t.minutosViaje = c.minutosViaje ?? 0
             ctx.insert(t)
             for p in c.pasos {
                 let paso = Paso(texto: p.texto, orden: p.orden, hecho: p.hecho)
@@ -209,6 +260,14 @@ enum CopiaSeguridad {
                 paso.tarea = t
             }
             agregadas += 1
+        }
+        let capturasExistentes = Set(try ctx.fetch(FetchDescriptor<Captura>()).map(\.uid))
+        for c in copia.capturas ?? [] where !capturasExistentes.contains(c.uid) {
+            let nueva = Captura(tipo: c.tipo, texto: c.texto, titulo: c.titulo, tema: c.tema)
+            nueva.uid = c.uid
+            nueva.creada = c.creada
+            nueva.archivada = c.archivada
+            ctx.insert(nueva)
         }
         try ctx.save()
         Registro.anotar("Copia restaurada: \(agregadas) tareas agregadas.")
@@ -221,6 +280,30 @@ enum CopiaSeguridad {
 enum Acciones {
     static func guardar(_ ctx: ModelContext) {
         do { try ctx.save() } catch { Registro.anotar("Error al guardar: \(error.localizedDescription)") }
+    }
+
+    /// Guarda y actualiza el espejo en el calendario del iPhone.
+    static func guardar(_ t: Tarea, ctx: ModelContext) {
+        Calendario.sincronizar(t)
+        guardar(ctx)
+    }
+
+    /// Las citas que ya pasaron quedan hechas solas; el inbox sin procesar se archiva a las 2 semanas.
+    static func mantenimiento(ctx: ModelContext) {
+        let ahora = Date.now
+        if let tareas = try? ctx.fetch(FetchDescriptor<Tarea>()) {
+            for t in tareas where t.esCita && t.estado == .programada
+                && t.inicio.addingTimeInterval(Double(t.duracionMinutos) * 60) < ahora {
+                t.estado = .terminada
+            }
+            Avisos.programarResumen(tareas)
+        }
+        if let capturas = try? ctx.fetch(FetchDescriptor<Captura>()) {
+            for c in capturas where c.tipo == "inbox" && !c.archivada && c.creada < ahora.addingTimeInterval(-14 * 86_400) {
+                c.archivada = true
+            }
+        }
+        guardar(ctx)
     }
 
     @discardableResult
@@ -239,14 +322,14 @@ enum Acciones {
         t.minutosExtra = 0
         Avisos.cancelarInicio(t)
         Avisos.programarFin(t)
-        guardar(ctx)
+        guardar(t, ctx: ctx)
     }
 
     static func ahoraNo(_ t: Tarea, ctx: ModelContext) {
         registrar(t, "ahora no", ctx: ctx)
         t.estado = .faltaHora
         Avisos.cancelarTodo(t)
-        guardar(ctx)
+        guardar(t, ctx: ctx)
     }
 
     static func reprogramar(_ t: Tarea, a fecha: Date, ctx: ModelContext) {
@@ -256,13 +339,13 @@ enum Acciones {
         t.inicioReal = nil
         t.minutosExtra = 0
         Avisos.programarInicio(t)
-        guardar(ctx)
+        guardar(t, ctx: ctx)
     }
 
     static func archivar(_ t: Tarea, ctx: ModelContext) {
         t.estado = .archivada
         Avisos.cancelarTodo(t)
-        guardar(ctx)
+        guardar(t, ctx: ctx)
     }
 
     /// Devuelve los minutos de foco de este slot.
@@ -271,7 +354,7 @@ enum Acciones {
         let minutos = registrar(t, "terminada", ctx: ctx)
         t.estado = .terminada
         Avisos.cancelarTodo(t)
-        guardar(ctx)
+        guardar(t, ctx: ctx)
         return minutos
     }
 
@@ -306,11 +389,12 @@ enum Acciones {
     static func correr(_ t: Tarea, a fecha: Date, ctx: ModelContext) {
         t.inicio = fecha
         Avisos.programarInicio(t)
-        guardar(ctx)
+        guardar(t, ctx: ctx)
     }
 
     static func borrar(_ t: Tarea, ctx: ModelContext) {
         Avisos.cancelarTodo(t)
+        Calendario.borrar(t)
         ctx.delete(t)
         guardar(ctx)
     }
@@ -349,8 +433,37 @@ enum DatosDemo {
         }
 
         let notasBanco = "Tener a mano el número de cliente. Preguntar también por la tarjeta nueva."
+        func proyectoDemo() -> Proyecto {
+            let p = Proyecto(titulo: "Mudanza", deadline: ahora.addingTimeInterval(24 * 86_400))
+            p.creado = ahora.addingTimeInterval(-10 * 86_400)
+            ctx.insert(p)
+            for (i, (titulo, dias, hecha)) in [("Elegir empresa de mudanza", -3.0, true), ("Embalar la cocina y el living", 6.0, false),
+                                              ("Cambiar dirección en bancos y servicios", 14.0, false), ("Día de la mudanza", 24.0, false)].enumerated() {
+                let e = Etapa(titulo: titulo, fechaObjetivo: ahora.addingTimeInterval(dias * 86_400), orden: i)
+                e.cumplida = hecha
+                ctx.insert(e)
+                e.proyecto = p
+            }
+            return p
+        }
         switch p {
         case "vacio":
+            break
+        case "cita":
+            let c = tarea("Dentista", en: 50 * 60, 45, lugar: "Consultorio", notas: "Llevar la orden y la credencial.")
+            c.esCita = true
+            c.minutosViaje = 25
+            c.direccion = "Calle Ejemplo 123"
+        case "proyecto":
+            let p = proyectoDemo()
+            let t = tarea("Comprar cajas y cinta", en: 3 * 3600, 45)
+            t.proyecto = p
+            let segunda = p.etapas.first { $0.orden == 1 }
+            t.etapa = segunda
+            let t2 = tarea("Embalar los libros", en: 26 * 3600, 90)
+            t2.proyecto = p
+            t2.etapa = segunda
+        case "captura":
             break
         case "lista", "calendario":
             let hecha = tarea("Responder el mail del estudio", en: -3 * 3600, 30)
@@ -364,6 +477,13 @@ enum DatosDemo {
             tarea("Preparar el menú semanal", en: 3872, 30, notas: "Mirar qué hay en la heladera antes.")
             tarea("Regar las plantas", en: 9272, 15)
             tarea("Comprar regalo de cumpleaños", en: 26 * 3600, 60, lugar: "Centro")
+            let cita = tarea("Dentista", en: 27 * 3600, 45, lugar: "Consultorio")
+            cita.esCita = true
+            cita.minutosViaje = 25
+            let p = proyectoDemo()
+            tarea("Comprar cajas y cinta", en: 30 * 3600, 45).proyecto = p
+            ctx.insert(Captura(tipo: "inbox", texto: "lo de Martín"))
+            ctx.insert(Captura(tipo: "idea", texto: "una lámpara que respire como el círculo", titulo: "Lámpara que respira", tema: "diseño"))
             tarea("Pagar las cuentas", en: 50 * 3600, 20)
         case "decidir":
             tarea("Llamar al banco", en: -20, 45, conPasos: true, notas: notasBanco)

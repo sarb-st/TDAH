@@ -261,7 +261,8 @@ Sin una Mac al lado no se ven los errores en el momento. Estas reglas lo compens
   6. **Ideas, dial y persona de accountability**.
 - [x] **Estética**: cerrada, ver 6b.
 - [ ] **Minutos de foco**: ya se suman y se muestran en la celebración y en Ajustes; falta definir para qué más se usan.
-- [ ] **Proveedor de IA**: Claude u OpenAI.
+- [x] **Proveedor de IA**: Claude (Anthropic), modelo `claude-opus-5-5` con esfuerzo bajo y salida JSON con esquema. La clave se carga en Ajustes y vive en el Keychain.
+- [x] **Fase 2 (captura)** en marcha junto con versiones básicas de **citas** (Fase 3) y **proyectos** (Fase 5), a pedido del usuario: dictado, clasificación, revisión antes de guardar, inbox, ideas, citas con salida y alarma, espejo en el calendario del iPhone, resumen nocturno, proyectos con etapas, barra y replanteo con IA.
 - [ ] **Nombre definitivo de la app** (provisorio: AppTDAH).
 
 ## 11. Fase futura (no construir todavía)

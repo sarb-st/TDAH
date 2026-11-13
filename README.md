@@ -25,6 +25,10 @@ Este enlace siempre apunta a la última versión compilada.
 | `AppTDAH/Pantallas/Principal.swift` | Las pantallas principales: Espera, Decidir, ¿Cuándo?, En curso, Fin del slot y las transiciones. |
 | `AppTDAH/Pantallas/Agenda.swift` | El listado de tareas en tarjetas, el calendario por día y el detalle de cada tarea. |
 | `AppTDAH/Pantallas/Edicion.swift` | Nueva tarea, Ajustes y Diagnóstico. |
+| `AppTDAH/Pantallas/Captura.swift` | Dictar lo que tenés en la cabeza y revisar lo que Claude propone antes de guardar. |
+| `AppTDAH/Pantallas/Proyectos.swift` | Proyectos: etapas, barra hasta la fecha final, tareas de cada etapa y replanteo. |
+| `AppTDAH/Servicios/IA.swift` | La conexión con Claude (clasificar dictados y replanear proyectos) y la clave guardada en el Keychain. |
+| `AppTDAH/Servicios/Dispositivo.swift` | Dictado por voz, tiempo de viaje con Mapas y el espejo en el calendario del iPhone. |
 | `AppTDAH/Servicios/Alarmas.swift` | Las alarmas que suenan aunque el iPhone esté en silencio (iOS 26 en adelante). |
 | `AppTDAH/Servicios/Servicios.swift` | Avisos, firma, copia de seguridad, registro de errores y datos de muestra para las capturas. |
 | `AppTDAH/Fuentes/` | La tipografía Fraunces y su licencia libre (SIL Open Font License). |
@@ -69,6 +73,17 @@ Si la fecha coincide con la de la última compilación en GitHub, estás viendo 
 - Las apps vencen a los **7 días**. Abrí SideStore y tocá **Refresh All** antes de que venzan.
 - Podés tener hasta **3 apps** instaladas así a la vez (SideStore cuenta como una).
 - Instalar una versión nueva reemplaza a la anterior.
+
+## Cómo conseguir la clave de Claude (una sola vez)
+
+La app usa Claude para ordenar lo que dictás. Cada captura cuesta centavos de dólar.
+
+1. Entrá a **https://console.anthropic.com** desde la compu y creá una cuenta (podés usar tu Google).
+2. En **Billing**, cargá crédito (con 5 dólares alcanza para mucho tiempo). Podés poner un límite mensual.
+3. En **API Keys**, tocá **Create Key**, ponele de nombre "AppTDAH" y copiá la clave (empieza con `sk-ant-`).
+4. Mandátela al iPhone (por ejemplo por notas o mail a vos mismo), abrí la app → **Ajustes** → **Inteligencia artificial**, pegala y tocá **Guardar la clave**.
+
+La clave queda solo en el Keychain del iPhone: no está en el código ni en GitHub. Si alguna vez la perdés o se filtra, borrala en la consola y creá otra.
 
 ## Si SideStore da el error -80045 al iniciar sesión
 

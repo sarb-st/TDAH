@@ -10,11 +10,11 @@ struct AppTDAHApp: App {
     let contenedor: ModelContainer = {
         let enMemoria = DatosDemo.pantalla != nil
         do {
-            return try ModelContainer(for: Tarea.self, Paso.self, SlotRegistro.self,
+            return try ModelContainer(for: Tarea.self, Paso.self, SlotRegistro.self, Proyecto.self, Etapa.self, Captura.self,
                                       configurations: ModelConfiguration(isStoredInMemoryOnly: enMemoria))
         } catch {
             Registro.anotar("No se pudo abrir la base de datos: \(error.localizedDescription)")
-            return try! ModelContainer(for: Tarea.self, Paso.self, SlotRegistro.self,
+            return try! ModelContainer(for: Tarea.self, Paso.self, SlotRegistro.self, Proyecto.self, Etapa.self, Captura.self,
                                        configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         }
     }()
@@ -40,7 +40,10 @@ struct RaizView: View {
     @AppStorage("apariencia") private var apariencia = Apariencia.automatico.rawValue
 
     @State private var creando = false
+    @State private var capturando = DatosDemo.pantalla == "captura"
     @State private var ajustes = DatosDemo.pantalla == "ajustes"
+    @State private var proyectoDemo = DatosDemo.pantalla == "proyecto"
+    @Query private var proyectos: [Proyecto]
     @State private var lista = DatosDemo.pantalla == "lista"
     @State private var calendario = DatosDemo.pantalla == "calendario"
     @State private var transicion: Transicion? = RaizView.transicionDemo
@@ -83,20 +86,27 @@ struct RaizView: View {
             if !Task.isCancelled { withAnimation(.easeInOut(duration: 0.6)) { transicion = nil } }
         }
         .sheet(isPresented: $creando) { NuevaTareaView(tarea: nil) }
+        .sheet(isPresented: $capturando) { CapturaView(paleta: paleta) { creando = true } }
         .sheet(isPresented: $ajustes) { AjustesView() }
         .sheet(isPresented: $lista) { ListaView(paleta: paleta) }
         .sheet(isPresented: $calendario) { CalendarioView(paleta: paleta) }
+        .sheet(isPresented: $proyectoDemo) {
+            NavigationStack { if let p = proyectos.first { ProyectoDetalleView(proyecto: p, paleta: paleta) } }
+                .environment(\.paleta, paleta)
+        }
         .onChange(of: fase) { _, nueva in
             if nueva == .background { CopiaSeguridad.guardar(ctx) }
+            if nueva == .active && DatosDemo.pantalla == nil { Acciones.mantenimiento(ctx: ctx) }
         }
         .task {
             guard DatosDemo.pantalla == nil else { return }
             Firma.programarAviso()
+            Acciones.mantenimiento(ctx: ctx)
         }
     }
 
     private var navegacion: Navegacion {
-        Navegacion(nueva: { creando = true }, ajustes: { ajustes = true },
+        Navegacion(captura: { capturando = true }, nueva: { creando = true }, ajustes: { ajustes = true },
                    lista: { lista = true }, calendario: { calendario = true })
     }
 

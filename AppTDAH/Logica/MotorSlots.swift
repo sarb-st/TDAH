@@ -7,6 +7,7 @@ protocol DatosSlot {
     var estado: EstadoTarea { get }
     var inicioReal: Date? { get }
     var minutosExtra: Int { get }
+    var esCita: Bool { get }
 }
 
 extension DatosSlot {
@@ -49,11 +50,13 @@ enum MotorSlots {
             return .enCurso(t)
         }
         if let t = tareas.first(where: { $0.estado == .faltaHora }) { return .cuando(t, sinRespuesta: false) }
-        let programadas = tareas.filter { $0.estado == .programada }.sorted { $0.inicio < $1.inicio }
+        let programadas = tareas.filter { $0.estado == .programada && !$0.esCita }.sorted { $0.inicio < $1.inicio }
         if let t = programadas.first(where: { $0.inicio <= ahora }) {
             return ahora.timeIntervalSince(t.inicio) >= ventanaDecision ? .cuando(t, sinRespuesta: true) : .decidir(t)
         }
-        let proximas = Array(programadas.prefix(3))
+        // Las citas no piden decisión: se ven en la espera hasta que terminan.
+        let citas = tareas.filter { $0.esCita && $0.estado == .programada && $0.inicio.addingTimeInterval(Double($0.duracionMinutos) * 60) > ahora }
+        let proximas = Array((programadas + citas).sorted { $0.inicio < $1.inicio }.prefix(3))
         return proximas.isEmpty ? .vacio : .espera(proximas)
     }
 
@@ -84,7 +87,7 @@ enum MotorSlots {
     /// Huecos libres donde entra la tarea, dentro del horario permitido y sin pisar otros slots.
     static func sugerencias(duracion: Int, ocupados: [DateInterval], desde ahora: Date,
                             calendario cal: Calendar = .current, apertura: Int = 8, cierre: Int = 21,
-                            cantidad: Int = 3) -> [Sugerencia] {
+                            soloDiasHabiles: Bool = false, cantidad: Int = 3) -> [Sugerencia] {
         let dur = TimeInterval(duracion * 60)
         var resultado: [Sugerencia] = []
         var t = redondearArriba(ahora.addingTimeInterval(10 * 60), minutos: 15, calendario: cal)
@@ -95,6 +98,7 @@ enum MotorSlots {
             guard let abre = cal.date(bySettingHour: apertura, minute: 0, second: 0, of: dia),
                   let cierra = cal.date(bySettingHour: cierre, minute: 0, second: 0, of: dia),
                   let abreManana = cal.date(byAdding: .day, value: 1, to: abre) else { break }
+            if soloDiasHabiles && cal.isDateInWeekend(t) { t = abreManana; continue }
             if t < abre { t = abre }
             if t.addingTimeInterval(dur) > cierra { t = abreManana; continue }
             let fin = t.addingTimeInterval(dur)
@@ -134,6 +138,9 @@ enum Formato {
 
     static func hora(_ d: Date) -> String { formatoHora.string(from: d) }
 
+    /// "jueves, 12 de noviembre" → "Jueves, 12 de noviembre" (sin "De" en mayúscula).
+    static func primeraMayuscula(_ s: String) -> String { s.prefix(1).uppercased() + s.dropFirst() }
+
     /// "45 min", "1 h", "1 h 20 min".
     static func minutos(_ m: Int) -> String {
         let m = max(0, m)
@@ -144,6 +151,6 @@ enum Formato {
     static func diaYHora(_ d: Date, ahora: Date, calendario cal: Calendar = .current) -> String {
         if cal.isDate(d, inSameDayAs: ahora) { return "Hoy \(hora(d))" }
         if let m = cal.date(byAdding: .day, value: 1, to: ahora), cal.isDate(d, inSameDayAs: m) { return "Mañana \(hora(d))" }
-        return formatoDia.string(from: d).capitalized + " · " + hora(d)
+        return primeraMayuscula(formatoDia.string(from: d)) + " · " + hora(d)
     }
 }

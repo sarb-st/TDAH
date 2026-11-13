@@ -6,10 +6,21 @@ import UIKit
 /// Cargar o editar una tarea a mano (en la Fase 2 se suma el dictado con IA).
 struct NuevaTareaView: View {
     let tarea: Tarea?
+    var proyectoInicial: Proyecto? = nil
+    var etapaInicial: Etapa? = nil
+    var tituloInicial: String = ""
+    var alGuardar: (() -> Void)? = nil
 
     @Environment(\.modelContext) private var ctx
     @Environment(\.dismiss) private var cerrar
     @Query private var todas: [Tarea]
+    @Query(sort: \Proyecto.deadline) private var proyectos: [Proyecto]
+    @State private var esCita = false
+    @State private var minutosViaje = 0
+    @State private var calculandoViaje = false
+    @State private var avisoViaje: String?
+    @State private var proyecto: Proyecto?
+    @State private var etapa: Etapa?
 
     @State private var titulo = ""
     @State private var inicio = MotorSlots.redondearArriba(.now.addingTimeInterval(30 * 60), minutos: 15)
@@ -32,9 +43,42 @@ struct NuevaTareaView: View {
                         .focused($foco)
                 }
                 Section {
-                    DatePicker("Comienza", selection: $inicio, in: Date()...)
+                    Toggle("Es una cita (hora fija)", isOn: $esCita)
+                    DatePicker(esCita ? "Hora de la cita" : "Comienza", selection: $inicio, in: Date()...)
                     Picker("Duración", selection: $duracion) {
                         ForEach(duraciones, id: \.self) { Text("\($0) min").tag($0) }
+                    }
+                } footer: {
+                    Text(esCita ? "Una cita no pide Empiezo o Ahora no: te aviso cuándo salir." : "")
+                }
+                if esCita {
+                    Section {
+                        Stepper("Viaje: \(minutosViaje) min", value: $minutosViaje, in: 0...240, step: 5)
+                        Button {
+                            Task { await calcularViaje() }
+                        } label: {
+                            if calculandoViaje { ProgressView() } else { Label("Calcular con Mapas (transporte público)", systemImage: "tram") }
+                        }
+                        .disabled(direccion.isEmpty && lugar.isEmpty)
+                        if let avisoViaje { Text(avisoViaje).font(.footnote).foregroundStyle(.secondary) }
+                    } header: {
+                        Text("Salida")
+                    } footer: {
+                        Text(minutosViaje > 0 ? "Salís a las \(Formato.hora(inicio.addingTimeInterval(-Double(minutosViaje + 10) * 60))): viaje + 10 min de margen." : "Con el tiempo de viaje te aviso cuándo salir.")
+                    }
+                }
+                if !proyectos.filter({ !$0.archivado }).isEmpty || proyecto != nil {
+                    Section("Proyecto (opcional)") {
+                        Picker("Proyecto", selection: $proyecto) {
+                            Text("Ninguno").tag(Proyecto?.none)
+                            ForEach(proyectos.filter { !$0.archivado }, id: \.uid) { Text($0.titulo).tag(Optional($0)) }
+                        }
+                        if let p = proyecto, !p.etapas.isEmpty {
+                            Picker("Etapa", selection: $etapa) {
+                                Text("Sin etapa").tag(Etapa?.none)
+                                ForEach(p.etapasOrdenadas, id: \.uid) { Text($0.titulo).tag(Optional($0)) }
+                            }
+                        }
                     }
                 }
                 Section {
@@ -86,8 +130,26 @@ struct NuevaTareaView: View {
         return "Se pisa con “\(c.titulo)” de las \(Formato.hora(c.inicio))."
     }
 
+    private func calcularViaje() async {
+        calculandoViaje = true
+        defer { calculandoViaje = false }
+        if let m = await Viaje.shared.minutos(hasta: direccion.isEmpty ? lugar : direccion) {
+            minutosViaje = m
+            avisoViaje = "Unos \(m) min desde donde estás ahora."
+        } else {
+            avisoViaje = "No pude calcularlo. Revisá la dirección o el permiso de ubicación, o cargalo a mano."
+        }
+    }
+
     private func cargar() {
+        proyecto = proyectoInicial
+        etapa = etapaInicial
+        if tarea == nil && !tituloInicial.isEmpty { titulo = tituloInicial }
         guard let t = tarea else { return }
+        esCita = t.esCita
+        minutosViaje = t.minutosViaje
+        proyecto = t.proyecto
+        etapa = t.etapa
         titulo = t.titulo
         inicio = max(t.inicio, .now)
         duracion = duraciones.contains(t.duracionMinutos) ? t.duracionMinutos : 30
@@ -120,6 +182,10 @@ struct NuevaTareaView: View {
         t.lugar = lugar.trimmingCharacters(in: .whitespacesAndNewlines)
         t.direccion = direccion.trimmingCharacters(in: .whitespacesAndNewlines)
         t.notas = notas.trimmingCharacters(in: .whitespacesAndNewlines)
+        t.esCita = esCita
+        t.minutosViaje = esCita ? minutosViaje : 0
+        t.proyecto = proyecto
+        t.etapa = proyecto == nil ? nil : etapa
         if t.estado != .enCurso { t.estado = .programada }
         let hechos = Set(t.pasos.filter(\.hecho).map(\.texto))
         for p in t.pasos { ctx.delete(p) }
@@ -133,8 +199,12 @@ struct NuevaTareaView: View {
         let programar = t.estado == .programada
         Task {
             await Alarmas.pedirPermiso()
+            await Calendario.pedirAcceso()
             if programar { Avisos.programarInicio(t) }
+            Calendario.sincronizar(t)
+            Acciones.guardar(ctx)
         }
+        alGuardar?()
         cerrar()
     }
 }
@@ -145,6 +215,9 @@ struct AjustesView: View {
     @Query private var registros: [SlotRegistro]
     @AppStorage("apariencia") private var apariencia = Apariencia.automatico.rawValue
     @AppStorage("alarmas") private var alarmas = true
+    @AppStorage("calendario") private var calendario = true
+    @State private var clave = ""
+    @State private var hayClave = ClaveIA.hay
     @State private var importando = false
     @State private var mensaje: String?
 
@@ -159,6 +232,38 @@ struct AjustesView: View {
                     LabeledContent("Minutos de foco", value: Formato.minutos(minutosDeFoco))
                 } footer: {
                     Text("Todo el tiempo que trabajaste en tus slots desde que usás la app.")
+                }
+
+                Section {
+                    if hayClave {
+                        LabeledContent("Clave de Claude", value: "Guardada en el iPhone")
+                        Button("Borrar la clave", role: .destructive) { ClaveIA.borrar(); hayClave = false }
+                    } else {
+                        SecureField("Pegá tu clave (sk-ant-…)", text: $clave)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                        Button("Guardar la clave") {
+                            ClaveIA.guardar(clave)
+                            clave = ""
+                            hayClave = ClaveIA.hay
+                        }
+                        .disabled(clave.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                } header: {
+                    Text("Inteligencia artificial")
+                } footer: {
+                    Text("Claude ordena lo que dictás y arma los planes de los proyectos. La clave se guarda solo en el Keychain de este iPhone. Cada captura cuesta centavos.")
+                }
+
+                Section {
+                    Toggle("Espejo en el calendario", isOn: $calendario)
+                        .onChange(of: calendario) { _, activo in
+                            if activo { Task { await Calendario.pedirAcceso() } }
+                        }
+                } header: {
+                    Text("Calendario")
+                } footer: {
+                    Text("Tus tareas y citas aparecen en un calendario “AppTDAH” del iPhone (y en Google Calendar si lo tenés agregado). También leo tus otros calendarios para no proponer horas ocupadas.")
                 }
 
                 Section {
@@ -272,6 +377,7 @@ struct DiagnosticoView: View {
     private var diagnosticoCompleto: String {
         let version = "AppTDAH \(BuildInfo.commit ?? "local") · iOS \(UIDevice.current.systemVersion) · \(UIDevice.current.model)"
         let alarmas = "Alarmas: \(Alarmas.soportadas ? (Alarmas.autorizadas ? "autorizadas" : "sin permiso") : "no soportadas")"
-        return version + "\n" + alarmas + "\n\n" + texto
+        let extra = "IA: \(ClaveIA.hay ? "con clave" : "sin clave") · Calendario: \(Calendario.autorizado ? "autorizado" : "sin permiso")"
+        return version + "\n" + alarmas + "\n" + extra + "\n\n" + texto
     }
 }

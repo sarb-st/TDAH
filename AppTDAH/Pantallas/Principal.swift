@@ -37,7 +37,7 @@ struct NotasTarea: View {
     }
 }
 
-/// Abajo de la pantalla principal: listado, nueva tarea y calendario.
+/// Abajo de la pantalla principal: listado, capturar (dictar) y calendario.
 struct BarraInferior: View {
     var onLista: () -> Void
     var onNueva: () -> Void
@@ -49,12 +49,12 @@ struct BarraInferior: View {
             Button(action: onLista) { Image(systemName: "rectangle.stack").frame(width: 48, height: 48) }
                 .accessibilityLabel("Listado de tareas")
             Button(action: onNueva) {
-                Image(systemName: "plus").font(.title2.weight(.light))
-                    .frame(width: 56, height: 56)
+                Image(systemName: "mic").font(.title2.weight(.light))
+                    .frame(width: 60, height: 60)
                     .background(paleta.superficie.color, in: Circle())
                     .overlay(Circle().stroke(paleta.linea.color))
             }
-            .accessibilityLabel("Nueva tarea")
+            .accessibilityLabel("Capturar: dictá lo que tenés en la cabeza")
             Button(action: onCalendario) { Image(systemName: "calendar").frame(width: 48, height: 48) }
                 .accessibilityLabel("Calendario")
         }
@@ -78,6 +78,7 @@ struct BotonAjustes: View {
 }
 
 struct Navegacion {
+    var captura: () -> Void
     var nueva: () -> Void
     var ajustes: () -> Void
     var lista: () -> Void
@@ -119,7 +120,7 @@ struct EsperaView: View {
                     }
                     .accessibilityHidden(true)
                 }
-                BarraInferior(onLista: navegacion.lista, onNueva: navegacion.nueva, onCalendario: navegacion.calendario)
+                BarraInferior(onLista: navegacion.lista, onNueva: navegacion.captura, onCalendario: navegacion.calendario)
             }
         }
         .task(id: pagina) {
@@ -130,20 +131,31 @@ struct EsperaView: View {
     }
 
     private func vistaPagina(_ t: Tarea, etiqueta: String) -> some View {
-        LienzoCirculo {
+        // Para una cita con viaje, la cuenta regresiva es hasta la hora de salir.
+        let objetivo = t.salida ?? t.inicio
+        let empezo = t.esCita && t.inicio <= ahora
+        let leyenda = empezo ? "ahora" : (t.salida != nil ? (objetivo <= ahora ? "salí ya" : "salí en") : "comienza en")
+        let detalle = t.esCita && t.salida != nil
+            ? "\(Formato.diaYHora(t.inicio, ahora: ahora)) · salí \(Formato.hora(objetivo)) (\(t.minutosViaje) min de viaje)"
+            : "\(Formato.diaYHora(t.inicio, ahora: ahora)) · \(t.duracionMinutos) min"
+        return LienzoCirculo {
             VStack(alignment: .leading, spacing: 0) {
-                Encabezado(etiqueta: etiqueta, titulo: t.titulo,
-                           detalle: "\(Formato.diaYHora(t.inicio, ahora: ahora)) · \(t.duracionMinutos) min")
+                Encabezado(etiqueta: t.esCita ? "Cita · \(etiqueta)" : etiqueta, titulo: t.titulo, detalle: detalle)
                     .padding(.trailing, 44)
+                if let p = t.proyecto { BarraProyecto(proyecto: p, ahora: ahora).padding(.top, 10) }
                 NotasTarea(tarea: t)
             }
         } centro: {
             CirculoQueRespira(halo: paleta.halo, fondo: paleta.fondo) {
                 VStack(spacing: 2) {
-                    Text("comienza en").font(.footnote).foregroundStyle(paleta.secundario.color)
-                    Text(Formato.cuenta(Int(t.inicio.timeIntervalSince(ahora))))
-                        .font(.numero(t.inicio.timeIntervalSince(ahora) >= 3600 ? tamanoNumero * 0.7 : tamanoNumero))
-                        .monospacedDigit()
+                    Text(leyenda).font(.footnote).foregroundStyle(paleta.secundario.color)
+                    if !empezo {
+                        Text(Formato.cuenta(Int(objetivo.timeIntervalSince(ahora))))
+                            .font(.numero(objetivo.timeIntervalSince(ahora) >= 3600 ? tamanoNumero * 0.7 : tamanoNumero))
+                            .monospacedDigit()
+                    } else {
+                        Text(Formato.hora(t.inicio)).font(.numero(tamanoNumero * 0.8)).monospacedDigit()
+                    }
                 }
             }
             .accessibilityElement(children: .combine)
@@ -160,14 +172,14 @@ struct VacioView: View {
     var body: some View {
         ZStack(alignment: .topTrailing) {
             LienzoCirculo {
-                Encabezado(etiqueta: "Lo próximo", titulo: "Nada a la vista", detalle: "Cuando agregues algo, aparece acá.")
+                Encabezado(etiqueta: "Lo próximo", titulo: "Nada a la vista", detalle: "Tocá el micrófono y dictá lo que tenés en la cabeza.")
             } centro: {
                 CirculoQueRespira(halo: paleta.halo, fondo: paleta.fondo) {
-                    Button(action: navegacion.nueva) {
-                        Image(systemName: "plus").font(.largeTitle.weight(.light)).foregroundStyle(paleta.primario.color)
+                    Button(action: navegacion.captura) {
+                        Image(systemName: "mic").font(.largeTitle.weight(.light)).foregroundStyle(paleta.primario.color)
                             .frame(width: 120, height: 120)
                     }
-                    .accessibilityLabel("Agregar lo próximo")
+                    .accessibilityLabel("Capturar lo próximo")
                 }
             } abajo: {
                 EmptyView()
@@ -175,7 +187,7 @@ struct VacioView: View {
             BotonAjustes(accion: navegacion.ajustes)
             VStack {
                 Spacer()
-                BarraInferior(onLista: navegacion.lista, onNueva: navegacion.nueva, onCalendario: navegacion.calendario)
+                BarraInferior(onLista: navegacion.lista, onNueva: navegacion.captura, onCalendario: navegacion.calendario)
             }
         }
     }
@@ -210,6 +222,7 @@ struct DecidirView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Encabezado(etiqueta: "Es la hora", titulo: tarea.titulo,
                            detalle: "\(Formato.hora(tarea.inicio)) · \(tarea.duracionMinutos) min")
+                if let p = tarea.proyecto { BarraProyecto(proyecto: p).padding(.top, 10) }
                 NotasTarea(tarea: tarea)
             }
         } centro: {
@@ -310,7 +323,11 @@ struct CuandoView: View {
     private static let otra = 99
 
     private var sugerencias: [Sugerencia] {
-        let ocupados = otras.filter { $0.uid != tarea.uid && $0.ocupaAgenda }.map(\.intervalo)
+        let ocupados = otras.filter { $0.uid != tarea.uid && $0.ocupaAgenda }.map(\.intervalo) + Calendario.ocupados(desde: ahora)
+        if tarea.apertura >= 0 && tarea.cierre > tarea.apertura {
+            return MotorSlots.sugerencias(duracion: tarea.duracionMinutos, ocupados: ocupados, desde: ahora,
+                                          apertura: tarea.apertura, cierre: tarea.cierre, soloDiasHabiles: tarea.soloDiasHabiles)
+        }
         return MotorSlots.sugerencias(duracion: tarea.duracionMinutos, ocupados: ocupados, desde: ahora)
     }
 
