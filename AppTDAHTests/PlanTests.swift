@@ -91,4 +91,17 @@ final class PlanTests: XCTestCase {
         XCTAssertEqual(Formato.duracion(26 * diaS), "3 semanas y 5 días")
         XCTAssertEqual(Formato.duracion(15 * diaS), "2 semanas y 1 día")
     }
+
+    func testAvisosDeCitaSinTrayecto() {
+        let a = MotorSlots.avisosCita(inicio: dia(20, 11, 10), salida: nil)
+        XCTAssertEqual(a.map { $0.fecha }, [dia(20, 11, 8), dia(20, 11, 9), dia(20, 11, 10).addingTimeInterval(-1800), dia(20, 11, 10)])
+        XCTAssertEqual(a.last?.tipo, .ahora)
+    }
+
+    func testAvisosDeCitaConTrayecto() {
+        let salida = dia(20, 11, 9)
+        let a = MotorSlots.avisosCita(inicio: dia(20, 11, 10), salida: salida)
+        XCTAssertEqual(a.map { $0.fecha }, [dia(20, 11, 7), salida.addingTimeInterval(-1800), salida.addingTimeInterval(-300), salida])
+        XCTAssertEqual(a.last?.tipo, .salir)
+    }
 }

@@ -119,6 +119,7 @@ struct RaizView: View {
             guard DatosDemo.pantalla == nil else { return }
             Firma.programarAviso()
             Alarmas.detenerSonando()
+            Alarmas.cancelarTodas()
             Acciones.mantenimiento(ctx: ctx)
             Salidas.recalcular(ctx)
         }
@@ -167,7 +168,9 @@ struct RaizView: View {
             DecidirView(tarea: t,
                         onEmpiezo: { Acciones.empezar(t, ctx: ctx) },
                         onAhoraNo: {
-                            withAnimation(.easeInOut(duration: 0.4)) { transicion = .movida }
+                            var sinAnimar = Transaction()
+                            sinAnimar.disablesAnimations = true
+                            withTransaction(sinAnimar) { transicion = .movida }
                             Acciones.ahoraNo(t, ctx: ctx)
                         })
                 .id(t.uid)
@@ -188,7 +191,9 @@ struct RaizView: View {
                             Acciones.extender(t, minutos: minutos, ctx: ctx)
                         },
                         onParo: {
-                            withAnimation(.easeInOut(duration: 0.4)) { transicion = .movida }
+                            var sinAnimar = Transaction()
+                            sinAnimar.disablesAnimations = true
+                            withTransaction(sinAnimar) { transicion = .movida }
                             Acciones.pararPorHoy(t, ctx: ctx)
                         })
                 .id(t.uid)

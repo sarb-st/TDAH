@@ -730,8 +730,11 @@ struct EditarProyectoView: View {
     @State private var etapas: [Borrador] = []
     @State private var primeras: [PropuestaIA.TareaIA] = []
     @State private var armando = false
+    @State private var armadoCon = ""
     @State private var mensaje: String?
     @FocusState private var foco: Bool
+
+    private var claveArmado: String { titulo.trimmingCharacters(in: .whitespacesAndNewlines) + "|" + notas.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     private var finExclusivo: Date { Calendar.current.date(byAdding: .day, value: 1, to: fin) ?? fin }
     private var fines: [Date] { Plan.repartir(inicio: inicio, fin: finExclusivo, pesos: etapas.map(\.peso)) }
@@ -775,6 +778,12 @@ struct EditarProyectoView: View {
                 }
             }
             .onAppear(perform: cargar)
+            .onChange(of: foco) { _, enfocado in
+                // Si cambiaste el nombre o las notas después de armar las etapas, se vuelven a armar.
+                if !enfocado && proyecto == nil && !etapas.isEmpty && !armando && claveArmado != armadoCon && ClaveIA.hay {
+                    Task { await armar() }
+                }
+            }
             .alert(mensaje ?? "", isPresented: Binding(get: { mensaje != nil }, set: { if !$0 { mensaje = nil } })) {
                 Button("Listo", role: .cancel) {}
             }
@@ -793,6 +802,10 @@ struct EditarProyectoView: View {
         if !ClaveIA.hay {
             Text("Para armarlas solas hace falta la clave de la IA (Ajustes). Mientras, podés agregarlas a mano.")
                 .font(.footnote).foregroundStyle(paleta.secundario.color)
+        } else if armando && !etapas.isEmpty {
+            Text("Rearmando las etapas con el nombre nuevo…").font(.footnote).foregroundStyle(paleta.secundario.color)
+        } else if etapas.isEmpty {
+            Text("Si ya sabés las etapas, escribilas en las notas y las uso.").font(.footnote).foregroundStyle(paleta.secundario.color)
         }
         if !etapas.isEmpty {
             Text("Etapas").font(.serif(21, relativoA: .title3)).foregroundStyle(paleta.primario.color).padding(.top, 4)
@@ -843,6 +856,7 @@ struct EditarProyectoView: View {
 
     private func armar() async {
         armando = true
+        armadoCon = claveArmado
         defer { armando = false }
         do {
             let plan = try await ClienteClaude.armarEtapas(titulo: titulo, notas: notas, inicio: inicio, fin: fin)

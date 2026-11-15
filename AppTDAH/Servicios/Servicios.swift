@@ -75,27 +75,29 @@ enum Avisos {
         }
     }
 
-    /// Una cita no pide decisión: avisa cuándo salir (viaje + 10 min) o, sin viaje, 10 minutos antes.
+    /// Una cita no pide decisión. Con trayecto: 2 h, 30 min y 5 min antes de salir, y al salir.
+    /// Sin trayecto: 2 h, 1 h y 30 min antes, y a la hora.
     static func programarCita(_ t: Tarea) {
         cancelarInicio(t)
-        let ids = ids(t, "inicio", 3)
-        if let salida = t.salida {
-            let antes = salida.addingTimeInterval(-15 * 60)
-            if antes > .now { agregar(id: ids[0], fecha: antes, titulo: "En 15 min salís: \(t.titulo)", cuerpo: "Cita a las \(Formato.hora(t.inicio)). Viaje de \(t.minutosViaje) min.") }
-            guard salida > .now else { return }
-            if Alarmas.disponibles {
-                Alarmas.programar(id: Alarmas.id(t.uid, 1), fecha: salida, titulo: "Salí ahora: \(t.titulo)")
-            } else {
-                agregar(id: ids[1], fecha: salida, titulo: "Salí ahora: \(t.titulo)", cuerpo: "Cita a las \(Formato.hora(t.inicio)).")
+        for (i, a) in MotorSlots.avisosCita(inicio: t.inicio, salida: t.salida).enumerated() where a.fecha > .now {
+            let titulo: String
+            let cuerpo: String
+            let lugar = t.lugar.isEmpty ? "" : " · \(t.lugar)"
+            switch a.tipo {
+            case .antesDeSalir(let m):
+                titulo = "En \(Formato.minutos(m)) salís: \(t.titulo)"
+                cuerpo = "Cita a las \(Formato.hora(t.inicio)). Viaje de \(t.minutosViaje) min."
+            case .salir:
+                titulo = "Salí ahora: \(t.titulo)"
+                cuerpo = "Cita a las \(Formato.hora(t.inicio))\(lugar)."
+            case .antes(let m):
+                titulo = "En \(Formato.minutos(m)): \(t.titulo)"
+                cuerpo = "Cita a las \(Formato.hora(t.inicio))\(lugar)."
+            case .ahora:
+                titulo = "Ahora: \(t.titulo)"
+                cuerpo = t.lugar.isEmpty ? "Es la hora de tu cita." : t.lugar
             }
-        } else {
-            let aviso = t.inicio.addingTimeInterval(-10 * 60)
-            guard aviso > .now else { return }
-            if Alarmas.disponibles {
-                Alarmas.programar(id: Alarmas.id(t.uid, 1), fecha: aviso, titulo: "En 10 min: \(t.titulo)")
-            } else {
-                agregar(id: ids[1], fecha: aviso, titulo: "En 10 min: \(t.titulo)", cuerpo: t.lugar.isEmpty ? "Cita a las \(Formato.hora(t.inicio))." : t.lugar)
-            }
+            agregar(id: "\(t.uid.uuidString)-cita-\(i)", fecha: a.fecha, titulo: titulo, cuerpo: cuerpo)
         }
     }
 
@@ -132,7 +134,7 @@ enum Avisos {
     }
 
     static func cancelarInicio(_ t: Tarea) {
-        centro.removePendingNotificationRequests(withIdentifiers: ids(t, "inicio", 3))
+        centro.removePendingNotificationRequests(withIdentifiers: ids(t, "inicio", 3) + ids(t, "cita", 6))
         Alarmas.cancelar((0..<3).map { Alarmas.id(t.uid, UInt8($0)) })
     }
 

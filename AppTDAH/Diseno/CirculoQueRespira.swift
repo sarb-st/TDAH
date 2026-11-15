@@ -9,6 +9,8 @@ struct CirculoQueRespira<Contenido: View>: View {
     var intensidad: Double = 0
     /// 1 = el centro del círculo tapa el halo; 0 = desaparece (cuando la pantalla se llena de color).
     var interior: Double = 1
+    /// Qué tan fuerte se habla (0 a 1): empuja el halo hacia afuera al ritmo de la voz.
+    var voz: Double = 0
     @ViewBuilder var contenido: () -> Contenido
 
     @State private var motor = MotorHalo()
@@ -21,10 +23,11 @@ struct CirculoQueRespira<Contenido: View>: View {
                 TimelineView(.animation(minimumInterval: 1.0 / 30, paused: false)) { linea in
                     Canvas { gc, tamano in
                         motor.dibujar(gc, tamano: tamano, fecha: linea.date, halo: halo, fondo: fondo, quieto: reducirMovimiento,
-                                      intensidad: intensidad, interior: interior)
+                                      intensidad: intensidad, interior: interior, voz: voz, radio: diametro / 2)
                     }
                 }
-                .frame(width: diametro * 2, height: diametro * 2)
+                // El lienzo es mucho más grande que el halo en su máximo: nunca se ve un borde recto.
+                .frame(width: diametro * 6, height: diametro * 6)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
             }
@@ -63,7 +66,7 @@ final class MotorHalo {
     }
 
     func dibujar(_ gc: GraphicsContext, tamano: CGSize, fecha: Date, halo: RGB, fondo: RGB, quieto: Bool,
-                 intensidad: Double = 0, interior: Double = 1) {
+                 intensidad: Double = 0, interior: Double = 1, voz: Double = 0, radio: Double? = nil) {
         let tt = fecha.timeIntervalSinceReferenceDate + desfase * Self.periodo
         let n = Int((tt / Self.periodo).rounded(.down))
         let fase = tt / Self.periodo - Double(n)
@@ -78,11 +81,12 @@ final class MotorHalo {
         let m = quieto ? 0 : Self.suave(fase)
 
         let c = CGPoint(x: tamano.width / 2, y: tamano.height / 2)
-        let r = Double(tamano.width) / 4
+        let r = radio ?? Double(tamano.width) / 4
         let banda = 5.0
         let maxExt = r * (Self.expansion - 1) * 1.6
         let k = max(0, min(1, intensidad))
-        let ext = maxExt * (0.15 + 0.85 * respiro) * (1 + 0.9 * k) + maxExt * 0.4 * k
+        let v = max(0, min(1, voz))
+        let ext = maxExt * (0.15 + 0.85 * respiro) * (1 + 0.9 * k) + maxExt * 0.4 * k + maxExt * 1.6 * v
         let haciaAdentro = 9 + 5 * (1 - respiro)
 
         var forma = [Double](repeating: 0.5, count: 121)
@@ -116,7 +120,7 @@ final class MotorHalo {
         for capa in 1...22 {
             let q = pow(Double(capa) / 22, 1.6)
             gc.fill(mancha { i in r + banda + ext * q * (0.35 + 0.65 * forma[i]) },
-                    with: .color(colorHalo.opacity((0.08 + 0.1 * respiro + 0.06 * k) * (1 - q * 0.5))))
+                    with: .color(colorHalo.opacity((0.08 + 0.1 * respiro + 0.06 * k + 0.1 * v) * (1 - q * 0.5))))
         }
         let centro = max(0, min(1, interior))
         guard centro > 0 else { return }

@@ -14,6 +14,8 @@ final class Dictado {
     var error: String?
     /// Qué tan fuerte se está hablando (0 a 1): el halo reacciona a la voz.
     var nivel: Double = 0
+    /// La última vez que se oyó voz o cambió el texto: sirve para darse cuenta de que terminaste de hablar.
+    @ObservationIgnored var ultimaVoz = Date.now
 
     @ObservationIgnored private let reconocedor = SFSpeechRecognizer(locale: Locale(identifier: "es-AR")) ?? SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
     @ObservationIgnored private let motor = AVAudioEngine()
@@ -48,15 +50,25 @@ final class Dictado {
             entrada.installTap(onBus: 0, bufferSize: 1024, format: entrada.outputFormat(forBus: 0)) { [weak self] buffer, _ in
                 pedido.append(buffer)
                 let n = Dictado.volumen(buffer)
-                DispatchQueue.main.async { if let self { self.nivel = self.nivel * 0.55 + n * 0.45 } }
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    self.nivel = n > self.nivel ? self.nivel * 0.3 + n * 0.7 : self.nivel * 0.82 + n * 0.18
+                    if n > 0.45 { self.ultimaVoz = .now }
+                }
             }
+            pedido.contextualStrings = Dictado.palabrasExtra
             motor.prepare()
             try motor.start()
+            ultimaVoz = .now
             escuchando = true
             tarea = reconocedor.recognitionTask(with: pedido) { [weak self] resultado, error in
                 DispatchQueue.main.async {
                     guard let self else { return }
-                    if let resultado { self.texto = self.textoPrevio + resultado.bestTranscription.formattedString }
+                    if let resultado {
+                        let nuevo = self.textoPrevio + resultado.bestTranscription.formattedString
+                        if nuevo != self.texto { self.ultimaVoz = .now }
+                        self.texto = nuevo
+                    }
                     if error != nil || resultado?.isFinal == true { self.detener() }
                 }
             }
@@ -89,7 +101,15 @@ final class Dictado {
         for i in 0..<n { suma += canal[i] * canal[i] }
         let rms = sqrt(suma / Float(n))
         let db = 20 * log10(max(rms, 0.000_01))
-        return Double(min(1, max(0, (db + 50) / 40)))
+        return Double(min(1, max(0, (db + 52) / 32)))
+    }
+
+    /// Palabras en alemán o inglés que el usuario suele decir (Ajustes → Dictado). Ayudan al reconocimiento en español.
+    static var palabrasExtra: [String] {
+        (UserDefaults.standard.string(forKey: "palabrasExtra") ?? "")
+            .split(whereSeparator: { $0 == "," || $0 == "\n" })
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
     }
 }
 

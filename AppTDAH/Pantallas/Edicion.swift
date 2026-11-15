@@ -221,6 +221,7 @@ struct AjustesView: View {
     @AppStorage("sonidoAlarma") private var sonidoAlarma = "campanita"
     @AppStorage("ciudad") private var ciudad = ""
     @AppStorage("casa") private var casa = ""
+    @AppStorage("palabrasExtra") private var palabrasExtra = ""
     @State private var clave = ""
     @State private var hayClave = ClaveIA.hay
     @State private var importando = false
@@ -282,25 +283,24 @@ struct AjustesView: View {
                 }
 
                 Section {
-                    Toggle("Sonar como alarma", isOn: $alarmas)
-                        .disabled(!Alarmas.soportadas)
-                        .onChange(of: alarmas) { _, activa in
-                            if activa { Task { await Alarmas.pedirPermiso() } }
-                        }
                     Picker("Sonido", selection: $sonidoAlarma) {
                         Text("Campanita suave").tag("campanita")
                         Text("El de iOS").tag("sistema")
                     }
-                    if Alarmas.soportadas && alarmas && !Alarmas.autorizadas {
-                        Text("Falta el permiso: cuando cargues una tarea te lo va a pedir, o activalo en Ajustes del iPhone → AppTDAH.")
-                            .font(.footnote).foregroundStyle(.secondary)
-                    }
                 } header: {
                     Text("Avisos")
                 } footer: {
-                    Text(Alarmas.soportadas
-                         ? "El comienzo y el fin de cada slot suenan como un despertador, aunque el iPhone esté en silencio. Las tareas que se programen desde ahora usan el sonido elegido."
-                         : "Para que suene como alarma hace falta iOS 26 o más nuevo. Por ahora llegan como notificación.")
+                    Text("Al comienzo y al fin de cada slot llega una notificación con este sonido. Si la descartás, vuelve a los 3 y a los 6 minutos. Con el iPhone en silencio, vibra.")
+                }
+
+                Section {
+                    TextField("Ej.: Termin, Meeting, Feedback", text: $palabrasExtra, axis: .vertical)
+                        .lineLimit(1...4)
+                        .textInputAutocapitalization(.never)
+                } header: {
+                    Text("Dictado")
+                } footer: {
+                    Text("Dictás en español, pero si usás palabras en alemán o en inglés, escribilas acá separadas por comas: así se reconocen mejor y se escriben bien.")
                 }
 
                 Section {

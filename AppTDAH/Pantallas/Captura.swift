@@ -158,6 +158,10 @@ final class CapturaInicio {
     var revisando = DatosDemo.pantalla == "captura"
     var escribiendo = false
     var aviso: String?
+    @ObservationIgnored private var vigilancia: Task<Void, Never>?
+
+    /// Segundos de silencio después de los que se da por terminado el dictado.
+    static let silencioParaTerminar: TimeInterval = 3
 
     func tocar(ctx: ModelContext) {
         guard !pensando else { return }
@@ -167,14 +171,40 @@ final class CapturaInicio {
             dictado.texto = ""
             dictado.error = nil
             Task { await dictado.empezar() }
+            vigilar(ctx)
         }
     }
 
     func terminar(ctx: ModelContext) {
+        vigilancia?.cancel()
+        vigilancia = nil
         dictado.detener()
         let texto = dictado.texto.trimmingCharacters(in: .whitespacesAndNewlines)
+        dictado.texto = ""
         guard !texto.isEmpty else { return }
         procesar(texto, ctx: ctx)
+    }
+
+    /// Se da cuenta de que dejaste de hablar (3 s sin voz ni texto nuevo) y se pone a pensar solo.
+    /// Si el reconocimiento se corta por su cuenta, también procesa lo que llegó a escuchar.
+    private func vigilar(_ ctx: ModelContext) {
+        vigilancia?.cancel()
+        vigilancia = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1.5))
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(300))
+                guard let self else { return }
+                let hayTexto = !self.dictado.texto.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                if !self.dictado.escuchando {
+                    if hayTexto { self.terminar(ctx: ctx) }
+                    return
+                }
+                if hayTexto && Date.now.timeIntervalSince(self.dictado.ultimaVoz) >= CapturaInicio.silencioParaTerminar {
+                    self.terminar(ctx: ctx)
+                    return
+                }
+            }
+        }
     }
 
     func procesar(_ texto: String, ctx: ModelContext) {
@@ -388,6 +418,9 @@ struct TarjetaPropuesta: View {
     var onDescartar: () -> Void
 
     private let duraciones = [10, 15, 20, 30, 45, 60, 90, 120]
+    @FocusState private var tituloEnfocado: Bool
+    @State private var tituloArmado: String?
+    @State private var rearmando = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -416,7 +449,16 @@ struct TarjetaPropuesta: View {
                         .font(.footnote.weight(.semibold))
                 }
             }
-            TextField("Título", text: $p.titulo, axis: .vertical).font(.serif(20, relativoA: .title3))
+            TextField("Título", text: $p.titulo, axis: .vertical)
+                .font(.serif(20, relativoA: .title3))
+                .focused($tituloEnfocado)
+                .onAppear { if tituloArmado == nil { tituloArmado = p.titulo } }
+                .onChange(of: tituloEnfocado) { _, enfocado in
+                    // Si le cambiás el nombre a un proyecto, las etapas se vuelven a armar para que correspondan.
+                    if !enfocado && p.tipo == "proyecto" && p.titulo != tituloArmado && ClaveIA.hay && !rearmando {
+                        Task { await rearmarEtapas() }
+                    }
+                }
 
             if p.tipo == "tarea" || p.tipo == "cita" {
                 if let fecha = p.fecha {
@@ -452,7 +494,12 @@ struct TarjetaPropuesta: View {
                 DatePicker("Fecha final", selection: Binding(get: { p.deadline ?? .now.addingTimeInterval(30 * 86_400) }, set: { p.deadline = $0 }),
                            displayedComponents: .date)
                     .font(.subheadline)
-                if !p.etapas.isEmpty {
+                if rearmando {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("Rearmando las etapas con el nombre nuevo…").font(.footnote).foregroundStyle(paleta.secundario.color)
+                    }
+                } else if !p.etapas.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("ETAPAS").font(.caption.weight(.semibold)).tracking(1).foregroundStyle(paleta.secundario.color)
                         ForEach(Array(p.etapas.enumerated()), id: \.offset) { _, e in
@@ -480,5 +527,19 @@ struct TarjetaPropuesta: View {
         .padding(16)
         .background(paleta.superficie.color, in: RoundedRectangle(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(paleta.linea.color))
+    }
+
+    private func rearmarEtapas() async {
+        rearmando = true
+        tituloArmado = p.titulo
+        defer { rearmando = false }
+        let cal = Calendar.current
+        let inicio = cal.startOfDay(for: .now)
+        let ultimo = cal.startOfDay(for: p.deadline ?? .now.addingTimeInterval(30 * 86_400))
+        guard let plan = try? await ClienteClaude.armarEtapas(titulo: p.titulo, notas: p.texto, inicio: inicio, fin: max(inicio, ultimo)) else { return }
+        let fin = cal.date(byAdding: .day, value: 1, to: max(inicio, ultimo)) ?? ultimo
+        let fines = Plan.repartir(inicio: inicio, fin: fin, pesos: plan.etapas.map { max(0.05, $0.dias) })
+        p.etapas = zip(plan.etapas, fines).map { Propuesta.EtapaP(titulo: $0.titulo, fecha: $1) }
+        p.tareasEtapa = plan.tareas_primera_etapa.map { Propuesta.TareaP(titulo: $0.titulo, duracion: max(10, $0.duracion_min)) }
     }
 }

@@ -10,7 +10,9 @@ import AppIntents
 /// Se usan al comienzo de cada slot (0, 3 y 6 min) y al terminar el tiempo. Si no están disponibles,
 /// la app usa notificaciones comunes.
 enum Alarmas {
-    static var activadas: Bool { UserDefaults.standard.object(forKey: "alarmas") as? Bool ?? true }
+    /// Desde 2026-11-16 los avisos son notificaciones con la campanita: la pantalla de despertador de iOS no convenció.
+    /// El código queda por si se vuelve a usar.
+    static var activadas: Bool { false }
 
     /// "campanita" (sonido propio, corto y suave) o "sistema" (el de iOS).
     static var sonido: String { UserDefaults.standard.string(forKey: "sonidoAlarma") ?? "campanita" }
@@ -71,6 +73,15 @@ enum Alarmas {
             for a in (try? AlarmManager.shared.alarms) ?? [] where a.state == .alerting {
                 try? AlarmManager.shared.stop(id: a.id)
             }
+        }
+        #endif
+    }
+
+    /// Borra las alarmas que hayan quedado programadas de versiones anteriores.
+    static func cancelarTodas() {
+        #if canImport(AlarmKit)
+        if #available(iOS 26.0, *) {
+            for a in (try? AlarmManager.shared.alarms) ?? [] { try? AlarmManager.shared.cancel(id: a.id) }
         }
         #endif
     }

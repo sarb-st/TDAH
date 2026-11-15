@@ -52,8 +52,8 @@ A la hora del slot, la app pide una decisión binaria. **No existe snooze ni rec
   - **Otra hora**: días y horarios libres para elegir a mano.
   - **Ya no la voy a hacer**: archiva la tarea a propósito (se puede recuperar).
   - La pantalla es liviana: quien pospone suele estar cansado o abrumado.
-- **Alarma**: con iOS 26 o más nuevo, el comienzo (y sus repeticiones) y el fin del slot **suenan como un despertador aunque el iPhone esté en silencio** (AlarmKit), porque con hiperfoco una vibración no alcanza. El sonido es una **campanita corta y suave** propia (en Ajustes se puede elegir el de iOS). Tocar "Abrir" o abrir la app apaga el sonido. Se puede apagar en Ajustes; sin AlarmKit llega una notificación común.
-  - Alternativa anotada por si la alarma no convence: notificación común con una vibración más intensa e insistente.
+- **Aviso con sonido**: el comienzo (y sus repeticiones) y el fin del slot llegan como **notificación con una campanita corta y suave** propia, que suena una sola vez (en Ajustes se puede elegir el sonido de iOS). Con el iPhone en silencio, vibra.
+  - Se probó AlarmKit (pantalla de despertador que suena en silencio) y se descartó el 2026-11-16: la pantalla la dibuja iOS, no se puede rediseñar y repetía el sonido sin parar. El código queda apagado en `Alarmas.swift`.
 - **Notificación**: a la hora llega una notificación común. Si se descarta sin decidir, vuelve a los **3 minutos**; al **tercer descarte** el slot se cierra como "Ahora no" y, al abrir la app, lo primero es "¿Cuándo, entonces?". Los tres avisos se programan de antemano y se cancelan apenas el usuario decide (iOS no permite impedir que se descarte una notificación).
 
 ### 2.4 Fin del slot
@@ -99,8 +99,11 @@ Un ajuste que regula cuánto cuesta decir "Ahora no". Existe porque el cerebro s
 ## 4. Captura y clasificación
 
 - El usuario dicta (o escribe) y la IA clasifica en **cinco categorías**: CITA, TAREA, PROYECTO, IDEA, INBOX.
-- **Se dicta desde el círculo de la pantalla principal:** un toque y escucha (el halo reacciona a la voz), "Listo" y se ordena;
-  después aparece la revisión. Manteniendo apretado el círculo se escribe en vez de dictar.
+- **Se dicta desde el círculo de la pantalla principal:** micrófono → oreja (escucha; el halo reacciona a la voz) → cerebro (ordena).
+  Termina con "Listo" o solo, después de **3 segundos de silencio**. Después aparece la revisión. Manteniendo apretado el círculo se escribe.
+- **Idiomas:** se dicta en español, pero el usuario mezcla palabras en alemán e inglés. La IA reconstruye esas palabras y en
+  Ajustes → Dictado se cargan las que más usa para que el reconocimiento las entienda.
+- **Notas:** la IA solo pone en notas lo que el usuario pidió recordar o llevar; lo que no entiende va al Inbox.
 - **La interfaz nunca nombra a la IA** (Claude): los botones dicen cosas como "Armar las etapas" u "Ordenar". Solo Ajustes la nombra.
 - **La captura se guarda siempre al instante**, aunque falten datos.
 - **Varias cosas en un dictado** → la IA las separa en capturas distintas ("llamar al banco, idea para el portfolio y el jueves dentista" = tres).
@@ -182,6 +185,7 @@ Día y hora fija, normalmente con otra persona o en un lugar. Ejemplos: dentista
 
 - Va al calendario. **No entra en el "Empiezo" o "Ahora no"**.
 - **Aviso de salida** = tiempo de trayecto + **buffer de 10 min** (ajustable), con countdown hasta la hora de salida.
+  - **Avisos del día**: con trayecto, 2 h, 30 min y 5 min antes de salir, y "Salí ahora". Sin dirección, 2 h, 1 h y 30 min antes, y a la hora.
   - El trayecto se calcula **desde donde estás** (permiso de ubicación "mientras se usa la app") y se recalcula cada vez que se abre la app, para las citas de las próximas 24 h. Sin permiso, desde la casa cargada en Ajustes.
   - Medio de transporte por defecto: **transporte público**. Se puede cambiar por cita.
   - La ciudad y la casa del usuario se configuran en Ajustes de la app (nunca en el código).
@@ -277,7 +281,7 @@ Sin una Mac al lado no se ven los errores en el momento. Estas reglas lo compens
 - [x] **Fase 2 (captura)** en marcha junto con versiones básicas de **citas** (Fase 3) y **proyectos** (Fase 5), a pedido del usuario: dictado, clasificación, revisión antes de guardar, inbox, ideas, citas con salida y alarma, espejo en el calendario del iPhone, resumen nocturno, proyectos con etapas, barra y replanteo con IA.
 - [x] **Maquetas A, B y C** (2026-11-15): inicio con micrófono en el círculo y fichero, decidir con llenado de pantalla, colores por categoría, listado con pestañas, cajón, calendario rayado y proyectos como tarjeta con fechas, etapas editables y reordenables. Ver `diseno/`.
 - [ ] **Ubicación en segundo plano** (permiso "Siempre" con cambios significativos de ubicación) para recalcular la salida sin abrir la app. Por ahora se recalcula al abrirla.
-- [ ] **Alarma**: probar la campanita; si no convence, alternativa de notificación con vibración más intensa.
+- [x] **Alarma**: notificación con campanita en vez de la pantalla de despertador (2026-11-16).
 - [ ] **Nombre definitivo de la app** (provisorio: AppTDAH).
 
 ## 11. Fase futura (no construir todavía)

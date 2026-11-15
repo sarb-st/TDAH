@@ -132,14 +132,18 @@ struct InicioView: View {
 
     private var circulo: some View {
         let escuchando = captura.dictado.escuchando
-        let intensidad = escuchando ? 0.15 + captura.dictado.nivel * 0.85 : (captura.pensando ? 0.2 : 0)
-        return CirculoQueRespira(halo: escuchando ? paleta.energia : paleta.halo, fondo: paleta.fondo, intensidad: intensidad) {
+        let intensidad = escuchando ? 0.25 : (captura.pensando ? 0.2 : 0)
+        return CirculoQueRespira(halo: escuchando ? paleta.energia : paleta.halo, fondo: paleta.fondo, intensidad: intensidad,
+                                 voz: escuchando ? captura.dictado.nivel : 0) {
             Group {
                 if captura.pensando {
                     Image(systemName: "brain")
                         .symbolEffect(.pulse, options: .repeating)
                 } else if escuchando {
-                    Image(systemName: "stop.fill")
+                    // Micrófono → oreja → cerebro.
+                    Image(systemName: "ear")
+                        .scaleEffect(1 + captura.dictado.nivel * 0.25)
+                        .animation(.easeOut(duration: 0.12), value: captura.dictado.nivel)
                 } else {
                     Image(systemName: "mic")
                 }
@@ -816,7 +820,7 @@ struct CelebracionView: View {
                 }
                 .position(x: geo.size.width / 2, y: geo.size.height * Medidas.alturaCentro)
                 VStack(spacing: 8) {
-                    Text("Listo.").font(.serif(40, relativoA: .largeTitle))
+                    Text("Listo.").font(.serif(44, relativoA: .largeTitle))
                     Text("\(Formato.minutos(minutos)) de foco en “\(titulo)”.")
                         .font(.body).multilineTextAlignment(.center)
                     Text("Hoy llevás \(Formato.minutos(hoy)) de foco · en total \(Formato.minutos(total))")
@@ -824,7 +828,8 @@ struct CelebracionView: View {
                 }
                 .padding(.horizontal, 28)
                 .opacity(aparecer ? 1 : 0)
-                .position(x: geo.size.width / 2, y: geo.size.height * Medidas.alturaCentro + Medidas.circulo * 0.95)
+                .frame(maxWidth: .infinity)
+                .position(x: geo.size.width / 2, y: geo.size.height * 0.17)
             }
         }
         .onAppear { withAnimation(.spring(duration: 0.9, bounce: 0.3).delay(0.15)) { aparecer = true } }

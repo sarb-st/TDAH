@@ -69,6 +69,24 @@ enum MotorSlots {
         return s.inicio < finNuevo
     }
 
+    enum AvisoCita: Equatable {
+        case antesDeSalir(Int), salir, antes(Int), ahora
+    }
+
+    /// Cuándo avisar de una cita. Con trayecto: 2 h, 30 min y 5 min antes de salir, y al salir.
+    /// Sin trayecto: 2 h, 1 h y 30 min antes, y a la hora.
+    static func avisosCita(inicio: Date, salida: Date?) -> [(fecha: Date, tipo: AvisoCita)] {
+        var r: [(fecha: Date, tipo: AvisoCita)] = []
+        if let salida {
+            for m in [120, 30, 5] { r.append((fecha: salida.addingTimeInterval(-Double(m) * 60), tipo: .antesDeSalir(m))) }
+            r.append((fecha: salida, tipo: .salir))
+        } else {
+            for m in [120, 60, 30] { r.append((fecha: inicio.addingTimeInterval(-Double(m) * 60), tipo: .antes(m))) }
+            r.append((fecha: inicio, tipo: .ahora))
+        }
+        return r
+    }
+
     /// Si un slot nuevo pisa a otro ya ocupado.
     static func solapa(_ propuesta: DateInterval, con ocupados: [DateInterval]) -> Bool {
         ocupados.contains { $0.start < propuesta.end && propuesta.start < $0.end }

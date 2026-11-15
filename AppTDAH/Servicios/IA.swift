@@ -99,6 +99,9 @@ enum ClienteClaude {
     private static let instrucciones = """
     Sos el asistente de una app para personas con TDAH que convierte lo que el usuario dicta en cosas concretas.
     Recibís un dictado en español rioplatense, a veces desordenado o mal transcrito, y lo separás en ítems.
+    El usuario vive en un país de habla alemana y mezcla palabras en alemán y en inglés. El reconocimiento de voz está en
+    español, así que esas palabras pueden llegar escritas como suenan ("termin" → "Termin", "mitin" → "meeting",
+    "anmeldun" → "Anmeldung"). Cuando sea evidente, reconstruí la palabra original y escribila bien (mayúsculas, umlauts).
 
     Tipos:
     - cita: día y hora fija, normalmente con otra persona o en un lugar (dentista, reunión, turno).
@@ -116,9 +119,14 @@ enum ClienteClaude {
     - pasos: solo para tareas que se beneficien de pasos concretos (como máximo 6, cortos, en infinitivo). Si no, [].
     - Si una tarea depende de que un lugar esté abierto (banco, oficina, comercio), estimá su horario de atención típico
       en horario_apertura y horario_cierre (horas enteras) y si atiende solo días hábiles. Si no aplica, -1, -1 y false.
+    - notas: solo lo que el usuario pidió explícitamente recordar o llevar ("llevar la orden", "preguntar por la tarjeta").
+      Nunca pongas en notas fragmentos que no entendiste, ni repitas el título o la fecha. Si queda algo que no se entiende,
+      va como un ítem aparte de tipo inbox con ese fragmento. Si no hay nada para recordar, notas = "".
     - Si una cita necesita preparación (documentos, compras), agregá un ítem aparte de tipo tarea con notas "Preparación para …".
-    - Para proyectos: deadline en AAAA-MM-DD (si no la dijo, ""), de 3 a 6 etapas con fechas repartidas hacia atrás desde
-      el deadline, y solo las tareas de la primera etapa (las demás se desglosan cuando se llegue a esa etapa).
+    - Para proyectos: deadline en AAAA-MM-DD (si no la dijo, ""). Si el usuario nombró etapas, usá exactamente esas, en su
+      orden y con sus palabras. Si no, proponé de 3 a 6 etapas concretas que correspondan a lo que dijo y al título (nada
+      genérico). Fechas de etapa repartidas hacia atrás desde el deadline. Solo las tareas de la primera etapa
+      (las demás se desglosan cuando se llegue a esa etapa).
     - Para ideas: un título corto y un tema de una palabra (diseño, casa, deporte, viajes, trabajo…).
     - titulo: corto, en infinitivo para tareas ("Llamar al banco"). texto_original: el fragmento del dictado de ese ítem.
     - Los campos que no apliquen van vacíos: "", [], 0, -1 o false según el tipo.
@@ -210,7 +218,9 @@ enum ClienteClaude {
     }
 
     static func clasificar(_ dictado: String, ahora: Date = .now) async throws -> [PropuestaIA] {
-        let pedido = "\(contextoFecha(ahora))\n\nDictado:\n\(dictado)"
+        let palabras = Dictado.palabrasExtra
+        let extra = palabras.isEmpty ? "" : "\nPalabras en otros idiomas que suele usar: \(palabras.joined(separator: ", "))."
+        let pedido = "\(contextoFecha(ahora))\(extra)\n\nDictado:\n\(dictado)"
         let r: ClasificacionIA = try await pedir(sistema: instrucciones, usuario: pedido, esquema: esquemaClasificacion)
         return r.items
     }
@@ -225,10 +235,11 @@ enum ClienteClaude {
         Proyecto: \(titulo)
         \(notas.isEmpty ? "" : "Notas del usuario: \(notas)\n")Empieza el \(f.string(from: inicio)) y termina el \(f.string(from: fin)) (\(dias) días en total).
 
-        Proponé de 3 a 6 etapas en orden, con un título corto cada una y cuántos días dura (puede ser una fracción si es
-        menos de un día). La suma no tiene que pasar de \(dias). Agregá solo las sesiones de la primera etapa: título corto
-        en infinitivo y duración en minutos (las demás se arman cuando se llegue a cada etapa).
-        No inventes cosas que no se deduzcan del proyecto.
+        Si en el nombre o en las notas el usuario nombra etapas, usá exactamente esas, en su orden. Si no, proponé de 3 a 6
+        etapas en orden que correspondan concretamente a este proyecto (a su nombre y a sus notas), nunca genéricas,
+        con un título corto cada una y cuántos días dura (puede ser una fracción si es menos de un día).
+        La suma no tiene que pasar de \(dias). Agregá solo las sesiones de la primera etapa: título corto en infinitivo y
+        duración en minutos (las demás se arman cuando se llegue a cada etapa). No inventes cosas que no se deduzcan del proyecto.
         """
         return try await pedir(sistema: "Ayudás a planificar proyectos de una persona con TDAH, en español rioplatense: etapas concretas y alcanzables.",
                                usuario: pedido, esquema: esquemaPlan)
