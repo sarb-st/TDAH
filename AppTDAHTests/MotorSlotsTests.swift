@@ -151,6 +151,17 @@ final class MotorSlotsTests: XCTestCase {
         XCTAssertEqual(MotorSlots.redondearArriba(fecha(6, 18, 1), minutos: 15, calendario: cal), fecha(6, 18, 15))
         XCTAssertEqual(MotorSlots.redondearArriba(fecha(6, 18, 15), minutos: 15, calendario: cal), fecha(6, 18, 15))
     }
+
+    // MARK: Con algo en curso, lo que viene
+
+    func testProximasNoIncluyeLoEnCursoNiLoPasado() {
+        let ahora = fecha(6, 10)
+        let tareas = [SlotPrueba(nombre: "curso", inicio: fecha(6, 9, 30), estado: .enCurso, inicioReal: fecha(6, 9, 30)),
+                      SlotPrueba(nombre: "b", inicio: fecha(6, 12)), SlotPrueba(nombre: "a", inicio: fecha(6, 11)),
+                      SlotPrueba(nombre: "cita", inicio: fecha(6, 9, 45), duracionMinutos: 60, esCita: true),
+                      SlotPrueba(nombre: "vieja", inicio: fecha(6, 8), esCita: true)]
+        XCTAssertEqual(MotorSlots.proximas(tareas, ahora: ahora, cantidad: 2).map { $0.nombre }, ["cita", "a"])
+    }
 }
 
 final class PaletaTests: XCTestCase {
@@ -175,16 +186,5 @@ final class PaletaTests: XCTestCase {
             XCTAssertLessThan(max(abs(a.r - b.r), abs(a.g - b.g), abs(a.b - b.b)), 0.02, "Salto a las \(h)")
             h += 1.0 / 60
         }
-    }
-
-    // MARK: Con algo en curso, lo que viene
-
-    func testProximasNoIncluyeLoEnCursoNiLoPasado() {
-        let ahora = fecha(6, 10)
-        let tareas = [SlotPrueba(nombre: "curso", inicio: fecha(6, 9, 30), estado: .enCurso, inicioReal: fecha(6, 9, 30)),
-                      SlotPrueba(nombre: "b", inicio: fecha(6, 12)), SlotPrueba(nombre: "a", inicio: fecha(6, 11)),
-                      SlotPrueba(nombre: "cita", inicio: fecha(6, 9, 45), duracionMinutos: 60, esCita: true),
-                      SlotPrueba(nombre: "vieja", inicio: fecha(6, 8), esCita: true)]
-        XCTAssertEqual(MotorSlots.proximas(tareas, ahora: ahora, cantidad: 2).map { $0.nombre }, ["cita", "a"])
     }
 }
