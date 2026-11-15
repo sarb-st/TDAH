@@ -289,6 +289,10 @@ Sin una Mac al lado no se ven los errores en el momento. Estas reglas lo compens
 - [ ] **Ubicación en segundo plano** (permiso "Siempre" con cambios significativos de ubicación) para recalcular la salida sin abrir la app. Por ahora se recalcula al abrirla.
 - [x] **Alarma**: notificación con campanita en vez de la pantalla de despertador (2026-11-16).
 - [ ] **Nombre definitivo de la app** (provisorio: AppTDAH).
+- [ ] **Logo e ícono** para la pantalla de inicio del iPhone.
+- [ ] **Pantalla de carga** con animación al abrir la app.
+- [ ] **Revisar el micrófono**: el usuario lo nota "medio raro" (2026-11-15). Ver si el toque largo (abre escribir) o el corte por silencio confunden.
+- [ ] **Al final, cuando todo funcione:** rediseñar las pantallas internas que hoy son formularios con estilo de Ajustes del iPhone (nueva tarea, editar, ajustes, etapa, etc.), algunas muy cargadas o sin diseño.
 
 ## 11. Fase futura (no construir todavía)
 
