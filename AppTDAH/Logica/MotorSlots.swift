@@ -60,6 +60,13 @@ enum MotorSlots {
         return proximas.isEmpty ? .vacio : .espera(proximas)
     }
 
+    /// Las próximas tres cosas que vienen (tareas agendadas y citas que todavía no terminaron), por hora.
+    static func proximas<T: DatosSlot>(_ tareas: [T], ahora: Date, cantidad: Int = 3) -> [T] {
+        let programadas = tareas.filter { $0.estado == .programada && !$0.esCita && $0.inicio > ahora }
+        let citas = tareas.filter { $0.esCita && $0.estado == .programada && $0.inicio.addingTimeInterval(Double($0.duracionMinutos) * 60) > ahora }
+        return Array((programadas + citas).sorted { $0.inicio < $1.inicio }.prefix(cantidad))
+    }
+
     static func siguiente<T: DatosSlot>(despuesDe fecha: Date, en tareas: [T]) -> T? {
         tareas.filter { $0.estado == .programada && $0.inicio >= fecha }.min { $0.inicio < $1.inicio }
     }

@@ -211,6 +211,63 @@ struct NuevaTareaView: View {
     }
 }
 
+/// Cargar algo a mano, sin dictar, según lo que sea.
+struct CargarAMano: View {
+    let categoria: Categoria
+
+    var body: some View {
+        switch categoria {
+        case .tarea: NuevaTareaView(tarea: nil)
+        case .cita: NuevaTareaView(tarea: nil, esCitaInicial: true)
+        case .proyecto: EditarProyectoView(proyecto: nil)
+        case .idea, .inbox: NuevaIdeaView()
+        }
+    }
+}
+
+/// Guardar una idea a mano: el texto y, si querés, un tema.
+struct NuevaIdeaView: View {
+    @Environment(\.modelContext) private var ctx
+    @Environment(\.dismiss) private var cerrar
+    @State private var texto = ""
+    @State private var tema = ""
+    @FocusState private var foco: Bool
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("La idea, tal cual se te ocurrió", text: $texto, axis: .vertical)
+                        .lineLimit(3...10)
+                        .font(.serif(19, relativoA: .title3))
+                        .focused($foco)
+                }
+                Section {
+                    TextField("Tema (opcional): diseño, casa, viajes…", text: $tema)
+                } footer: {
+                    Text("Queda en el cajón, en Ideas, para la revisión semanal.")
+                }
+            }
+            .navigationTitle("Nueva idea")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { cerrar() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Guardar") {
+                        let limpio = texto.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let titulo = limpio.count > 60 ? String(limpio.prefix(60)) + "…" : limpio
+                        ctx.insert(Captura(tipo: "idea", texto: limpio, titulo: titulo, tema: tema.trimmingCharacters(in: .whitespaces)))
+                        Acciones.guardar(ctx)
+                        cerrar()
+                    }
+                    .disabled(texto.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .onAppear { DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { foco = true } }
+        }
+    }
+}
+
 struct AjustesView: View {
     @Environment(\.modelContext) private var ctx
     @Environment(\.dismiss) private var cerrar
@@ -221,7 +278,6 @@ struct AjustesView: View {
     @AppStorage("sonidoAlarma") private var sonidoAlarma = "campanita"
     @AppStorage("ciudad") private var ciudad = ""
     @AppStorage("casa") private var casa = ""
-    @AppStorage("palabrasExtra") private var palabrasExtra = ""
     @State private var clave = ""
     @State private var hayClave = ClaveIA.hay
     @State private var importando = false
@@ -293,15 +349,6 @@ struct AjustesView: View {
                     Text("Al comienzo y al fin de cada slot llega una notificación con este sonido. Si la descartás, vuelve a los 3 y a los 6 minutos. Con el iPhone en silencio, vibra.")
                 }
 
-                Section {
-                    TextField("Ej.: Termin, Meeting, Feedback", text: $palabrasExtra, axis: .vertical)
-                        .lineLimit(1...4)
-                        .textInputAutocapitalization(.never)
-                } header: {
-                    Text("Dictado")
-                } footer: {
-                    Text("Dictás en español, pero si usás palabras en alemán o en inglés, escribilas acá separadas por comas: así se reconocen mejor y se escriben bien.")
-                }
 
                 Section {
                     TextField("Tu ciudad", text: $ciudad).textContentType(.addressCity)

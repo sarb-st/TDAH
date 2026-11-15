@@ -298,6 +298,9 @@ enum Acciones {
                 && t.inicio.addingTimeInterval(Double(t.duracionMinutos) * 60) < ahora {
                 t.estado = .terminada
             }
+            for t in tareas where t.proyecto?.archivado == true && t.estado != .terminada && t.estado != .archivada {
+                archivar(t, ctx: ctx)
+            }
             Avisos.programarResumen(tareas)
         }
         if let capturas = try? ctx.fetch(FetchDescriptor<Captura>()) {

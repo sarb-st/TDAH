@@ -1,6 +1,85 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - Armar o rearmar las etapas
+
+@MainActor
+enum PlanProyecto {
+    /// Archiva el proyecto y sus sesiones pendientes (sin avisos ni calendario). Se puede recuperar.
+    static func archivar(_ p: Proyecto, ctx: ModelContext) {
+        p.archivado = true
+        for t in p.tareas where t.estado != .terminada && t.estado != .archivada { Acciones.archivar(t, ctx: ctx) }
+        Acciones.guardar(ctx)
+    }
+
+    /// Borra el proyecto, sus etapas y sus sesiones. No se puede deshacer.
+    static func borrar(_ p: Proyecto, ctx: ModelContext) {
+        for t in p.tareas { Acciones.borrar(t, ctx: ctx) }
+        ctx.delete(p)
+        Acciones.guardar(ctx)
+    }
+
+    /// Arma las etapas con la IA según el nombre y las notas.
+    /// - `todo`: rearmar todo (por ejemplo, al cambiar el nombre). Las sesiones pendientes del plan anterior se archivan;
+    ///   lo terminado queda. Si no, se conservan las etapas cumplidas o con sesiones y las sueltas pasan a la primera nueva.
+    static func rearmar(_ p: Proyecto, todo: Bool, ctx: ModelContext) async throws {
+        let cal = Calendar.current
+        let inicioPlan = max(cal.startOfDay(for: .now), cal.startOfDay(for: p.inicioEfectivo))
+        let plan = try await ClienteClaude.armarEtapas(titulo: p.titulo, notas: p.notas,
+                                                       inicio: inicioPlan, fin: max(inicioPlan, cal.startOfDay(for: p.ultimoDia)))
+        if todo {
+            for t in p.tareas where t.estado != .terminada && t.estado != .archivada { Acciones.archivar(t, ctx: ctx) }
+        }
+        let conservadas = p.etapasOrdenadas.filter { e in
+            e.cumplida || e.tareas.contains { todo ? $0.estado == .terminada : $0.estado != .archivada }
+        }
+        for e in p.etapasOrdenadas where !conservadas.contains(where: { $0.uid == e.uid }) {
+            for t in e.tareas { t.etapa = nil }
+            ctx.delete(e)
+        }
+        let desde = max(conservadas.last?.fechaObjetivo ?? p.inicioEfectivo, p.inicioEfectivo)
+        let pesos = plan.etapas.map { max(0.05, $0.dias) }
+        if p.deadline.timeIntervalSince(desde) < Plan.minimo * Double(max(1, pesos.count)) {
+            p.deadline = cal.date(byAdding: .day, value: max(1, Int(pesos.reduce(0, +).rounded(.up))), to: cal.startOfDay(for: desde)) ?? p.deadline
+        }
+        let fines = Plan.repartir(inicio: desde, fin: p.deadline, pesos: pesos)
+        var primera: Etapa?
+        for (k, ep) in plan.etapas.enumerated() {
+            let e = Etapa(titulo: ep.titulo, fechaObjetivo: fines.indices.contains(k) ? fines[k] : p.deadline, orden: conservadas.count + k)
+            ctx.insert(e)
+            e.proyecto = p
+            if k == 0 { primera = e }
+        }
+        for (k, e) in conservadas.enumerated() { e.orden = k }
+        let sueltas = p.tareas.filter { $0.etapa == nil && $0.estado != .archivada }
+        for t in sueltas { t.etapa = primera }
+        // Si no queda nada pendiente, las sesiones de la primera etapa nueva se agendan en huecos libres.
+        let pendientes = p.tareas.contains { $0.estado == .programada || $0.estado == .faltaHora }
+        if !pendientes, let primera {
+            let todas = (try? ctx.fetch(FetchDescriptor<Tarea>())) ?? []
+            var ocupado = Guardado.ocupados(todas)
+            var hora = max(Date.now, p.inicioEfectivo)
+            for tp in plan.tareas_primera_etapa {
+                let dur = max(10, tp.duracion_min)
+                let hueco = Guardado.huecos(duracion: dur, desde: hora, ocupados: ocupado)
+                let t = Tarea(titulo: tp.titulo, inicio: hueco ?? .now, duracionMinutos: dur)
+                t.estado = hueco == nil ? .faltaHora : .programada
+                ctx.insert(t)
+                t.proyecto = p
+                t.etapa = primera
+                if let hueco {
+                    ocupado.append(DateInterval(start: hueco, duration: Double(dur) * 60))
+                    hora = hueco.addingTimeInterval(Double(dur) * 60)
+                    Avisos.programarInicio(t)
+                    Calendario.sincronizar(t)
+                }
+            }
+        }
+        Acciones.guardar(ctx)
+        Registro.anotar("Etapas rearmadas (\(plan.etapas.count)).")
+    }
+}
+
 // MARK: - Barras de tiempo
 
 /// La línea de tiempo del proyecto: de la fecha de inicio a la final. Las divisiones son las etapas y la marca es hoy.
@@ -143,6 +222,8 @@ struct ProyectoDetalleView: View {
     @State private var pensando = false
     @State private var mensaje: String?
     @State private var aviso: String?
+    @State private var armando = false
+    @State private var confirmarBorrado = false
 
     var body: some View {
         ScrollView {
@@ -176,6 +257,13 @@ struct ProyectoDetalleView: View {
                 Text("Etapas").font(.serif(21, relativoA: .title3)).foregroundStyle(paleta.primario.color).padding(.top, 6)
                 if proyecto.etapas.isEmpty {
                     Text("Todavía no tiene etapas.").font(.footnote).foregroundStyle(paleta.secundario.color)
+                    if ClaveIA.hay {
+                        Button { Task { await armarEtapas() } } label: {
+                            if armando { ProgressView().tint(paleta.fondo.color) } else { Label("Armar las etapas", systemImage: "sparkles") }
+                        }
+                        .buttonStyle(BotonPrimario(paleta: paleta))
+                        .disabled(armando)
+                    }
                 }
                 ListaReordenable(items: proyecto.rangos.map(FilaPlan.init), movible: { !$0.etapa.cumplida },
                                  alMover: moverEtapa) { fila, manija in
@@ -187,19 +275,34 @@ struct ProyectoDetalleView: View {
 
                 let sueltas = proyecto.tareas.filter { $0.etapa == nil && $0.estado != .archivada }
                 if !sueltas.isEmpty {
-                    Text("Sin etapa").font(.serif(19, relativoA: .headline)).padding(.top, 8)
+                    Text("Sesiones sin etapa").font(.serif(19, relativoA: .headline)).padding(.top, 8)
+                    Text("Son sesiones del proyecto que no están en ninguna etapa. Con la flecha las pasás a una.")
+                        .font(.caption).foregroundStyle(paleta.secundario.color)
                     ForEach(sueltas.sorted { $0.inicio < $1.inicio }, id: \.uid) { t in
                         filaSesion(t, manija: nil)
+                            .overlay(alignment: .trailing) {
+                                if !proyecto.etapas.isEmpty {
+                                    Menu {
+                                        ForEach(proyecto.etapasOrdenadas, id: \.uid) { e in
+                                            Button(e.titulo) { t.etapa = e; Acciones.guardar(ctx) }
+                                        }
+                                    } label: {
+                                        Image(systemName: "arrow.turn.down.right").frame(width: 36, height: 40)
+                                    }
+                                    .foregroundStyle(paleta.primario.color)
+                                    .accessibilityLabel("Pasar a una etapa")
+                                }
+                            }
                     }
                 }
 
                 VStack(alignment: .leading, spacing: 14) {
                     Button("Editar nombre, fechas y notas") { editandoProyecto = true }
-                    Button("Archivar proyecto", role: .destructive) {
-                        proyecto.archivado = true
-                        Acciones.guardar(ctx)
+                    Button("Archivar proyecto") {
+                        PlanProyecto.archivar(proyecto, ctx: ctx)
                         volver()
                     }
+                    Button("Borrar proyecto", role: .destructive) { confirmarBorrado = true }
                 }
                 .padding(.top, 16)
             }
@@ -239,6 +342,26 @@ struct ProyectoDetalleView: View {
         }
         .alert(mensaje ?? "", isPresented: Binding(get: { mensaje != nil }, set: { if !$0 { mensaje = nil } })) {
             Button("Listo", role: .cancel) {}
+        }
+        .confirmationDialog("¿Borrar “\(proyecto.titulo)”?", isPresented: $confirmarBorrado, titleVisibility: .visible) {
+            Button("Borrar el proyecto y sus sesiones", role: .destructive) {
+                let p = proyecto
+                volver()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { PlanProyecto.borrar(p, ctx: ctx) }
+            }
+        } message: {
+            Text("No se puede deshacer. Si solo querés sacarlo de la vista, archivalo: se puede recuperar.")
+        }
+    }
+
+    private func armarEtapas() async {
+        armando = true
+        defer { armando = false }
+        do {
+            try await PlanProyecto.rearmar(proyecto, todo: false, ctx: ctx)
+            if let a = proyecto.etapaActual { abiertas = [a.uid] }
+        } catch {
+            mensaje = error.localizedDescription
         }
     }
 
@@ -731,6 +854,7 @@ struct EditarProyectoView: View {
     @State private var primeras: [PropuestaIA.TareaIA] = []
     @State private var armando = false
     @State private var armadoCon = ""
+    @State private var preguntarRearmar = false
     @State private var mensaje: String?
     @FocusState private var foco: Bool
 
@@ -778,6 +902,23 @@ struct EditarProyectoView: View {
                 }
             }
             .onAppear(perform: cargar)
+            .overlay {
+                if armando && proyecto != nil {
+                    ZStack {
+                        paleta.fondo.color.opacity(0.85).ignoresSafeArea()
+                        VStack(spacing: 12) {
+                            ProgressView()
+                            Text("Rearmando las etapas…").font(.subheadline).foregroundStyle(paleta.secundario.color)
+                        }
+                    }
+                }
+            }
+            .confirmationDialog("¿Rearmo las etapas para el nombre nuevo?", isPresented: $preguntarRearmar, titleVisibility: .visible) {
+                Button("Sí, rearmar las etapas") { Task { await rearmarExistente() } }
+                Button("No, dejarlas como están", role: .cancel) { cerrar() }
+            } message: {
+                Text("Se reemplazan las etapas y las sesiones que no empezaste. Lo que ya terminaste queda.")
+            }
             .onChange(of: foco) { _, enfocado in
                 // Si cambiaste el nombre o las notas después de armar las etapas, se vuelven a armar.
                 if !enfocado && proyecto == nil && !etapas.isEmpty && !armando && claveArmado != armadoCon && ClaveIA.hay {
@@ -846,6 +987,18 @@ struct EditarProyectoView: View {
         .font(.subheadline)
     }
 
+    private func rearmarExistente() async {
+        guard let p = proyecto else { return }
+        armando = true
+        defer { armando = false }
+        do {
+            try await PlanProyecto.rearmar(p, todo: true, ctx: ctx)
+            cerrar()
+        } catch {
+            mensaje = error.localizedDescription
+        }
+    }
+
     private func cargar() {
         guard let p = proyecto, titulo.isEmpty else { return }
         titulo = p.titulo
@@ -877,12 +1030,17 @@ struct EditarProyectoView: View {
                 let nuevos = Plan.repartir(inicio: inicio, fin: finExclusivo, pesos: durs.map { max(1, $0) })
                 for (e, f) in zip(p.etapasOrdenadas, nuevos) { e.fechaObjetivo = f }
             }
+            let cambioNombre = p.titulo != nombre || p.notas != notas
             p.titulo = nombre
             p.notas = notas
             p.fechaInicio = inicio
             p.deadline = finExclusivo
             Acciones.guardar(ctx)
-            cerrar()
+            if cambioNombre && !p.etapas.isEmpty && ClaveIA.hay {
+                preguntarRearmar = true
+            } else {
+                cerrar()
+            }
             return
         }
         let p = Proyecto(titulo: nombre, deadline: finExclusivo)

@@ -96,7 +96,8 @@ Paleta **Salvia y crema** de día y **Bosque** de noche. Nunca rojo: los avisos 
 - Indicaciones mínimas abajo ("deslizá: empiezo · bajá y sostené: ahora no") solo las primeras veces.
 
 ### ¿Cuándo, entonces? (después de "Ahora no" o "Paro por hoy")
-- Primero, una transición: "Está bien, lo movemos." solo, grande e itálica, en blanco cálido sobre la salvia apagada.
+- Primero, una transición que aparece de golpe: "Está bien, lo movemos." solo, grande e itálica, en blanco cálido sobre la
+  salvia apagada. El texto rota: "Tranqui, buscamos otro momento.", "No pasa nada, reagendamos.", "Todo bien, va para más tarde.", "Dale, lo acomodamos."
 - Después, la **tarea en grande** arriba, "Lo movemos." chico e itálica justo debajo y una tarjeta con la pregunta
   "¿Cuándo, entonces?" (más chica y con aire) y las opciones. Poca información: la persona probablemente está cansada.
 - **3 slots concretos** que respetan el calendario y el horario del lugar. Al tocar uno se agranda, muestra un renglón de por qué y el botón **Agendar**.
@@ -120,13 +121,16 @@ Paleta **Salvia y crema** de día y **Bosque** de noche. Nunca rojo: los avisos 
   notas y el botón **"Armar las etapas"**. Las propuestas se renombran, se reordenan, se quitan o se agregan antes de crear.
 
 ### En curso
-- Solo la cuenta regresiva dentro del círculo, sin barra ni arco de progreso.
+- Ya no ocupa la pantalla principal: es la primera tarjeta del fichero (borde verde energía, "quedan 23:10") y se abre al tocarla.
+- Adentro: solo la cuenta regresiva dentro del círculo, sin barra ni arco de progreso.
 - Abajo, la **ruleta de pasos**: la última tachada siempre visible y las dos siguientes debajo; deslizando se ve el historial o lo que viene.
 - Aviso suave 5 min antes del final.
 
 ### Fin del slot
 - Primero la **recompensa**, grande y al centro: círculo con tilde y ondas de energía, y un mensaje de ánimo que varía.
-- Al tocar **Terminé** (al final o antes, desde En curso): celebración de unos segundos con el halo verde grande, un brote que crece y los minutos de foco.
+- Al tocar **Terminé** (al final o antes, desde En curso): primero la pantalla entera en verde energía con un mensaje grande en blanco
+  cálido que rota ("¡Bien ahí!", "¡Eso!", "¡Buena, crack!", "¡Vamos!", "¡Bien metida!"), aparece de golpe; después la celebración con el
+  halo verde grande, un brote que crece, "Listo." arriba y los minutos de foco.
 - Después "¿Cómo seguimos?" con íconos lineales: brote (Terminé), reloj redondo (Necesito más: +10, +15, +30), luna (Paro por hoy).
 - Si la extensión choca con el slot siguiente, aviso en ocre con "Correrlo" o una extensión menor.
 

@@ -77,7 +77,7 @@ struct PropuestaIA: Codable, Equatable {
     var horario_cierre: Int
     var solo_dias_habiles: Bool
     var deadline: String
-    var etapas: [EtapaIA]
+    var etapas: [PlanIA.EtapaPlan]
     var tareas_primera_etapa: [TareaIA]
 }
 
@@ -85,7 +85,7 @@ struct ClasificacionIA: Codable { var items: [PropuestaIA] }
 
 /// Las etapas de un proyecto nuevo, con lo que dura cada una en días (puede ser una fracción), y las sesiones de la primera.
 struct PlanIA: Codable {
-    struct EtapaPlan: Codable { var titulo: String; var dias: Double }
+    struct EtapaPlan: Codable, Equatable { var titulo: String; var dias: Double }
     var etapas: [EtapaPlan]
     var tareas_primera_etapa: [PropuestaIA.TareaIA]
 }
@@ -99,9 +99,12 @@ enum ClienteClaude {
     private static let instrucciones = """
     Sos el asistente de una app para personas con TDAH que convierte lo que el usuario dicta en cosas concretas.
     Recibís un dictado en español rioplatense, a veces desordenado o mal transcrito, y lo separás en ítems.
-    El usuario vive en un país de habla alemana y mezcla palabras en alemán y en inglés. El reconocimiento de voz está en
-    español, así que esas palabras pueden llegar escritas como suenan ("termin" → "Termin", "mitin" → "meeting",
-    "anmeldun" → "Anmeldung"). Cuando sea evidente, reconstruí la palabra original y escribila bien (mayúsculas, umlauts).
+    El usuario vive en un país de habla alemana y mezcla palabras en alemán y en inglés. Te paso la transcripción en
+    español (la principal: de ahí sale el sentido) y, a veces, otra del mismo audio reconocida en alemán. Cuando aparezca
+    un nombre de calle, un local, una institución o un término alemán, tomá su escritura de la versión en alemán
+    (por ejemplo "casta nien alle" en español y "Kastanienallee" en alemán → "Kastanienallee"). Si no hay versión en
+    alemán, reconstruí la palabra cuando sea evidente ("termin" → "Termin", "mitin" → "meeting"). Escribila bien
+    (mayúsculas, umlauts). El resto de la versión en alemán ignoralo.
 
     Tipos:
     - cita: día y hora fija, normalmente con otra persona o en un lugar (dentista, reunión, turno).
@@ -125,7 +128,7 @@ enum ClienteClaude {
     - Si una cita necesita preparación (documentos, compras), agregá un ítem aparte de tipo tarea con notas "Preparación para …".
     - Para proyectos: deadline en AAAA-MM-DD (si no la dijo, ""). Si el usuario nombró etapas, usá exactamente esas, en su
       orden y con sus palabras. Si no, proponé de 3 a 6 etapas concretas que correspondan a lo que dijo y al título (nada
-      genérico). Fechas de etapa repartidas hacia atrás desde el deadline. Solo las tareas de la primera etapa
+      genérico), cada una con cuántos días dura (puede ser una fracción). Solo las tareas de la primera etapa
       (las demás se desglosan cuando se llegue a esa etapa).
     - Para ideas: un título corto y un tema de una palabra (diseño, casa, deporte, viajes, trabajo…).
     - titulo: corto, en infinitivo para tareas ("Llamar al banco"). texto_original: el fragmento del dictado de ese ítem.
@@ -161,7 +164,14 @@ enum ClienteClaude {
                         "horario_cierre": ["type": "integer"],
                         "solo_dias_habiles": ["type": "boolean"],
                         "deadline": ["type": "string"],
-                        "etapas": ["type": "array", "items": esquemaEtapa],
+                        "etapas": [
+                            "type": "array",
+                            "items": [
+                                "type": "object",
+                                "properties": ["titulo": ["type": "string"], "dias": ["type": "number"]],
+                                "required": ["titulo", "dias"], "additionalProperties": false
+                            ]
+                        ],
                         "tareas_primera_etapa": [
                             "type": "array",
                             "items": [
@@ -217,10 +227,10 @@ enum ClienteClaude {
         return "Fecha y hora actual: \(f.string(from: ahora)) (zona horaria \(TimeZone.current.identifier))."
     }
 
-    static func clasificar(_ dictado: String, ahora: Date = .now) async throws -> [PropuestaIA] {
-        let palabras = Dictado.palabrasExtra
-        let extra = palabras.isEmpty ? "" : "\nPalabras en otros idiomas que suele usar: \(palabras.joined(separator: ", "))."
-        let pedido = "\(contextoFecha(ahora))\(extra)\n\nDictado:\n\(dictado)"
+    static func clasificar(_ dictado: String, aleman: String = "", ahora: Date = .now) async throws -> [PropuestaIA] {
+        let deAleman = aleman.trimmingCharacters(in: .whitespacesAndNewlines)
+        let extra = deAleman.isEmpty ? "" : "\n\nEl mismo audio reconocido en alemán (solo para nombres y términos alemanes):\n\(deAleman)"
+        let pedido = "\(contextoFecha(ahora))\n\nDictado:\n\(dictado)\(extra)"
         let r: ClasificacionIA = try await pedir(sistema: instrucciones, usuario: pedido, esquema: esquemaClasificacion)
         return r.items
     }

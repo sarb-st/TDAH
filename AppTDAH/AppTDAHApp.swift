@@ -39,7 +39,7 @@ struct RaizView: View {
     @Query private var registros: [SlotRegistro]
     @AppStorage("apariencia") private var apariencia = Apariencia.automatico.rawValue
 
-    @State private var creando = false
+    @State private var cargarAMano: Categoria?
     @State private var captura = CapturaInicio()
     @State private var ajustes = DatosDemo.pantalla == "ajustes"
     @State private var proyectoDemo = DatosDemo.pantalla == "proyecto"
@@ -47,6 +47,7 @@ struct RaizView: View {
     @State private var lista = DatosDemo.pantalla == "lista" || DatosDemo.pantalla == "proyectos"
     @State private var calendario = DatosDemo.pantalla == "calendario"
     @State private var cajon = DatosDemo.pantalla == "cajon"
+    @State private var abierta: Tarea?
     @State private var transicion: Transicion? = RaizView.transicionDemo
 
     private static var transicionDemo: Transicion? {
@@ -83,11 +84,11 @@ struct RaizView: View {
         }
         .task(id: transicion) {
             guard let t = transicion, DatosDemo.pantalla == nil else { return }
-            try? await Task.sleep(for: .seconds(t == .movida ? 1.8 : 3.2))
+            try? await Task.sleep(for: .seconds(t == .movida ? 1.8 : 3.2 + CelebracionView.segundosMensaje))
             if !Task.isCancelled { withAnimation(.easeInOut(duration: 0.6)) { transicion = nil } }
         }
-        .sheet(isPresented: $creando) { NuevaTareaView(tarea: nil) }
-        .sheet(isPresented: $captura.escribiendo) { CapturaView(paleta: paleta) { creando = true } }
+        .sheet(item: $cargarAMano) { c in CargarAMano(categoria: c).environment(\.paleta, paleta) }
+        .sheet(isPresented: $captura.escribiendo) { CapturaView(paleta: paleta) { cargarAMano = $0 } }
         .sheet(isPresented: $captura.revisando) {
             RevisionView(propuestas: $captura.propuestas, paleta: paleta) { captura.revisando = false }
                 .presentationDetents([.fraction(0.82), .large])
@@ -97,6 +98,7 @@ struct RaizView: View {
         .sheet(isPresented: $lista) { ListaView(paleta: paleta, pestanaInicial: DatosDemo.pantalla == "proyectos" ? .proyectos : .hoy) }
         .sheet(isPresented: $calendario) { CalendarioView(paleta: paleta) }
         .sheet(isPresented: $cajon) { CajonView(paleta: paleta) }
+        .sheet(item: $abierta) { t in HojaTarea(tarea: t, paleta: paleta) { terminar($0) } }
         .alert(captura.aviso ?? "", isPresented: Binding(get: { captura.aviso != nil }, set: { if !$0 { captura.aviso = nil } })) {
             Button("Listo", role: .cancel) {}
         }
@@ -147,7 +149,10 @@ struct RaizView: View {
         // El registro recién creado puede no estar todavía en la consulta.
         let incluido = conFoco.contains { $0.uidTarea == t.uid && ($0.fin ?? .distantPast) > Date.now.addingTimeInterval(-5) }
         let extra = incluido ? 0 : minutos
-        withAnimation(.easeInOut(duration: 0.5)) {
+        // Aparece de golpe (sin fundido) para que no se vea nada de lo que viene debajo.
+        var sinAnimar = Transaction()
+        sinAnimar.disablesAnimations = true
+        withTransaction(sinAnimar) {
             transicion = .terminada(titulo: t.titulo, minutos: minutos, hoy: hoy + extra, total: total + extra)
         }
     }
@@ -161,9 +166,14 @@ struct RaizView: View {
     private func pantalla(ahora: Date) -> some View {
         switch MotorSlots.pantalla(tareas, ahora: ahora) {
         case .vacio:
-            InicioView(tareas: [], ahora: ahora, navegacion: navegacion, captura: captura)
+            InicioView(tareas: [], ahora: ahora, navegacion: navegacion, captura: captura) { abierta = $0 }
         case .espera(let lista):
-            InicioView(tareas: lista, ahora: ahora, navegacion: navegacion, captura: captura)
+            InicioView(tareas: lista, ahora: ahora, navegacion: navegacion, captura: captura) { abierta = $0 }
+        case .enCurso(let t):
+            // Con algo en curso, la pantalla principal sigue siendo Inicio (se puede capturar);
+            // la tarea es la primera tarjeta y al tocarla se ven la cuenta y los pasos.
+            InicioView(tareas: [t] + MotorSlots.proximas(tareas, ahora: ahora, cantidad: 2), ahora: ahora,
+                       navegacion: navegacion, captura: captura) { abierta = $0 }
         case .decidir(let t):
             DecidirView(tarea: t,
                         onEmpiezo: { Acciones.empezar(t, ctx: ctx) },
@@ -179,8 +189,6 @@ struct RaizView: View {
                        onAgendar: { Acciones.reprogramar(t, a: $0, ctx: ctx) },
                        onArchivar: { Acciones.archivar(t, ctx: ctx) })
                 .id(t.uid)
-        case .enCurso(let t):
-            EnCursoView(tarea: t, ahora: ahora, onTermine: { terminar(t) })
         case .fin(let t):
             FinSlotView(tarea: t, ahora: ahora,
                         siguiente: MotorSlots.siguiente(despuesDe: ahora, en: tareas),

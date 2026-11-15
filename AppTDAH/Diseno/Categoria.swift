@@ -33,6 +33,10 @@ enum Categoria: String, CaseIterable {
     func fondo(en p: Paleta) -> Color { p.superficie.mezcla(rgb, p.esOscura ? 0.35 : 0.3).color }
 }
 
+extension Categoria: Identifiable {
+    var id: String { rawValue }
+}
+
 extension Tarea {
     var categoria: Categoria { esCita ? .cita : (proyecto != nil ? .proyecto : .tarea) }
 }

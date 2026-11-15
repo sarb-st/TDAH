@@ -15,12 +15,14 @@ struct ListaView: View {
     var pestanaInicial: PestanaLista = .hoy
 
     @Environment(\.dismiss) private var cerrar
+    @Environment(\.modelContext) private var ctx
     @Query(sort: \Tarea.inicio) private var tareas: [Tarea]
     @Query(sort: \Proyecto.deadline) private var proyectos: [Proyecto]
     @State private var pestana: PestanaLista = .hoy
     @State private var verHechas = false
-    @State private var creandoProyecto = false
-    @State private var creandoTarea = false
+    @State private var cargando: Categoria?
+    @State private var verArchivados = false
+    @AppStorage("hoyHechasPlegado") private var hechasPlegado = false
 
     private var activos: [Proyecto] { proyectos.filter { !$0.archivado } }
     private var cal: Calendar { Calendar.current }
@@ -65,12 +67,17 @@ struct ListaView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 selector
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 10) {
-                        if pestana == .proyectos { vistaProyectos } else { vistaTareas }
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 10) {
+                            if pestana == .proyectos { vistaProyectos } else if pestana == .hoy { vistaHoy } else { vistaTareas }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 30)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 30)
+                    // En "Hoy" se abre mirando por dónde va el día: la línea "Ahora".
+                    .onAppear { irAAhora(proxy) }
+                    .onChange(of: pestana) { _, p in if p == .hoy { irAAhora(proxy) } }
                 }
             }
             .background(paleta.fondo.color.ignoresSafeArea())
@@ -78,15 +85,25 @@ struct ListaView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button {
-                        if pestana == .proyectos { creandoProyecto = true } else { creandoTarea = true }
-                    } label: { Image(systemName: "plus") }
-                    .accessibilityLabel(pestana == .proyectos ? "Nuevo proyecto" : "Nueva tarea")
+                    // En "Hoy" puede ser cualquier cosa: pregunta qué cargar. En las otras pestañas, esa categoría.
+                    if pestana == .hoy {
+                        Menu {
+                            Button { cargando = .tarea } label: { Label("Tarea", systemImage: "checkmark.circle") }
+                            Button { cargando = .cita } label: { Label("Cita", systemImage: "calendar") }
+                            Button { cargando = .proyecto } label: { Label("Proyecto", systemImage: "square.stack.3d.up") }
+                            Button { cargando = .idea } label: { Label("Idea", systemImage: "lightbulb") }
+                        } label: { Image(systemName: "plus") }
+                        .accessibilityLabel("Cargar a mano")
+                    } else {
+                        Button {
+                            cargando = pestana == .proyectos ? .proyecto : (pestana == .citas ? .cita : .tarea)
+                        } label: { Image(systemName: "plus") }
+                        .accessibilityLabel(pestana == .proyectos ? "Nuevo proyecto" : (pestana == .citas ? "Nueva cita" : "Nueva tarea"))
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) { Button("Listo") { cerrar() } }
             }
-            .sheet(isPresented: $creandoProyecto) { EditarProyectoView(proyecto: nil).environment(\.paleta, paleta) }
-            .sheet(isPresented: $creandoTarea) { NuevaTareaView(tarea: nil, esCitaInicial: pestana == .citas).environment(\.paleta, paleta) }
+            .sheet(item: $cargando) { c in CargarAMano(categoria: c).environment(\.paleta, paleta) }
         }
         .environment(\.paleta, paleta)
         .tint(paleta.primario.color)
@@ -140,6 +157,64 @@ struct ListaView: View {
         }
     }
 
+    private func irAAhora(_ proxy: ScrollViewProxy) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            if pestana == .hoy { proxy.scrollTo("ahora", anchor: UnitPoint(x: 0.5, y: 0.06)) }
+        }
+    }
+
+    /// Hoy: lo hecho arriba (plegable), la línea "Ahora", lo que falta elegir hora y lo que viene.
+    @ViewBuilder
+    private var vistaHoy: some View {
+        let deHoy = tareas.filter { t in
+            t.estado != .archivada && t.estado != .faltaHora && cal.isDateInToday(t.inicioReal ?? t.inicio)
+        }
+        let hechas = deHoy.filter { $0.estado == .terminada }
+        let resto = deHoy.filter { $0.estado != .terminada }.sorted { ($0.inicioReal ?? $0.inicio) < ($1.inicioReal ?? $1.inicio) }
+        let sinHora = tareas.filter { $0.estado == .faltaHora }
+        if !hechas.isEmpty {
+            Button { withAnimation(.easeInOut(duration: 0.25)) { hechasPlegado.toggle() } } label: {
+                HStack {
+                    Text("Hecho hoy · \(hechas.count)").font(.serif(20, relativoA: .title3))
+                    Spacer()
+                    Image(systemName: hechasPlegado ? "chevron.down" : "chevron.up").font(.subheadline)
+                }
+                .foregroundStyle(paleta.primario.color)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 10)
+            .accessibilityHint(hechasPlegado ? "Mostrar lo hecho" : "Plegar lo hecho")
+            if !hechasPlegado {
+                ForEach(hechas, id: \.uid) { t in
+                    NavigationLink { DetalleTareaView(tarea: t, paleta: paleta) } label: { TarjetaTarea(tarea: t, paleta: paleta) }
+                        .buttonStyle(.plain)
+                }
+            }
+        }
+        HStack(spacing: 6) {
+            Circle().fill(paleta.primario.color).frame(width: 8, height: 8)
+            Text("Ahora · \(Formato.hora(.now))").font(.caption.weight(.bold)).foregroundStyle(paleta.primario.color)
+            Rectangle().fill(paleta.primario.color).frame(height: 1.5)
+        }
+        .padding(.vertical, 8)
+        .id("ahora")
+        if !sinHora.isEmpty {
+            Text("Falta elegir hora").font(.serif(20, relativoA: .title3)).foregroundStyle(paleta.primario.color)
+            ForEach(sinHora, id: \.uid) { t in
+                NavigationLink { DetalleTareaView(tarea: t, paleta: paleta) } label: { TarjetaTarea(tarea: t, paleta: paleta) }
+                    .buttonStyle(.plain)
+            }
+        }
+        if resto.isEmpty && sinHora.isEmpty {
+            Text("Nada más por hoy.").foregroundStyle(paleta.secundario.color).padding(.top, 20).frame(maxWidth: .infinity)
+        }
+        ForEach(resto, id: \.uid) { t in
+            NavigationLink { DetalleTareaView(tarea: t, paleta: paleta) } label: { TarjetaTarea(tarea: t, paleta: paleta) }
+                .buttonStyle(.plain)
+        }
+    }
+
     @ViewBuilder
     private var vistaProyectos: some View {
         if activos.isEmpty {
@@ -150,7 +225,7 @@ struct ListaView: View {
             NavigationLink { ProyectoDetalleView(proyecto: p, paleta: paleta) } label: { TarjetaProyecto(proyecto: p, paleta: paleta) }
                 .buttonStyle(.plain)
         }
-        Button { creandoProyecto = true } label: {
+        Button { cargando = .proyecto } label: {
             Label("Nuevo proyecto", systemImage: "plus")
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
@@ -158,6 +233,25 @@ struct ListaView: View {
         }
         .foregroundStyle(paleta.primario.color)
         .padding(.top, 6)
+        let archivados = proyectos.filter(\.archivado)
+        if !archivados.isEmpty {
+            Toggle("Mostrar archivados (\(archivados.count))", isOn: $verArchivados)
+                .tint(paleta.primario.color)
+                .padding(.top, 16)
+            if verArchivados {
+                ForEach(archivados, id: \.uid) { p in
+                    HStack {
+                        Text(p.titulo).font(.serif(17, relativoA: .body)).foregroundStyle(paleta.secundario.color)
+                        Spacer()
+                        Button("Recuperar") { p.archivado = false; Acciones.guardar(ctx) }
+                            .font(.subheadline)
+                            .buttonStyle(.borderless)
+                    }
+                    .padding(12)
+                    .background(paleta.superficie.color.opacity(0.6), in: RoundedRectangle(cornerRadius: 14))
+                }
+            }
+        }
     }
 
     private func titulo(_ dia: Date) -> String {
@@ -201,6 +295,7 @@ struct TarjetaTarea: View {
                 Text(detalle).font(.caption).foregroundStyle(paleta.secundario.color).lineLimit(1)
             }
         }
+        .opacity(apagada ? 0.55 : 1)
     }
 
     private var detalle: String {
@@ -340,7 +435,7 @@ struct CajonView: View {
         defer { ordenando = nil }
         do {
             let items = try await ClienteClaude.clasificar(c.texto)
-            let utiles = items.map { Propuesta(ia: $0) }.filter { $0.tipo != "inbox" }
+            let utiles = await Guardado.corregirLugares(items.map { Propuesta(ia: $0) }.filter { $0.tipo != "inbox" })
             guard !utiles.isEmpty else { mensaje = "Tampoco pude decidir qué es. Queda en el Inbox."; return }
             Guardado.guardar(utiles, ctx: ctx, tareas: tareas)
             c.archivada = true

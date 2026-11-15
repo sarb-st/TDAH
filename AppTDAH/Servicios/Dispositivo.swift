@@ -7,9 +7,13 @@ import CoreLocation
 import Observation
 
 /// Dictado con el reconocimiento de voz del iPhone (gratis; en el dispositivo cuando se puede).
+/// El mismo audio se reconoce a la vez en español y en alemán: el español da el sentido y el alemán escribe bien
+/// las calles, los locales y los términos alemanes. La IA junta las dos versiones.
 @Observable
 final class Dictado {
     var texto = ""
+    /// Lo mismo, reconocido en alemán.
+    var textoAleman = ""
     var escuchando = false
     var error: String?
     /// Qué tan fuerte se está hablando (0 a 1): el halo reacciona a la voz.
@@ -22,6 +26,10 @@ final class Dictado {
     @ObservationIgnored private var pedido: SFSpeechAudioBufferRecognitionRequest?
     @ObservationIgnored private var tarea: SFSpeechRecognitionTask?
     @ObservationIgnored private var textoPrevio = ""
+    @ObservationIgnored private let reconocedorAleman = SFSpeechRecognizer(locale: Locale(identifier: "de-DE"))
+    @ObservationIgnored private var pedidoAleman: SFSpeechAudioBufferRecognitionRequest?
+    @ObservationIgnored private var tareaAleman: SFSpeechRecognitionTask?
+    @ObservationIgnored private var textoPrevioAleman = ""
 
     func alternar() {
         if escuchando { detener() } else { Task { await empezar() } }
@@ -45,10 +53,20 @@ final class Dictado {
             if reconocedor.supportsOnDeviceRecognition { pedido.requiresOnDeviceRecognition = true }
             self.pedido = pedido
             textoPrevio = texto.isEmpty ? "" : texto + " "
+            var aleman: SFSpeechAudioBufferRecognitionRequest?
+            if let de = reconocedorAleman, de.isAvailable {
+                let p = SFSpeechAudioBufferRecognitionRequest()
+                p.shouldReportPartialResults = true
+                if de.supportsOnDeviceRecognition { p.requiresOnDeviceRecognition = true }
+                aleman = p
+            }
+            pedidoAleman = aleman
+            textoPrevioAleman = textoAleman.isEmpty ? "" : textoAleman + " "
             let entrada = motor.inputNode
             entrada.removeTap(onBus: 0)
             entrada.installTap(onBus: 0, bufferSize: 1024, format: entrada.outputFormat(forBus: 0)) { [weak self] buffer, _ in
                 pedido.append(buffer)
+                aleman?.append(buffer)
                 let n = Dictado.volumen(buffer)
                 DispatchQueue.main.async {
                     guard let self else { return }
@@ -56,7 +74,6 @@ final class Dictado {
                     if n > 0.45 { self.ultimaVoz = .now }
                 }
             }
-            pedido.contextualStrings = Dictado.palabrasExtra
             motor.prepare()
             try motor.start()
             ultimaVoz = .now
@@ -70,6 +87,15 @@ final class Dictado {
                         self.texto = nuevo
                     }
                     if error != nil || resultado?.isFinal == true { self.detener() }
+                }
+            }
+            if let de = reconocedorAleman, let aleman {
+                tareaAleman = de.recognitionTask(with: aleman) { [weak self] resultado, _ in
+                    guard let resultado else { return }
+                    DispatchQueue.main.async {
+                        guard let self else { return }
+                        self.textoAleman = self.textoPrevioAleman + resultado.bestTranscription.formattedString
+                    }
                 }
             }
         } catch {
@@ -88,6 +114,10 @@ final class Dictado {
         tarea?.cancel()
         pedido = nil
         tarea = nil
+        pedidoAleman?.endAudio()
+        tareaAleman?.cancel()
+        pedidoAleman = nil
+        tareaAleman = nil
         escuchando = false
         nivel = 0
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
@@ -104,13 +134,6 @@ final class Dictado {
         return Double(min(1, max(0, (db + 52) / 32)))
     }
 
-    /// Palabras en alemán o inglés que el usuario suele decir (Ajustes → Dictado). Ayudan al reconocimiento en español.
-    static var palabrasExtra: [String] {
-        (UserDefaults.standard.string(forKey: "palabrasExtra") ?? "")
-            .split(whereSeparator: { $0 == "," || $0 == "\n" })
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-    }
 }
 
 /// Tiempo de viaje en transporte público hasta una dirección, con Mapas de Apple.
@@ -141,6 +164,26 @@ final class Viaje: NSObject, CLLocationManagerDelegate {
     }
 
     /// Busca un lugar o dirección en Mapas, cerca de la ciudad del usuario si está cargada.
+    /// Busca un lugar en Mapas y lo acepta solo si está cerca de donde estás o de tu ciudad (a menos de 60 km).
+    @MainActor
+    func buscarCerca(_ texto: String) async -> MKMapItem? {
+        guard let item = await buscar(texto) else { return nil }
+        if let region = await regionSugerida() {
+            let centro = CLLocation(latitude: region.center.latitude, longitude: region.center.longitude)
+            let c = item.placemark.coordinate
+            if CLLocation(latitude: c.latitude, longitude: c.longitude).distance(from: centro) > 60_000 { return nil }
+        }
+        return item
+    }
+
+    /// "Kastanienallee 12, 10435 Berlin".
+    static func direccion(de item: MKMapItem) -> String {
+        let p = item.placemark
+        let calle = [p.thoroughfare, p.subThoroughfare].compactMap { $0 }.joined(separator: " ")
+        let ciudad = [p.postalCode, p.locality].compactMap { $0 }.joined(separator: " ")
+        return [calle, ciudad].filter { !$0.isEmpty }.joined(separator: ", ")
+    }
+
     @MainActor
     func buscar(_ texto: String) async -> MKMapItem? {
         let busqueda = MKLocalSearch.Request()

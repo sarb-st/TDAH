@@ -41,8 +41,22 @@ struct Propuesta: Identifiable, Equatable {
         apertura = ia.horario_apertura
         cierre = ia.horario_cierre
         habiles = ia.solo_dias_habiles
-        deadline = FechasIA.dia(ia.deadline)
-        etapas = ia.etapas.compactMap { e in FechasIA.dia(e.fecha).map { EtapaP(titulo: e.titulo, fecha: $0) } }
+        // Las etapas se reparten desde hoy hasta el último día (el que dijo, o lo que suman las etapas).
+        let cal = Calendar.current
+        let hoy = cal.startOfDay(for: .now)
+        let pesos = ia.etapas.map { max(0.05, $0.dias) }
+        var ultimo = FechasIA.dia(ia.deadline).map { cal.startOfDay(for: $0) }
+        if ultimo == nil && ia.tipo == "proyecto" {
+            let dias = max(7, Int(pesos.reduce(0, +).rounded(.up)))
+            ultimo = cal.date(byAdding: .day, value: dias - 1, to: hoy)
+        }
+        deadline = ultimo
+        if let u = ultimo, !pesos.isEmpty, let fin = cal.date(byAdding: .day, value: 1, to: max(u, hoy)) {
+            let fines = Plan.repartir(inicio: hoy, fin: fin, pesos: pesos)
+            etapas = zip(ia.etapas, fines).map { EtapaP(titulo: $0.titulo, fecha: $1) }
+        } else {
+            etapas = []
+        }
         tareasEtapa = ia.tareas_primera_etapa.map { TareaP(titulo: $0.titulo, duracion: max(10, $0.duracion_min)) }
     }
 
@@ -74,6 +88,20 @@ enum Guardado {
             }
             return p
         }
+    }
+
+    /// Busca en Mapas los lugares y direcciones que se dictaron y los corrige con el nombre y la dirección reales
+    /// (solo si el resultado está cerca de donde estás o de tu ciudad).
+    static func corregirLugares(_ propuestas: [Propuesta]) async -> [Propuesta] {
+        var r = propuestas
+        for i in r.indices where r[i].tipo == "tarea" || r[i].tipo == "cita" {
+            let consulta = (r[i].direccion.isEmpty ? r[i].lugar : r[i].direccion).trimmingCharacters(in: .whitespaces)
+            guard consulta.count >= 3, let item = await Viaje.shared.buscarCerca(consulta) else { continue }
+            let direccion = Viaje.direccion(de: item)
+            if !direccion.isEmpty { r[i].direccion = direccion }
+            if !r[i].lugar.isEmpty, let nombre = item.name, !nombre.isEmpty { r[i].lugar = nombre }
+        }
+        return r
     }
 
     static func ocupados(_ tareas: [Tarea]) -> [DateInterval] {
@@ -108,13 +136,20 @@ enum Guardado {
                     paso.tarea = t
                 }
             case "proyecto":
-                let proyecto = Proyecto(titulo: p.titulo, deadline: p.deadline ?? .now.addingTimeInterval(30 * 86_400))
-                proyecto.fechaInicio = Calendar.current.startOfDay(for: .now)
+                let cal = Calendar.current
+                let inicio = cal.startOfDay(for: .now)
+                let ultimo = cal.startOfDay(for: p.deadline ?? .now.addingTimeInterval(29 * 86_400))
+                let fin = cal.date(byAdding: .day, value: 1, to: max(ultimo, inicio)) ?? ultimo
+                let proyecto = Proyecto(titulo: p.titulo, deadline: fin)
+                proyecto.fechaInicio = inicio
                 proyecto.notas = p.notas
                 ctx.insert(proyecto)
+                // Si se cambió la fecha final en la revisión, las etapas se acomodan en proporción.
+                let duraciones = Plan.duraciones(inicio: inicio, fines: p.etapas.map(\.fecha))
+                let fines = Plan.repartir(inicio: inicio, fin: fin, pesos: duraciones.map { max(1, $0) })
                 var primera: Etapa?
                 for (i, e) in p.etapas.enumerated() {
-                    let etapa = Etapa(titulo: e.titulo, fechaObjetivo: e.fecha, orden: i)
+                    let etapa = Etapa(titulo: e.titulo, fechaObjetivo: fines.indices.contains(i) ? fines[i] : fin, orden: i)
                     ctx.insert(etapa)
                     etapa.proyecto = proyecto
                     if i == 0 { primera = etapa }
@@ -169,6 +204,7 @@ final class CapturaInicio {
             terminar(ctx: ctx)
         } else {
             dictado.texto = ""
+            dictado.textoAleman = ""
             dictado.error = nil
             Task { await dictado.empezar() }
             vigilar(ctx)
@@ -180,9 +216,11 @@ final class CapturaInicio {
         vigilancia = nil
         dictado.detener()
         let texto = dictado.texto.trimmingCharacters(in: .whitespacesAndNewlines)
+        let aleman = dictado.textoAleman
         dictado.texto = ""
+        dictado.textoAleman = ""
         guard !texto.isEmpty else { return }
-        procesar(texto, ctx: ctx)
+        procesar(texto, aleman: aleman, ctx: ctx)
     }
 
     /// Se da cuenta de que dejaste de hablar (3 s sin voz ni texto nuevo) y se pone a pensar solo.
@@ -207,7 +245,7 @@ final class CapturaInicio {
         }
     }
 
-    func procesar(_ texto: String, ctx: ModelContext) {
+    func procesar(_ texto: String, aleman: String = "", ctx: ModelContext) {
         let respaldo = Captura(tipo: "inbox", texto: texto)
         ctx.insert(respaldo)
         Acciones.guardar(ctx)
@@ -218,9 +256,9 @@ final class CapturaInicio {
         pensando = true
         Task {
             do {
-                let items = try await ClienteClaude.clasificar(texto)
+                let items = try await ClienteClaude.clasificar(texto, aleman: aleman)
                 let tareas = (try? ctx.fetch(FetchDescriptor<Tarea>())) ?? []
-                propuestas = Guardado.propuestas(items, tareas: tareas)
+                propuestas = await Guardado.corregirLugares(Guardado.propuestas(items, tareas: tareas))
                 ctx.delete(respaldo)
                 Acciones.guardar(ctx)
                 pensando = false
@@ -278,7 +316,7 @@ struct RevisionView: View {
 /// Se abre manteniendo apretado el círculo de la pantalla principal.
 struct CapturaView: View {
     let paleta: Paleta
-    var onEscribirAMano: () -> Void
+    var onCargarAMano: (Categoria) -> Void
 
     enum Estado: Equatable { case captura, procesando, revision, aviso(String) }
 
@@ -286,6 +324,8 @@ struct CapturaView: View {
     @Environment(\.modelContext) private var ctx
     @Query private var tareas: [Tarea]
     @State private var dictado = Dictado()
+    @State private var eligiendoTipo = false
+    @FocusState private var escribiendo: Bool
     @State private var estado: Estado = .captura
     @State private var propuestas: [Propuesta] = []
 
@@ -309,6 +349,15 @@ struct CapturaView: View {
         .environment(\.paleta, paleta)
         .tint(paleta.primario.color)
         .onDisappear { dictado.detener() }
+        .onAppear { DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { escribiendo = true } }
+        .confirmationDialog("¿Qué querés cargar?", isPresented: $eligiendoTipo, titleVisibility: .visible) {
+            ForEach([Categoria.tarea, .cita, .proyecto, .idea]) { c in
+                Button(c.nombre) {
+                    cerrar()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { onCargarAMano(c) }
+                }
+            }
+        }
     }
 
     private var vistaCaptura: some View {
@@ -331,6 +380,7 @@ struct CapturaView: View {
             Text(dictado.escuchando ? "Te escucho… podés decir varias cosas juntas." : "Tocá el círculo y hablá, o escribí abajo.")
                 .font(.subheadline).foregroundStyle(paleta.secundario.color)
             TextField("Llamar al banco mañana, el jueves dentista a las 10, idea para el portfolio…", text: $dictado.texto, axis: .vertical)
+                .focused($escribiendo)
                 .lineLimit(3...8)
                 .padding(14)
                 .background(paleta.superficie.color, in: RoundedRectangle(cornerRadius: 16))
@@ -342,7 +392,7 @@ struct CapturaView: View {
             Button("Listo", action: procesar)
                 .buttonStyle(BotonPrimario(paleta: paleta))
                 .disabled(dictado.texto.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            Button("Cargar una tarea a mano, con hora") { dictado.detener(); cerrar(); onEscribirAMano() }
+            Button("Cargar a mano, con todos los campos") { dictado.detener(); eligiendoTipo = true }
                 .font(.subheadline)
                 .foregroundStyle(paleta.secundario.color)
         }
@@ -374,6 +424,7 @@ struct CapturaView: View {
         let texto = dictado.texto.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !texto.isEmpty else { return }
         dictado.detener()
+        let aleman = dictado.textoAleman
         let respaldo = Captura(tipo: "inbox", texto: texto)
         ctx.insert(respaldo)
         Acciones.guardar(ctx)
@@ -384,8 +435,8 @@ struct CapturaView: View {
         estado = .procesando
         Task {
             do {
-                let items = try await ClienteClaude.clasificar(texto)
-                propuestas = Guardado.propuestas(items, tareas: tareas)
+                let items = try await ClienteClaude.clasificar(texto, aleman: aleman)
+                propuestas = await Guardado.corregirLugares(Guardado.propuestas(items, tareas: tareas))
                 ctx.delete(respaldo)
                 Acciones.guardar(ctx)
                 estado = propuestas.isEmpty ? .aviso("No encontré nada para guardar. Quedó en el cajón por las dudas.") : .revision
@@ -506,7 +557,7 @@ struct TarjetaPropuesta: View {
                             HStack {
                                 Text(e.titulo).font(.footnote)
                                 Spacer()
-                                Text(e.fecha.formatted(.dateTime.day().month(.abbreviated).locale(Locale(identifier: "es"))))
+                                Text(Formato.diaCorto(e.fecha.addingTimeInterval(-60)))
                                     .font(.footnote).foregroundStyle(paleta.secundario.color)
                             }
                         }

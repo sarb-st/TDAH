@@ -76,6 +76,7 @@ struct InicioView: View {
     let ahora: Date
     let navegacion: Navegacion
     let captura: CapturaInicio
+    var onAbrir: (Tarea) -> Void = { _ in }
 
     @Environment(\.paleta) private var paleta
     @Environment(\.modelContext) private var ctx
@@ -87,10 +88,18 @@ struct InicioView: View {
             ZStack(alignment: .top) {
                 VStack(spacing: 4) {
                     BarraSuperior(navegacion: navegacion)
-                    Text("Tocá y decí lo que tenés en la cabeza")
-                        .font(.subheadline)
-                        .foregroundStyle(paleta.secundario.color)
-                        .opacity(escuchando || captura.pensando ? 0 : 1)
+                    VStack(spacing: 2) {
+                        Text("Tocá y decí lo que tenés en la cabeza")
+                            .font(.subheadline)
+                            .foregroundStyle(paleta.secundario.color)
+                        Button("o escribilo") { captura.escribiendo = true }
+                            .font(.subheadline.weight(.medium))
+                            .underline()
+                            .foregroundStyle(paleta.primario.color)
+                            .accessibilityLabel("Escribir en vez de dictar")
+                    }
+                    .opacity(escuchando || captura.pensando ? 0 : 1)
+                    .disabled(escuchando || captura.pensando)
                 }
 
                 circulo
@@ -121,7 +130,7 @@ struct InicioView: View {
                             .foregroundStyle(paleta.secundario.color)
                             .padding(.bottom, 24)
                     } else {
-                        Fichero(tareas: tareas, ahora: ahora, onVerTodo: navegacion.lista)
+                        Fichero(tareas: tareas, ahora: ahora, onVerTodo: navegacion.lista, onAbrir: onAbrir)
                             .padding(.horizontal, 14)
                             .padding(.bottom, 10)
                     }
@@ -133,7 +142,10 @@ struct InicioView: View {
     private var circulo: some View {
         let escuchando = captura.dictado.escuchando
         let intensidad = escuchando ? 0.25 : (captura.pensando ? 0.2 : 0)
-        return CirculoQueRespira(halo: escuchando ? paleta.energia : paleta.halo, fondo: paleta.fondo, intensidad: intensidad,
+        // Mientras hay algo en curso, el halo toma un verde suave: un recordatorio sin ruido.
+        let enCurso = tareas.contains { $0.estado == .enCurso }
+        let halo = escuchando ? paleta.energia : (enCurso ? paleta.halo.mezcla(paleta.energia, 0.55) : paleta.halo)
+        return CirculoQueRespira(halo: halo, fondo: paleta.fondo, intensidad: intensidad,
                                  voz: escuchando ? captura.dictado.nivel : 0) {
             Group {
                 if captura.pensando {
@@ -168,6 +180,7 @@ struct Fichero: View {
     let tareas: [Tarea]
     let ahora: Date
     var onVerTodo: () -> Void
+    var onAbrir: (Tarea) -> Void = { _ in }
 
     @Environment(\.paleta) private var paleta
     @State private var abierto = false
@@ -182,14 +195,33 @@ struct Fichero: View {
                     .scaleEffect(x: abierto ? 1 : 1 - 0.03 * CGFloat(i), y: 1, anchor: .top)
                     .opacity(i == 0 || abierto ? 1 : 0.9)
                     .zIndex(Double(3 - i))
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        // Lo que está pasando ahora (una tarea en curso o una cita) se abre directo.
+                        if abierto || (i == 0 && FichaInicio.directa(t, ahora: ahora)) {
+                            onAbrir(t)
+                        } else {
+                            withAnimation(.spring(duration: 0.4, bounce: 0.15)) { abierto = true }
+                        }
+                    }
             }
             if abierto {
-                Button { abierto = false; onVerTodo() } label: {
-                    Label("Ver todo", systemImage: "rectangle.stack")
-                        .font(.subheadline.weight(.semibold))
-                        .padding(.horizontal, 18).padding(.vertical, 9)
-                        .background(paleta.superficie.color, in: Capsule())
-                        .overlay(Capsule().stroke(paleta.linea.color))
+                HStack(spacing: 10) {
+                    Button { abierto = false; onVerTodo() } label: {
+                        Label("Ver todo", systemImage: "rectangle.stack")
+                            .font(.subheadline.weight(.semibold))
+                            .padding(.horizontal, 18).padding(.vertical, 9)
+                            .background(paleta.superficie.color, in: Capsule())
+                            .overlay(Capsule().stroke(paleta.linea.color))
+                    }
+                    Button { withAnimation(.spring(duration: 0.4)) { abierto = false } } label: {
+                        Image(systemName: "chevron.down")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(width: 38, height: 38)
+                            .background(paleta.superficie.color, in: Circle())
+                            .overlay(Circle().stroke(paleta.linea.color))
+                    }
+                    .accessibilityLabel("Cerrar")
                 }
                 .foregroundStyle(paleta.primario.color)
                 .padding(.top, 4)
@@ -197,15 +229,13 @@ struct Fichero: View {
             }
         }
         .shadow(color: .black.opacity(0.06), radius: 8, y: -2)
-        .contentShape(Rectangle())
-        .onTapGesture { withAnimation(.spring(duration: 0.4, bounce: 0.15)) { abierto.toggle() } }
         .task(id: abierto) {
             guard abierto else { return }
             try? await Task.sleep(for: .seconds(8))
             if !Task.isCancelled { withAnimation(.spring(duration: 0.4)) { abierto = false } }
         }
         .accessibilityElement(children: .contain)
-        .accessibilityHint(abierto ? "Tocá para cerrar" : "Tocá para ver las próximas")
+        .accessibilityHint(abierto ? "Tocá una tarjeta para abrirla" : "Tocá para ver las próximas")
     }
 }
 
@@ -216,23 +246,36 @@ struct FichaInicio: View {
     var primera = false
     @Environment(\.paleta) private var paleta
 
+    /// Lo que está pasando ahora se abre directo al tocarlo: una tarea en curso o una cita que ya empezó.
+    static func directa(_ t: Tarea, ahora: Date) -> Bool { t.estado == .enCurso || (t.esCita && t.inicio <= ahora) }
+
     var body: some View {
         let t = tarea
         // Para una cita con viaje, la cuenta regresiva es hasta la hora de salir.
         let objetivo = t.salida ?? t.inicio
+        let enCurso = t.estado == .enCurso
         let empezo = t.esCita && t.inicio <= ahora
-        let detalle = t.esCita && t.salida != nil
-            ? "\(Formato.diaYHora(t.inicio, ahora: ahora)) · salí \(Formato.hora(objetivo)) (\(t.minutosViaje) min de viaje)"
-            : "\(Formato.diaYHora(t.inicio, ahora: ahora)) · \(Formato.minutos(t.duracionMinutos))"
+        let finCita = t.inicio.addingTimeInterval(Double(t.duracionMinutos) * 60)
+        let detalle = enCurso
+            ? "Empezaste \(Formato.hora(t.inicioReal ?? t.inicio)) · tocá para ver los pasos"
+            : (t.esCita && t.salida != nil
+                ? "\(Formato.diaYHora(t.inicio, ahora: ahora)) · salí \(Formato.hora(objetivo)) (\(t.minutosViaje) min de viaje)"
+                : "\(Formato.diaYHora(t.inicio, ahora: ahora)) · \(Formato.minutos(t.duracionMinutos))")
+        let etiqueta = enCurso ? "en curso" : (empezo ? "ahora" : (primera ? "lo próximo" : nil))
         TarjetaBanda(categoria: t.categoria, paleta: paleta) {
             VStack(alignment: .leading, spacing: 3) {
-                EtiquetaCategoria(categoria: t.categoria, paleta: paleta, extra: t.proyecto?.titulo ?? (primera ? "lo próximo" : nil))
+                EtiquetaCategoria(categoria: t.categoria, paleta: paleta,
+                                  extra: [t.proyecto?.titulo, etiqueta].compactMap { $0 }.joined(separator: " · ").nilSiVacio)
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(t.titulo).font(.serif(19, relativoA: .headline)).lineLimit(2)
                     Spacer(minLength: 4)
                     VStack(alignment: .trailing, spacing: 0) {
-                        if empezo {
-                            Text("ahora").font(.serif(18, relativoA: .headline))
+                        if enCurso {
+                            Text(Formato.cuenta(Int((t.finPrevisto ?? ahora).timeIntervalSince(ahora)))).font(.serif(18, relativoA: .headline)).monospacedDigit()
+                            Text("quedan").font(.caption2).foregroundStyle(paleta.secundario.color)
+                        } else if empezo {
+                            Text(Formato.cuenta(Int(finCita.timeIntervalSince(ahora)))).font(.serif(18, relativoA: .headline)).monospacedDigit()
+                            Text("para que termine").font(.caption2).foregroundStyle(paleta.secundario.color)
                         } else {
                             Text(Formato.cuenta(Int(objetivo.timeIntervalSince(ahora)))).font(.serif(18, relativoA: .headline)).monospacedDigit()
                             Text(t.salida != nil ? "para salir" : "para empezar").font(.caption2).foregroundStyle(paleta.secundario.color)
@@ -247,7 +290,91 @@ struct FichaInicio: View {
                 }
             }
         }
+        .overlay {
+            if enCurso { RoundedRectangle(cornerRadius: 18).stroke(paleta.energia.color, lineWidth: 2) }
+        }
         .accessibilityElement(children: .combine)
+    }
+}
+
+extension String {
+    var nilSiVacio: String? { isEmpty ? nil : self }
+}
+
+// MARK: - Hojas que se abren desde el fichero
+
+/// Lo que se abre al tocar una tarjeta: la tarea en curso (cuenta y pasos), una cita (cuánto falta) o el detalle.
+struct HojaTarea: View {
+    let tarea: Tarea
+    let paleta: Paleta
+    var onTermine: (Tarea) -> Void
+
+    @Environment(\.dismiss) private var cerrar
+
+    var body: some View {
+        Group {
+            if tarea.estado == .enCurso {
+                TimelineView(.periodic(from: .now, by: 1)) { linea in
+                    let sigue = (tarea.finPrevisto ?? .distantFuture) > linea.date
+                    EnCursoView(tarea: tarea, ahora: linea.date) {
+                        let t = tarea
+                        cerrar()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { onTermine(t) }
+                    }
+                    // Cuando se cumple el tiempo, la pantalla principal pregunta "¿Cómo seguimos?".
+                    .onChange(of: sigue) { _, s in if !s { cerrar() } }
+                }
+            } else if tarea.esCita {
+                TimelineView(.periodic(from: .now, by: 1)) { linea in
+                    HojaCita(tarea: tarea, ahora: linea.date)
+                }
+            } else {
+                NavigationStack { DetalleTareaView(tarea: tarea, paleta: paleta) }
+            }
+        }
+        .environment(\.paleta, paleta)
+        .foregroundStyle(paleta.texto.color)
+        .tint(paleta.primario.color)
+        .background(paleta.fondo.color.ignoresSafeArea())
+        .presentationDragIndicator(.visible)
+    }
+}
+
+/// Una cita abierta: cuánto falta para salir o para que empiece, o cuánto queda si ya empezó; lugar y notas.
+struct HojaCita: View {
+    let tarea: Tarea
+    let ahora: Date
+    @Environment(\.paleta) private var paleta
+    @Environment(\.openURL) private var abrir
+    @ScaledMetric(relativeTo: .largeTitle) private var tamanoNumero: CGFloat = 46
+
+    var body: some View {
+        let t = tarea
+        let fin = t.inicio.addingTimeInterval(Double(t.duracionMinutos) * 60)
+        let empezo = t.inicio <= ahora
+        let objetivo = empezo ? fin : (t.salida.map { $0 > ahora ? $0 : t.inicio } ?? t.inicio)
+        let leyenda = empezo ? "para que termine" : (t.salida.map { $0 > ahora } == true ? "para salir" : "para que empiece")
+        LienzoCirculo {
+            VStack(alignment: .leading, spacing: 0) {
+                Encabezado(etiqueta: empezo ? "Cita · ahora" : "Cita", titulo: t.titulo,
+                           detalle: "\(Formato.hora(t.inicio)) a \(Formato.hora(fin))")
+                NotasTarea(tarea: t)
+            }
+        } centro: {
+            CirculoQueRespira(halo: paleta.halo.mezcla(Categoria.cita.rgb, 0.4), fondo: paleta.fondo) {
+                VStack(spacing: 2) {
+                    let segundos = Int(objetivo.timeIntervalSince(ahora))
+                    Text(Formato.cuenta(segundos)).font(.numero(segundos >= 3600 ? tamanoNumero * 0.7 : tamanoNumero)).monospacedDigit()
+                    Text(leyenda).font(.footnote).foregroundStyle(paleta.secundario.color)
+                }
+            }
+            .accessibilityElement(children: .combine)
+        } abajo: {
+            if let url = t.mapa {
+                Button { abrir(url) } label: { Label("Abrir en Mapas", systemImage: "map") }
+                    .buttonStyle(BotonPrimario(paleta: paleta))
+            }
+        }
     }
 }
 
@@ -797,17 +924,48 @@ enum Transicion: Equatable {
     case movida
 }
 
-/// Unos segundos de celebración al terminar: el halo respira grande en verde energía y crece un brote.
+/// Al terminar: primero la pantalla entera en verde con un mensaje que va cambiando ("¡Bien ahí!"),
+/// después unos segundos de celebración con el halo grande en verde energía y un brote que crece.
 struct CelebracionView: View {
     let titulo: String
     let minutos: Int
     let hoy: Int
     let total: Int
 
+    static let mensajes = ["¡Bien ahí!", "¡Eso!", "¡Buena, crack!", "¡Vamos!", "¡Bien metida!"]
+    static let segundosMensaje = 1.6
+
     @Environment(\.paleta) private var paleta
     @State private var aparecer = false
+    @State private var enVerde = true
+    @State private var mensaje = CelebracionView.mensajes.randomElement() ?? "¡Bien ahí!"
+    @State private var escalaMensaje = 0.94
 
     var body: some View {
+        ZStack {
+            celebracion
+            if enVerde {
+                ZStack {
+                    paleta.energia.color.ignoresSafeArea()
+                    Text(mensaje)
+                        .font(.serif(48, relativoA: .largeTitle))
+                        .foregroundStyle(Paleta.blancoCalido.color)
+                        .multilineTextAlignment(.center)
+                        .scaleEffect(escalaMensaje)
+                }
+                .transition(.opacity)
+            }
+        }
+        .onAppear {
+            withAnimation(.spring(duration: 0.6, bounce: 0.35)) { escalaMensaje = 1 }
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.segundosMensaje) {
+                withAnimation(.easeInOut(duration: 0.6)) { enVerde = false }
+                withAnimation(.spring(duration: 0.9, bounce: 0.3).delay(0.3)) { aparecer = true }
+            }
+        }
+    }
+
+    private var celebracion: some View {
         GeometryReader { geo in
             ZStack {
                 paleta.fondo.color.ignoresSafeArea()
@@ -832,19 +990,23 @@ struct CelebracionView: View {
                 .position(x: geo.size.width / 2, y: geo.size.height * 0.17)
             }
         }
-        .onAppear { withAnimation(.spring(duration: 0.9, bounce: 0.3).delay(0.15)) { aparecer = true } }
     }
 }
 
-/// "Está bien, lo movemos." solo y grande sobre la salvia de "Ahora no", antes de preguntar cuándo.
+/// "Está bien, lo movemos." (u otro texto con la misma calidez) solo y grande sobre la salvia de "Ahora no",
+/// antes de preguntar cuándo.
 struct MovidaView: View {
+    static let mensajes = ["Está bien,\nlo movemos.", "Tranqui, buscamos\notro momento.", "No pasa nada,\nreagendamos.",
+                           "Todo bien, va\npara más tarde.", "Dale,\nlo acomodamos."]
+
     @Environment(\.paleta) private var paleta
     @State private var aparecer = false
+    @State private var mensaje = MovidaView.mensajes.randomElement() ?? "Está bien,\nlo movemos."
 
     var body: some View {
         ZStack {
             paleta.ahoraNo.color.ignoresSafeArea()
-            Text("Está bien,\nlo movemos.")
+            Text(mensaje)
                 .font(.serifItalica(40, relativoA: .largeTitle))
                 .foregroundStyle(Paleta.blancoCalido.color)
                 .multilineTextAlignment(.center)
