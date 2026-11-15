@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maqueta C · Proyectos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,400&display=swap" rel="stylesheet">
+<style>
+/* Layout: teléfono de muestra a la izquierda (arriba en el celular) y variantes a la derecha (abajo). */
+:root {
+  --bg: #F5F2EB; --surface: #FFFFFF; --ink: #2C2A25; --muted: #6F6A60; --line: #E2DBCF; --accent: #4E6B55;
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-body: -apple-system, "SF Pro Text", system-ui, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #161917; --surface: #1F2420; --ink: #E9EBE4; --muted: #A2A99F; --line: #333B35; --accent: #9DBBA4; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #161917; --surface: #1F2420; --ink: #E9EBE4; --muted: #A2A99F; --line: #333B35; --accent: #9DBBA4; color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.5; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 28px 16px 64px; display: grid; gap: 24px; }
+.intro h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(30px, 6vw, 40px); line-height: 1.1; margin: 0 0 8px; }
+.intro p { margin: 0; color: var(--muted); max-width: 64ch; }
+.layout { display: grid; grid-template-columns: minmax(300px, 360px) 1fr; gap: 36px; align-items: start; }
+.left { position: sticky; top: 16px; display: grid; gap: 12px; justify-items: center; }
+@media (max-width: 760px) { .layout { grid-template-columns: 1fr; } .left { position: static; } }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.tabs button { font: inherit; font-size: 14px; padding: 7px 12px; min-height: 36px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.tabs button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.note { font-size: 14px; color: var(--muted); text-align: center; max-width: 36ch; min-height: 42px; }
+button:focus-visible, .chips input:focus-visible + label { outline: 3px solid var(--accent); outline-offset: 2px; }
+.side { display: grid; gap: 22px; }
+fieldset { border: 0; margin: 0; padding: 0 0 20px; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
+legend { font-family: var(--font-display); font-size: 21px; padding: 0; }
+.help { font-size: 14px; color: var(--muted); margin: -4px 0 2px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips input { position: absolute; opacity: 0; pointer-events: none; }
+.chips label { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-size: 15px; }
+.chips input:checked + label { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.chips input:checked + label::before { content: "✓"; color: var(--accent); font-weight: 700; }
+.save { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 12px; }
+.save h2 { font-family: var(--font-display); font-weight: 400; font-size: 22px; margin: 0; }
+.save textarea { font: inherit; width: 100%; min-height: 100px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 10px; }
+.save label { font-size: 14px; color: var(--muted); }
+.primary { font: inherit; font-weight: 600; font-size: 16px; padding: 14px; border-radius: 12px; border: 0; background: var(--accent); color: var(--bg); cursor: pointer; min-height: 48px; }
+.status-msg { font-size: 14px; color: var(--muted); min-height: 21px; }
+.summary { font-size: 13px; color: var(--muted); white-space: pre-wrap; background: var(--bg); border-radius: 10px; padding: 10px; margin: 0; }
+
+/* ---------- Teléfono ---------- */
+.phone { width: min(340px, 100%); aspect-ratio: 9 / 19.3; border-radius: 48px; padding: 10px; background: #111; box-shadow: 0 20px 44px rgba(30,30,20,.22); }
+.screen { --s-bg: #F1F0E9; --s-surface: #FBF8F1; --s-ink: #35302A; --s-muted: #7B746A; --s-primary: #4E6B55; --s-line: #DAD1C2; --s-halo: #ABC3A6;
+  --c-tarea: #7FA383; --c-cita: #C9A35E; --c-proy: #8EA3B8; --c-proy-txt: #5B6F84;
+  height: 100%; border-radius: 39px; overflow: hidden; position: relative; background: var(--s-bg); color: var(--s-ink); user-select: none; -webkit-user-select: none; }
+.sbar { position: absolute; top: 14px; left: 32px; right: 30px; display: flex; justify-content: space-between; font: 600 14px -apple-system, system-ui, sans-serif; z-index: 9; }
+.view { position: absolute; inset: 0; display: none; padding: 50px 16px 20px; overflow-y: auto; scrollbar-width: none; }
+.view::-webkit-scrollbar { display: none; }
+.view.on { display: block; }
+.serif { font-family: var(--font-display); font-weight: 400; }
+.titulo { font-family: var(--font-display); font-size: 26px; margin: 6px 0 10px; line-height: 1.1; }
+.volver { font-size: 14px; color: var(--s-primary); cursor: pointer; display: inline-block; margin-bottom: 4px; }
+.ic { width: 40px; height: 40px; display: grid; place-items: center; color: var(--s-primary); }
+.cat { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--c-proy-txt); }
+.cat.t { color: #557A5A; } .cat.c { color: #8E6F35; }
+
+/* Tarjetas (estilo elegido en B: banda + categoría escrita en color) */
+.ficha { background: var(--s-surface); border: 1px solid var(--s-line); border-radius: 16px; padding: 11px 13px 11px 18px; display: grid; gap: 1px; position: relative; overflow: hidden; }
+.ficha::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--cat, var(--c-proy)); }
+.ficha .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.ficha b { font-family: var(--font-display); font-weight: 400; font-size: 17px; }
+.ficha small { color: var(--s-muted); font-size: 12.5px; }
+.ficha .hora { font-family: var(--font-display); font-size: 16px; }
+.lista { display: grid; gap: 8px; }
+.grupo { font-family: var(--font-display); font-size: 19px; color: var(--s-primary); margin: 12px 0 6px; }
+
+/* Barra de tiempo del proyecto: inicio → fin, con hoy y las etapas */
+.tiempo { margin-top: 8px; }
+.tiempo .pista { position: relative; height: 6px; border-radius: 3px; background: var(--s-line); }
+.tiempo .pista .hecho { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--c-proy); }
+.tiempo .pista .corte { position: absolute; top: -2px; width: 2px; height: 10px; background: var(--s-surface); }
+.tiempo .pista .hoy { position: absolute; top: -4px; width: 3px; height: 14px; border-radius: 2px; background: var(--s-ink); }
+.tiempo .fechas { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--s-muted); margin-top: 4px; }
+
+/* Pestañas del listado (de la B) */
+.pest { display: flex; gap: 4px; background: var(--s-surface); border-radius: 12px; padding: 3px; margin-bottom: 12px; }
+.pest span { flex: 1; text-align: center; font-size: 13px; padding: 7px 0; border-radius: 9px; }
+.pest span.on { background: var(--s-primary); color: var(--s-bg); }
+
+/* Carpeta: tres formas de mostrar el proyecto como una sola tarjeta */
+.carpeta { position: relative; cursor: pointer; margin-top: 4px; }
+.screen[data-forma="carpeta"] .carpeta { margin-top: 18px; }
+.screen[data-forma="carpeta"] .carpeta .ficha { border-top-left-radius: 0; }
+.screen[data-forma="carpeta"] .carpeta::before { content: attr(data-etapas); position: absolute; left: 0; top: -17px; height: 18px; padding: 0 12px 0 14px; border: 1px solid var(--s-line); border-bottom: 0;
+  border-radius: 10px 10px 0 0; background: var(--s-surface); font-size: 10.5px; color: var(--s-muted); line-height: 18px; }
+.screen[data-forma="pila"] .carpeta { margin-bottom: 10px; }
+.screen[data-forma="pila"] .carpeta::before, .screen[data-forma="pila"] .carpeta::after { content: ""; position: absolute; left: 10px; right: 10px; height: 14px; bottom: -6px; border-radius: 0 0 14px 14px; background: var(--s-surface); border: 1px solid var(--s-line); border-top: 0; z-index: 0; }
+.screen[data-forma="pila"] .carpeta::after { left: 20px; right: 20px; bottom: -11px; opacity: .7; }
+.carpeta .ficha { z-index: 1; }
+.carpeta .prox { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--s-line); font-size: 13px; display: flex; justify-content: space-between; }
+.carpeta .prox span:first-child { color: var(--s-muted); }
+
+/* Dentro del proyecto */
+.etapa { background: var(--s-surface); border: 1px solid var(--s-line); border-radius: 16px; margin-bottom: 8px; overflow: hidden; touch-action: pan-y; }
+.etapa .cab { display: flex; align-items: center; gap: 8px; padding: 10px 10px 10px 12px; cursor: pointer; }
+.etapa .cab .nom { flex: 1; }
+.etapa .cab .nom b { font-family: var(--font-display); font-weight: 400; font-size: 17px; display: block; line-height: 1.2; }
+.etapa .cab .nom small { color: var(--s-muted); font-size: 12px; }
+.etapa .num { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; border: 1.5px solid var(--c-proy); color: var(--c-proy-txt); flex: none; }
+.etapa.hecha .num { background: var(--c-proy); color: #fff; }
+.etapa.hecha .nom b { color: var(--s-muted); }
+.etapa.actual { border-color: var(--c-proy); box-shadow: inset 0 0 0 1px var(--c-proy); }
+.etapa .cuerpo { display: none; padding: 0 10px 10px 12px; }
+.etapa.abierta .cuerpo { display: block; }
+.ses { display: flex; align-items: center; gap: 8px; padding: 8px 4px 8px 0; border-top: 1px solid var(--s-line); background: var(--s-surface); }
+.ses .h { width: 62px; font-family: var(--font-display); font-size: 14px; color: var(--s-muted); line-height: 1.15; flex: none; }
+.ses .t { flex: 1; font-size: 14.5px; }
+.ses .t small { display: block; color: var(--s-muted); font-size: 11.5px; }
+.ses.hecha .t { text-decoration: line-through; color: var(--s-muted); }
+.ses.hoy .h { color: var(--s-primary); font-weight: 600; }
+.manija { width: 30px; height: 30px; display: grid; place-items: center; color: var(--s-muted); cursor: grab; touch-action: none; flex: none; }
+.screen[data-mover="apretar"] .manija { display: none; }
+.arrastrando { opacity: .95; box-shadow: 0 8px 22px rgba(40,40,30,.22); position: relative; z-index: 5; transform: scale(1.02); }
+.espera { font-size: 12.5px; color: var(--s-muted); font-style: italic; padding: 6px 0 2px; }
+.mas { font-size: 13px; color: var(--s-primary); padding-top: 8px; cursor: pointer; }
+.aviso { position: absolute; left: 16px; right: 16px; bottom: 20px; background: var(--s-ink); color: var(--s-bg); font-size: 13px; padding: 10px 14px; border-radius: 12px; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 8; }
+.aviso.on { opacity: .94; }
+
+/* Plan como línea de tiempo */
+.linea { display: none; margin: 4px 0 12px; }
+.screen[data-plan="linea"] .linea { display: block; }
+.screen[data-plan="linea"] .etapa:not(.elegida) { display: none; }
+.screen[data-plan="linea"] .etapa .cuerpo { display: block; }
+.screen[data-plan="linea"] .etapa .manija.de-etapa { display: none; }
+.linea .segs { display: flex; gap: 3px; }
+.linea .seg { height: 34px; border-radius: 8px; background: color-mix(in srgb, var(--c-proy) 22%, var(--s-surface)); border: 1px solid var(--s-line); font-size: 11px; display: grid; place-items: center; cursor: pointer; overflow: hidden; white-space: nowrap; padding: 0 4px; }
+.linea .seg.hecha { background: var(--c-proy); color: #fff; border-color: var(--c-proy); }
+.linea .seg.elegida { box-shadow: inset 0 0 0 2px var(--c-proy-txt); }
+.linea .hoyl { position: relative; height: 12px; }
+.linea .hoyl i { position: absolute; top: 2px; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 7px solid var(--s-ink); transform: translateX(-5px); }
+
+/* Nuevo proyecto */
+.campo { background: var(--s-surface); border: 1px solid var(--s-line); border-radius: 14px; padding: 10px 12px; margin-bottom: 8px; }
+.campo small { display: block; font-size: 11.5px; color: var(--s-muted); }
+.campo .val { font-family: var(--font-display); font-size: 18px; }
+.dos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.screen[data-fechas="rango"] .dos .campo { cursor: default; }
+.mes { display: none; background: var(--s-surface); border: 1px solid var(--s-line); border-radius: 14px; padding: 10px; margin-bottom: 8px; }
+.screen[data-fechas="rango"] .mes { display: block; }
+.mes .mt { display: flex; justify-content: space-between; font-family: var(--font-display); font-size: 15px; margin-bottom: 6px; }
+.mes .g { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px 0; text-align: center; font-size: 12.5px; }
+.mes .g .d { height: 28px; display: grid; place-items: center; cursor: pointer; }
+.mes .g .d.en { background: color-mix(in srgb, var(--c-proy) 28%, transparent); }
+.mes .g .d.ini, .mes .g .d.fin { background: var(--c-proy); color: #fff; }
+.mes .g .d.ini { border-radius: 14px 0 0 14px; } .mes .g .d.fin { border-radius: 0 14px 14px 0; }
+.mes .g .d.ini.fin { border-radius: 14px; }
+.mes .g .d.hoyd { font-weight: 700; text-decoration: underline; }
+.mes .g .w { color: var(--s-muted); font-size: 11px; }
+.btn { display: block; width: 100%; font: inherit; font-size: 15px; font-weight: 600; padding: 12px; border-radius: 14px; border: 0; background: var(--s-primary); color: var(--s-bg); cursor: pointer; margin-top: 6px; }
+.btn.sec { background: transparent; color: var(--s-primary); border: 1px solid var(--s-line); font-weight: 500; }
+.propuesta { display: none; }
+.propuesta.on { display: block; }
+.prop-et { display: flex; align-items: center; gap: 8px; background: var(--s-surface); border: 1px solid var(--s-line); border-radius: 12px; padding: 8px 6px 8px 12px; margin-bottom: 6px; }
+.prop-et .nom { flex: 1; font-size: 14.5px; }
+.prop-et .nom small { display: block; color: var(--s-muted); font-size: 11.5px; }
+.pensar { font-size: 13px; color: var(--s-muted); text-align: center; padding: 10px; display: none; }
+
+/* Inicio con una sesión de proyecto */
+.circulo { position: absolute; left: 50%; top: 46%; width: 168px; height: 168px; margin: -84px 0 0 -84px; border-radius: 50%; display: grid; place-items: center;
+  background: radial-gradient(circle, var(--s-bg) 0 58%, var(--s-halo) 60%, rgba(171,195,166,.5) 72%, rgba(171,195,166,0) 100%); animation: respira 6s ease-in-out infinite; }
+@keyframes respira { 0%,100% { transform: scale(1.42); } 50% { transform: scale(1.6); } }
+.circulo svg { transform: scale(.67); }
+.top { display: flex; align-items: center; }
+.top .grow { flex: 1; }
+.hint { text-align: center; font-size: 14px; color: var(--s-muted); margin-top: 6px; }
+.fichero { position: absolute; left: 14px; right: 14px; bottom: 22px; }
+.fichero .ficha { position: absolute; left: 0; right: 0; bottom: 0; }
+.fichero .ficha:nth-child(1) { z-index: 3; transform: translateY(-16px); }
+.fichero .ficha:nth-child(2) { z-index: 2; transform: translateY(-8px) scale(.97); }
+.fichero .ficha:nth-child(3) { z-index: 1; transform: scale(.94); }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="intro">
+    <h1>Maqueta C · Proyectos</h1>
+    <p>El proyecto es una sola tarjeta, como una carpeta: adentro están las etapas y las sesiones. Tocá la tarjeta en “Listado” para abrirla, probá mover etapas y sesiones, y armá un proyecto nuevo con fecha de inicio y de fin.</p>
+  </header>
+
+  <div class="layout">
+    <div class="left">
+      <div class="tabs" role="group" aria-label="Pantalla">
+        <button type="button" data-view="lista" aria-pressed="true">Listado</button>
+        <button type="button" data-view="proyecto" aria-pressed="false">Dentro</button>
+        <button type="button" data-view="nuevo" aria-pressed="false">Nuevo</button>
+        <button type="button" data-view="inicio" aria-pressed="false">Inicio</button>
+      </div>
+      <div class="phone"><div class="screen" id="screen">
+        <div class="sbar"><span>9:30</span><span>▮▮▮</span></div>
+
+        <!-- LISTADO: pestaña Proyectos -->
+        <section class="view on" data-view="lista">
+          <div class="pest"><span>Hoy</span><span>Tareas</span><span>Citas</span><span class="on">Proyectos</span></div>
+          <div class="carpeta" data-ir="proyecto" data-etapas="Etapa 2 de 4">
+            <div class="ficha">
+              <span class="cat">Proyecto</span>
+              <div class="row"><b>Mudanza</b><small>faltan 22 días</small></div>
+              <small>Ahora: Embalar</small>
+              <div class="tiempo" id="tiempoLista"></div>
+              <div class="prox"><span>Próxima sesión</span><span>Embalar la cocina · hoy 12:30</span></div>
+            </div>
+          </div>
+          <div class="carpeta" data-etapas="Etapa 1 de 3">
+            <div class="ficha">
+              <span class="cat">Proyecto</span>
+              <div class="row"><b>Portfolio nuevo</b><small>faltan 45 días</small></div>
+              <small>Ahora: Elegir los proyectos</small>
+              <div class="tiempo" id="tiempoLista2"></div>
+              <div class="prox"><span>Próxima sesión</span><span>Elegir 6 proyectos · mar 10:00</span></div>
+            </div>
+          </div>
+          <button class="btn sec" type="button" data-ir="nuevo" style="margin-top:14px">+ Nuevo proyecto</button>
+        </section>
+
+        <!-- DENTRO DEL PROYECTO -->
+        <section class="view" data-view="proyecto">
+          <span class="volver" data-ir="lista">‹ Proyectos</span>
+          <span class="cat" style="display:block">Proyecto</span>
+          <div class="titulo">Mudanza</div>
+          <div class="tiempo" id="tiempoDentro"></div>
+          <div class="linea" id="linea"></div>
+          <div class="grupo" style="margin-top:14px">Etapas</div>
+          <div id="etapas"></div>
+          <div class="aviso" id="aviso"></div>
+        </section>
+
+        <!-- NUEVO PROYECTO -->
+        <section class="view" data-view="nuevo">
+          <span class="volver" data-ir="lista">‹ Proyectos</span>
+          <div class="titulo">Nuevo proyecto</div>
+          <div class="campo"><small>Nombre</small><div class="val">Viaje a Lisboa</div></div>
+          <div class="dos">
+            <div class="campo"><small>Empieza</small><div class="val" id="vIni">lun 17 nov</div></div>
+            <div class="campo"><small>Termina</small><div class="val" id="vFin">vie 12 dic</div></div>
+          </div>
+          <div class="mes" id="mes"></div>
+          <button class="btn" type="button" id="proponer">✦ Que Claude proponga las etapas</button>
+          <div class="pensar" id="pensar">Repartiendo las etapas entre las dos fechas…</div>
+          <div class="propuesta" id="propuesta">
+            <div class="grupo">Etapas propuestas</div>
+            <div id="propLista"></div>
+            <div class="mas">+ Agregar etapa</div>
+            <button class="btn" type="button" data-ir="proyecto">Crear proyecto</button>
+          </div>
+        </section>
+
+        <!-- INICIO con sesión de proyecto -->
+        <section class="view" data-view="inicio">
+          <div class="top">
+            <span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="7" width="16" height="12" rx="2"/><path d="M6 4h12"/></svg></span>
+            <span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></span>
+            <span class="grow"></span>
+            <span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1.5 2.5h5L16 13h5"/></svg></span>
+            <span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span>
+          </div>
+          <div class="hint">Tocá y decí lo que tenés en la cabeza</div>
+          <div class="circulo"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4E6B55" stroke-width="1.5" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/></svg></div>
+          <div class="fichero">
+            <div class="ficha" style="--cat:var(--c-proy)">
+              <span class="cat">Proyecto · Mudanza</span>
+              <div class="row"><b>Embalar la cocina</b><span class="hora">12:30</span></div>
+              <small>Comienza en 3:00 h · 60 min</small>
+              <div class="tiempo" id="tiempoInicio"></div>
+            </div>
+            <div class="ficha" style="--cat:var(--c-tarea)"><span class="cat t">Tarea</span><div class="row"><b>Llamar al banco</b><span class="hora">15:00</span></div><small>20 min</small></div>
+            <div class="ficha" style="--cat:var(--c-cita)"><span class="cat c">Cita</span><div class="row"><b>Reunión con el estudio</b><span class="hora">18:00</span></div><small>60 min</small></div>
+          </div>
+        </section>
+      </div></div>
+      <div class="note" id="note"></div>
+    </div>
+
+    <div class="side">
+      <fieldset><legend>Cómo se ve el proyecto en el listado</legend>
+        <p class="help">Siempre una sola tarjeta por proyecto, con la barra de tiempo y la próxima sesión.</p>
+        <div class="chips">
+          <input type="radio" name="forma" id="f1" value="carpeta"><label for="f1">Carpeta con solapa</label>
+          <input type="radio" name="forma" id="f2" value="pila"><label for="f2">Tarjetas apiladas</label>
+          <input type="radio" name="forma" id="f3" value="lisa"><label for="f3">Tarjeta lisa</label>
+        </div></fieldset>
+      <fieldset><legend>Cómo se ve el plan adentro</legend>
+        <div class="chips">
+          <input type="radio" name="plan" id="p1" value="etapas"><label for="p1">Lista de etapas que se abren</label>
+          <input type="radio" name="plan" id="p2" value="linea"><label for="p2">Línea de tiempo arriba</label>
+        </div></fieldset>
+      <fieldset><legend>Cómo se reordena</legend>
+        <p class="help">Al mover una sesión, toma el turno del lugar al que va. Al mover una etapa, las fechas se reparten de nuevo.</p>
+        <div class="chips">
+          <input type="radio" name="mover" id="m1" value="manijas"><label for="m1">Manijas ≡ siempre visibles</label>
+          <input type="radio" name="mover" id="m2" value="apretar"><label for="m2">Mantener apretado y arrastrar</label>
+        </div></fieldset>
+      <fieldset><legend>Cómo se eligen las fechas al crear</legend>
+        <div class="chips">
+          <input type="radio" name="fechas" id="d1" value="campos"><label for="d1">Dos campos: empieza y termina</label>
+          <input type="radio" name="fechas" id="d2" value="rango"><label for="d2">Marcar el rango en un calendario</label>
+        </div></fieldset>
+
+      <section class="save">
+        <h2>Mi elección</h2>
+        <pre class="summary" id="summary"></pre>
+        <label for="nota">Comentarios sobre esta maqueta</label>
+        <textarea id="nota" placeholder="Lo que cambiarías, lo que falta…"></textarea>
+        <button class="primary" type="button" id="saveBtn">Guardar</button>
+        <div class="status-msg" id="saveMsg" role="status"></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script>
+const S = { forma: "carpeta", plan: "etapas", mover: "manijas", fechas: "campos" };
+const NOMBRES = { forma: { carpeta: "carpeta con solapa", pila: "tarjetas apiladas", lisa: "tarjeta lisa" }, plan: { etapas: "lista de etapas que se abren", linea: "línea de tiempo arriba" },
+  mover: { manijas: "manijas siempre visibles", apretar: "mantener apretado y arrastrar" }, fechas: { campos: "dos campos", rango: "rango en un calendario" } };
+const NOTES = { lista: "Cada proyecto es una sola tarjeta. Tocá “Mudanza” para abrir la carpeta.",
+  proyecto: "Solo la etapa actual muestra sus sesiones; las siguientes se desglosan cuando llegues. Probá arrastrar.",
+  nuevo: "Ponés nombre, inicio y fin; Claude reparte las etapas entre esas fechas y vos las editás o reordenás.",
+  inicio: "En Inicio la sesión de proyecto es una tarjeta más, con el nombre del proyecto y su barra." };
+
+const screen = document.getElementById("screen");
+const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const DIAS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
+const HOY = new Date(2026, 10, 15);
+const fecha = d => `${d.getDate()} ${MESES[d.getMonth()]}`;
+const fechaL = d => `${DIAS[d.getDay()]} ${d.getDate()} ${MESES[d.getMonth()]}`;
+const sumar = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const dif = (a, b) => Math.round((b - a) / 864e5);
+
+/* Proyecto de muestra */
+const P = { ini: new Date(2026, 10, 3), fin: new Date(2026, 11, 7) };
+let ETAPAS = [
+  { id: "e1", n: "Decidir y avisar", dias: 7, hecha: true, ses: [] },
+  { id: "e2", n: "Embalar", dias: 14, actual: true, ses: [
+    { id: "s1", t: "Conseguir cajas", d: 30, hecha: true },
+    { id: "s2", t: "Embalar la cocina", d: 60 },
+    { id: "s3", t: "Embalar los libros", d: 45 },
+    { id: "s4", t: "Embalar la ropa", d: 60 } ] },
+  { id: "e3", n: "Trámites y servicios", dias: 7, ses: [] },
+  { id: "e4", n: "Mudarse e instalarse", dias: 7, ses: [] }
+];
+// Los turnos quedan fijos en su lugar: al mover una sesión, toma el turno al que va.
+const TURNOS = [{ h: "jue 13", m: "Hecha" }, { h: "Hoy", m: "12:30" }, { h: "lun 17", m: "18:00" }, { h: "mié 19", m: "19:00" }];
+let abierta = "e2", elegida = "e2";
+
+function barra(ini, fin, cortes) {
+  const total = dif(ini, fin), hoy = Math.min(1, Math.max(0, dif(ini, HOY) / total));
+  let c = ""; let acc = 0;
+  (cortes || []).slice(0, -1).forEach(d => { acc += d; c += `<span class="corte" style="left:${acc / total * 100}%"></span>`; });
+  return `<div class="pista"><span class="hecho" style="width:${hoy * 100}%"></span>${c}<span class="hoy" style="left:calc(${hoy * 100}% - 1.5px)"></span></div>
+    <div class="fechas"><span>${fecha(ini)}</span><span>hoy</span><span>${fecha(fin)}</span></div>`;
+}
+function rangos() { let d = new Date(P.ini); return ETAPAS.map(e => { const a = new Date(d); d = sumar(d, e.dias); return [a, sumar(d, -1)]; }); }
+const MANIJA = '<span class="manija" aria-label="Mover"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="2" y="4" width="12" height="1.6" rx=".8"/><rect x="2" y="7.2" width="12" height="1.6" rx=".8"/><rect x="2" y="10.4" width="12" height="1.6" rx=".8"/></svg></span>';
+
+function renderProyecto() {
+  const cortes = ETAPAS.map(e => e.dias);
+  ["tiempoLista", "tiempoDentro", "tiempoInicio"].forEach(id => document.getElementById(id).innerHTML = barra(P.ini, P.fin, cortes));
+  document.getElementById("tiempoLista2").innerHTML = barra(new Date(2026, 10, 10), new Date(2026, 11, 30), [20, 15, 16]);
+  const R = rangos();
+  document.getElementById("etapas").innerHTML = ETAPAS.map((e, i) => {
+    const [a, b] = R[i];
+    const est = e.hecha ? "hecha" : e.actual ? "actual" : "";
+    const cuerpo = e.ses.length
+      ? `<div class="lista-ses" data-lista="${e.id}">${e.ses.map((s, k) => {
+          const tu = TURNOS[k] || { h: "", m: "" };
+          return `<div class="ses ${s.hecha ? "hecha" : ""} ${tu.h === "Hoy" ? "hoy" : ""}" data-id="${s.id}"><span class="h">${tu.h}<br>${s.hecha ? "" : tu.m}</span><span class="t">${s.t}<small>${s.d} min</small></span>${s.hecha ? "" : MANIJA}</div>`;
+        }).join("")}</div><div class="mas">+ Sesión · ✦ Desglosar más</div>`
+      : `<div class="espera">${e.hecha ? "Terminada a tiempo." : "Las sesiones de esta etapa se arman cuando llegues a ella."}</div>`;
+    return `<div class="etapa ${est} ${abierta === e.id ? "abierta" : ""} ${elegida === e.id ? "elegida" : ""}" data-id="${e.id}">
+      <div class="cab" data-toggle="${e.id}"><span class="num">${e.hecha ? "✓" : i + 1}</span><span class="nom"><b>${e.n}</b><small>${fecha(a)} – ${fecha(b)}${e.actual ? " · ahora" : ""}</small></span>${e.hecha ? "" : MANIJA.replace('class="manija"', 'class="manija de-etapa"')}</div>
+      <div class="cuerpo">${cuerpo}</div></div>`;
+  }).join("");
+  // Línea de tiempo
+  const total = dif(P.ini, P.fin);
+  document.getElementById("linea").innerHTML = `<div class="segs">${ETAPAS.map((e, i) => `<div class="seg ${e.hecha ? "hecha" : ""} ${elegida === e.id ? "elegida" : ""}" data-elegir="${e.id}" style="flex:${e.dias}">${i + 1}. ${e.n}</div>`).join("")}</div>
+    <div class="hoyl"><i style="left:${dif(P.ini, HOY) / total * 100}%"></i></div>`;
+}
+
+/* Arrastrar para reordenar (etapas y sesiones) */
+let drag = null, presion = null;
+function empezarDrag(el, ev) {
+  const cont = el.parentElement;
+  drag = { el, cont, id: el.dataset.id, esEtapa: el.classList.contains("etapa") };
+  el.classList.add("arrastrando");
+  if (navigator.vibrate) navigator.vibrate(10);
+}
+screen.addEventListener("pointerdown", ev => {
+  if (drag || ev.target.closest(".prop-et")) return;
+  const man = ev.target.closest(".manija");
+  if (S.mover === "manijas" && man) {
+    ev.preventDefault();
+    const el = man.classList.contains("de-etapa") ? man.closest(".etapa") : man.closest(".ses");
+    empezarDrag(el, ev); return;
+  }
+  if (S.mover === "apretar") {
+    const el = ev.target.closest(".ses:not(.hecha)") || ev.target.closest(".etapa:not(.hecha) .cab")?.parentElement;
+    if (!el || (S.plan === "linea" && el.classList.contains("etapa"))) return;
+    presion = { x: ev.clientX, y: ev.clientY, t: setTimeout(() => { empezarDrag(el, ev); presion = null; }, 450) };
+  }
+});
+screen.addEventListener("pointermove", ev => {
+  if (presion && Math.hypot(ev.clientX - presion.x, ev.clientY - presion.y) > 8) { clearTimeout(presion.t); presion = null; }
+  if (!drag) return;
+  ev.preventDefault();
+  const hermanos = [...drag.cont.children].filter(x => x !== drag.el && !x.classList.contains("hecha"));
+  for (const h of hermanos) {
+    const r = h.getBoundingClientRect();
+    if (ev.clientY < r.top + r.height / 2) { if (drag.el.nextElementSibling !== h) drag.cont.insertBefore(drag.el, h); return; }
+  }
+  const ultimo = hermanos[hermanos.length - 1];
+  if (ultimo && ultimo.nextElementSibling !== drag.el) drag.cont.insertBefore(drag.el, ultimo.nextElementSibling);
+}, { passive: false });
+function soltar() {
+  if (presion) { clearTimeout(presion.t); presion = null; }
+  if (!drag) return;
+  const orden = [...drag.cont.children].map(x => x.dataset.id);
+  if (drag.esEtapa) {
+    const antes = ETAPAS.map(e => e.id).join();
+    ETAPAS.sort((a, b) => orden.indexOf(a.id) - orden.indexOf(b.id));
+    if (antes !== orden.join()) aviso("Las fechas de las etapas se repartieron de nuevo.");
+  } else {
+    const e = ETAPAS.find(x => x.id === drag.cont.dataset.lista);
+    const antes = e.ses.map(s => s.id).join();
+    e.ses.sort((a, b) => orden.indexOf(a.id) - orden.indexOf(b.id));
+    if (antes !== orden.join()) aviso("Cada sesión tomó el turno del lugar al que fue.");
+  }
+  drag = null; renderProyecto();
+}
+screen.addEventListener("pointerup", soltar);
+screen.addEventListener("pointercancel", soltar);
+screen.addEventListener("click", ev => {
+  const tg = ev.target.closest("[data-toggle]");
+  if (tg && !ev.target.closest(".manija") && S.plan === "etapas") { abierta = abierta === tg.dataset.toggle ? null : tg.dataset.toggle; renderProyecto(); return; }
+  const el = ev.target.closest("[data-elegir]");
+  if (el) { elegida = el.dataset.elegir; renderProyecto(); return; }
+  const ir = ev.target.closest("[data-ir]");
+  if (ir) show(ir.dataset.ir);
+});
+let tAviso;
+function aviso(t) { const a = document.getElementById("aviso"); a.textContent = t; a.classList.add("on"); clearTimeout(tAviso); tAviso = setTimeout(() => a.classList.remove("on"), 2400); }
+
+/* Nuevo proyecto: fechas y propuesta */
+let nIni = new Date(2026, 10, 17), nFin = new Date(2026, 11, 12), clicRango = 0;
+function renderMes() {
+  const meses = [[2026, 10], [2026, 11]];
+  document.getElementById("mes").innerHTML = meses.map(([y, m]) => {
+    const prim = new Date(y, m, 1), n = new Date(y, m + 1, 0).getDate(), off = (prim.getDay() + 6) % 7;
+    let g = ["L", "M", "X", "J", "V", "S", "D"].map(x => `<span class="w">${x}</span>`).join("") + "<span></span>".repeat(off);
+    for (let d = 1; d <= n; d++) {
+      const f = new Date(y, m, d); const c = [];
+      if (+f === +nIni) c.push("ini"); if (+f === +nFin) c.push("fin");
+      if (f > nIni && f < nFin) c.push("en"); if (+f === +HOY) c.push("hoyd");
+      g += `<span class="d ${c.join(" ")}" data-dia="${y}-${m}-${d}">${d}</span>`;
+    }
+    return `<div class="mt"><span>${["Noviembre", "Diciembre"][m - 10]} ${y}</span></div><div class="g" style="margin-bottom:8px">${g}</div>`;
+  }).join("");
+  document.getElementById("vIni").textContent = fechaL(nIni);
+  document.getElementById("vFin").textContent = nFin ? fechaL(nFin) : "—";
+}
+document.getElementById("mes").addEventListener("click", ev => {
+  const d = ev.target.closest("[data-dia]"); if (!d) return;
+  const [y, m, dd] = d.dataset.dia.split("-").map(Number); const f = new Date(y, m, dd);
+  if (clicRango === 0 || f < nIni) { nIni = f; nFin = f; clicRango = 1; } else { nFin = f; clicRango = 0; }
+  renderMes(); document.getElementById("propuesta").classList.remove("on");
+});
+let PROP = [];
+document.getElementById("proponer").addEventListener("click", () => {
+  const pen = document.getElementById("pensar"); pen.style.display = "block"; document.getElementById("propuesta").classList.remove("on");
+  setTimeout(() => {
+    pen.style.display = "none";
+    const total = Math.max(4, dif(nIni, nFin) + 1);
+    const base = [["Elegir fechas y presupuesto", .15], ["Reservar vuelos y alojamiento", .25], ["Armar el itinerario", .35], ["Preparar la valija", .25]];
+    PROP = base.map(([n, p], i) => ({ id: "p" + i, n, dias: Math.max(1, Math.round(total * p)) }));
+    PROP[PROP.length - 1].dias = Math.max(1, total - PROP.slice(0, -1).reduce((s, x) => s + x.dias, 0));
+    renderProp(); document.getElementById("propuesta").classList.add("on");
+  }, 1100);
+});
+function renderProp() {
+  let d = new Date(nIni);
+  document.getElementById("propLista").innerHTML = `<div data-lista="prop">${PROP.map(e => { const a = new Date(d); d = sumar(d, e.dias); return `<div class="prop-et etapa-prop" data-id="${e.id}"><span class="nom">${e.n}<small>${fecha(a)} – ${fecha(sumar(d, -1))}</small></span>${MANIJA}</div>`; }).join("")}</div>`;
+}
+// Reordenar también la propuesta
+screen.addEventListener("pointerdown", ev => {
+  if (drag || !ev.target.closest(".prop-et")) return;
+  const el = ev.target.closest(".prop-et");
+  if (S.mover === "manijas" && ev.target.closest(".manija")) { drag = { el, cont: el.parentElement, prop: true }; el.classList.add("arrastrando"); }
+}, true);
+document.addEventListener("pointerup", () => {
+  if (drag && drag.prop) { const orden = [...drag.cont.children].map(x => x.dataset.id); PROP.sort((a, b) => orden.indexOf(a.id) - orden.indexOf(b.id)); drag = null; renderProp(); }
+}, true);
+
+/* Pantallas y variantes */
+function show(v) {
+  document.querySelectorAll(".view").forEach(x => x.classList.toggle("on", x.dataset.view === v));
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === v)));
+  document.getElementById("note").textContent = NOTES[v];
+}
+document.querySelector(".tabs").addEventListener("click", e => { const b = e.target.closest("button[data-view]"); if (b) show(b.dataset.view); });
+function apply() {
+  document.querySelectorAll('.side input[type="radio"]').forEach(i => { i.checked = S[i.name] === i.value; });
+  Object.keys(S).forEach(k => screen.dataset[k] = S[k]);
+  document.getElementById("summary").textContent = `Proyecto en el listado: ${NOMBRES.forma[S.forma]}\nPlan adentro: ${NOMBRES.plan[S.plan]}\nReordenar: ${NOMBRES.mover[S.mover]}\nFechas al crear: ${NOMBRES.fechas[S.fechas]}`;
+  renderProyecto(); renderMes();
+}
+document.querySelector(".side").addEventListener("change", e => { if (e.target.name) { S[e.target.name] = e.target.value; apply(); } });
+
+/* Guardar */
+const saveMsg = document.getElementById("saveMsg"); let db = null;
+document.getElementById("saveBtn").addEventListener("click", async () => {
+  const data = { ...S, maqueta: "C", nota: document.getElementById("nota").value.trim(), guardado: new Date().toISOString() };
+  if (!db) { saveMsg.textContent = "No pude guardar desde acá. Copiá el resumen y tus comentarios en Claude Code."; return; }
+  saveMsg.textContent = "Guardando…";
+  try { await db.doc("elecciones/maqueta-c").set(data); saveMsg.textContent = "Guardado. Avisame en Claude Code y lo leo."; }
+  catch (err) { saveMsg.textContent = "No se pudo guardar. Copiá el resumen en Claude Code."; }
+});
+(async () => {
+  try {
+    for (let i = 0; i < 30 && !(window.claude && window.claude.use); i++) await new Promise(r => setTimeout(r, 100));
+    if (!window.claude || !window.claude.use) return;
+    db = await window.claude.use("db"); if (!db) return;
+    const snap = await Promise.race([db.doc("elecciones/maqueta-c").get(), new Promise(r => setTimeout(() => r(null), 10000))]);
+    const prev = snap && (snap.data ? (typeof snap.data === "function" ? snap.data() : snap.data) : snap);
+    if (prev && prev.maqueta === "C") { Object.keys(S).forEach(k => { if (prev[k] !== undefined) S[k] = prev[k]; }); if (prev.nota) document.getElementById("nota").value = prev.nota; apply(); saveMsg.textContent = "Cargué lo último que guardaste."; }
+  } catch (e) {}
+})();
+
+apply(); show("lista");
+</script>
+</body>
+</html>

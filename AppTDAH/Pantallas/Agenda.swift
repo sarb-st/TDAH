@@ -1,35 +1,35 @@
 import SwiftUI
 import SwiftData
 
-// MARK: - Listado en tarjetas
+// MARK: - Listado con pestañas
 
-/// Todas las tareas como tarjetas, agrupadas por día. Fuera de la pantalla principal, para no romper
-/// "una sola cosa a la vista": se abre a propósito.
+enum PestanaLista: String, CaseIterable, Identifiable {
+    case hoy = "Hoy", tareas = "Tareas", citas = "Citas", proyectos = "Proyectos"
+    var id: String { rawValue }
+}
+
+/// Todo lo agendado en tarjetas, con pestañas: Hoy (todo junto, por hora), Tareas, Citas y Proyectos.
+/// Fuera de la pantalla principal, para no romper "una sola cosa a la vista": se abre a propósito.
 struct ListaView: View {
+    let paleta: Paleta
+    var pestanaInicial: PestanaLista = .hoy
+
     @Environment(\.dismiss) private var cerrar
     @Query(sort: \Tarea.inicio) private var tareas: [Tarea]
     @Query(sort: \Proyecto.deadline) private var proyectos: [Proyecto]
-    @Query(sort: \Captura.creada, order: .reverse) private var capturas: [Captura]
-    @Environment(\.modelContext) private var ctx
+    @State private var pestana: PestanaLista = .hoy
     @State private var verHechas = false
     @State private var creandoProyecto = false
-    @State private var pasarATarea: Captura?
-    @State private var clasificando: UUID?
-    @State private var mensaje: String?
-    let paleta: Paleta
+    @State private var creandoTarea = false
 
-    private var inbox: [Captura] { capturas.filter { $0.tipo == "inbox" && !$0.archivada } }
-    private var ideas: [Captura] { capturas.filter { $0.tipo == "idea" && !$0.archivada } }
     private var activos: [Proyecto] { proyectos.filter { !$0.archivado } }
+    private var cal: Calendar { Calendar.current }
 
-    private var visibles: [Tarea] {
-        let hoy = Calendar.current.startOfDay(for: .now)
-        return tareas.filter { t in
-            switch t.estado {
-            case .programada, .enCurso, .pausada, .faltaHora: true
-            case .terminada: verHechas || (t.inicioReal ?? t.inicio) >= hoy
-            case .archivada: verHechas
-            }
+    private func visible(_ t: Tarea) -> Bool {
+        switch t.estado {
+        case .programada, .enCurso, .pausada, .faltaHora: true
+        case .terminada: verHechas || cal.isDateInToday(t.inicioReal ?? t.inicio)
+        case .archivada: verHechas
         }
     }
 
@@ -39,10 +39,9 @@ struct ListaView: View {
         var id: Date { dia }
     }
 
-    private var grupos: [Grupo] {
-        let cal = Calendar.current
-        let pendientes = visibles.filter { $0.estado == .faltaHora }
-        let conDia = Dictionary(grouping: visibles.filter { $0.estado != .faltaHora }) { cal.startOfDay(for: $0.inicioReal ?? $0.inicio) }
+    private func grupos(_ lista: [Tarea]) -> [Grupo] {
+        let pendientes = lista.filter { $0.estado == .faltaHora }
+        let conDia = Dictionary(grouping: lista.filter { $0.estado != .faltaHora }) { cal.startOfDay(for: $0.inicioReal ?? $0.inicio) }
         var r = conDia.keys.sorted().map { dia in
             Grupo(dia: dia, tareas: (conDia[dia] ?? []).sorted { ($0.inicioReal ?? $0.inicio) < ($1.inicioReal ?? $1.inicio) })
         }
@@ -50,133 +49,119 @@ struct ListaView: View {
         return r
     }
 
+    private var listaPestana: [Tarea] {
+        switch pestana {
+        case .hoy:
+            return tareas.filter { t in
+                t.estado == .faltaHora || (t.estado != .archivada && cal.isDateInToday(t.inicioReal ?? t.inicio))
+            }
+        case .tareas: return tareas.filter { visible($0) && !$0.esCita && $0.proyecto == nil }
+        case .citas: return tareas.filter { visible($0) && $0.esCita }
+        case .proyectos: return []
+        }
+    }
+
     var body: some View {
         NavigationStack {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 10, pinnedViews: []) {
-                    if !inbox.isEmpty {
-                        encabezado("Inbox · \(inbox.count)")
-                        ForEach(inbox, id: \.uid) { filaInbox($0) }
+            VStack(spacing: 0) {
+                selector
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 10) {
+                        if pestana == .proyectos { vistaProyectos } else { vistaTareas }
                     }
-                    HStack {
-                        encabezado("Proyectos")
-                        Spacer()
-                        Button { creandoProyecto = true } label: { Image(systemName: "plus") }.padding(.top, 14)
-                            .accessibilityLabel("Nuevo proyecto")
-                    }
-                    if activos.isEmpty {
-                        Text("Ninguno por ahora. Dictá uno o tocá el +.").font(.footnote).foregroundStyle(paleta.secundario.color)
-                    }
-                    ForEach(activos, id: \.uid) { p in
-                        NavigationLink { ProyectoDetalleView(proyecto: p, paleta: paleta) } label: { TarjetaProyecto(proyecto: p, paleta: paleta) }
-                            .buttonStyle(.plain)
-                    }
-                    if visibles.isEmpty {
-                        Text("No hay tareas todavía.").foregroundStyle(paleta.secundario.color).padding(.top, 40)
-                            .frame(maxWidth: .infinity)
-                    }
-                    ForEach(grupos) { grupo in
-                        Text(titulo(grupo.dia))
-                            .font(.serif(22, relativoA: .title3))
-                            .foregroundStyle(paleta.primario.color)
-                            .padding(.top, 14)
-                        ForEach(grupo.tareas, id: \.uid) { t in
-                            NavigationLink { DetalleTareaView(tarea: t, paleta: paleta) } label: { TarjetaTarea(tarea: t, paleta: paleta) }
-                                .buttonStyle(.plain)
-                        }
-                    }
-                    if !ideas.isEmpty {
-                        encabezado("Ideas")
-                        ForEach(ideas, id: \.uid) { idea in
-                            HStack(alignment: .top, spacing: 10) {
-                                Image(systemName: "lightbulb").foregroundStyle(paleta.primario.color)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(idea.tituloVisible).font(.serif(17, relativoA: .body))
-                                    if !idea.tema.isEmpty { Text(idea.tema).font(.caption).foregroundStyle(paleta.secundario.color) }
-                                }
-                                Spacer()
-                            }
-                            .padding(12)
-                            .background(paleta.superficie.color, in: RoundedRectangle(cornerRadius: 14))
-                            .contextMenu {
-                                Button("Pasar a tarea") { pasarATarea = idea }
-                                Button("Archivar") { idea.archivada = true; Acciones.guardar(ctx) }
-                            }
-                        }
-                    }
-                    Toggle("Mostrar hechas y archivadas", isOn: $verHechas)
-                        .tint(paleta.primario.color)
-                        .padding(.top, 20)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 30)
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 30)
             }
             .background(paleta.fondo.color.ignoresSafeArea())
-            .navigationTitle("Tareas")
+            .navigationTitle("Listado")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Listo") { cerrar() } } }
-            .sheet(isPresented: $creandoProyecto) { EditarProyectoView(proyecto: nil) }
-            .sheet(item: $pasarATarea) { c in
-                NuevaTareaView(tarea: nil, tituloInicial: c.tituloVisible) {
-                    c.archivada = true
-                    Acciones.guardar(ctx)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button {
+                        if pestana == .proyectos { creandoProyecto = true } else { creandoTarea = true }
+                    } label: { Image(systemName: "plus") }
+                    .accessibilityLabel(pestana == .proyectos ? "Nuevo proyecto" : "Nueva tarea")
                 }
+                ToolbarItem(placement: .confirmationAction) { Button("Listo") { cerrar() } }
             }
-            .alert(mensaje ?? "", isPresented: Binding(get: { mensaje != nil }, set: { if !$0 { mensaje = nil } })) {
-                Button("Listo", role: .cancel) {}
-            }
+            .sheet(isPresented: $creandoProyecto) { EditarProyectoView(proyecto: nil).environment(\.paleta, paleta) }
+            .sheet(isPresented: $creandoTarea) { NuevaTareaView(tarea: nil, esCitaInicial: pestana == .citas).environment(\.paleta, paleta) }
         }
         .environment(\.paleta, paleta)
         .tint(paleta.primario.color)
+        .onAppear { pestana = pestanaInicial }
     }
 
-    private func encabezado(_ texto: String) -> some View {
-        Text(texto).font(.serif(22, relativoA: .title3)).foregroundStyle(paleta.primario.color).padding(.top, 14)
-    }
-
-    /// Lo que no se clasificó: se puede mandar a Claude de nuevo, pasar a tarea a mano o archivar.
-    private func filaInbox(_ c: Captura) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(c.tituloVisible).font(.serif(17, relativoA: .body))
-            Text(c.creada.formatted(.relative(presentation: .named, unitsStyle: .wide).locale(Locale(identifier: "es"))))
-                .font(.caption).foregroundStyle(paleta.secundario.color)
-            HStack(spacing: 14) {
-                Button {
-                    Task { await clasificar(c) }
-                } label: {
-                    if clasificando == c.uid { ProgressView() } else { Label("Ordenar con Claude", systemImage: "sparkles") }
+    private var selector: some View {
+        HStack(spacing: 4) {
+            ForEach(PestanaLista.allCases) { p in
+                Button { withAnimation(.easeInOut(duration: 0.2)) { pestana = p } } label: {
+                    Text(p.rawValue)
+                        .font(.subheadline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(pestana == p ? paleta.primario.color : .clear, in: RoundedRectangle(cornerRadius: 10))
+                        .foregroundStyle(pestana == p ? paleta.fondo.color : paleta.texto.color)
+                        .contentShape(Rectangle())
                 }
-                .disabled(clasificando != nil || !ClaveIA.hay)
-                Button("Pasar a tarea") { pasarATarea = c }
-                Spacer()
-                Button { c.archivada = true; Acciones.guardar(ctx) } label: { Image(systemName: "archivebox") }
-                    .accessibilityLabel("Archivar")
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(pestana == p ? .isSelected : [])
             }
-            .font(.footnote)
         }
-        .padding(14)
-        .background(paleta.superficie.color, in: RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(paleta.halo.color))
+        .padding(3)
+        .background(paleta.superficie.color, in: RoundedRectangle(cornerRadius: 13))
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
     }
 
-    private func clasificar(_ c: Captura) async {
-        clasificando = c.uid
-        defer { clasificando = nil }
-        do {
-            let items = try await ClienteClaude.clasificar(c.texto)
-            let utiles = items.map { Propuesta(ia: $0) }.filter { $0.tipo != "inbox" }
-            guard !utiles.isEmpty else { mensaje = "Claude tampoco pudo decidir qué es. Queda en el Inbox."; return }
-            Guardado.guardar(utiles, ctx: ctx, tareas: tareas)
-            c.archivada = true
-            Acciones.guardar(ctx)
-        } catch {
-            mensaje = error.localizedDescription
+    @ViewBuilder
+    private var vistaTareas: some View {
+        let lista = listaPestana
+        if lista.isEmpty {
+            Text(pestana == .hoy ? "Nada más para hoy." : "No hay nada acá todavía.")
+                .foregroundStyle(paleta.secundario.color).padding(.top, 40)
+                .frame(maxWidth: .infinity)
         }
+        ForEach(grupos(lista)) { grupo in
+            Text(titulo(grupo.dia))
+                .font(.serif(22, relativoA: .title3))
+                .foregroundStyle(paleta.primario.color)
+                .padding(.top, 10)
+            ForEach(grupo.tareas, id: \.uid) { t in
+                NavigationLink { DetalleTareaView(tarea: t, paleta: paleta) } label: { TarjetaTarea(tarea: t, paleta: paleta) }
+                    .buttonStyle(.plain)
+            }
+        }
+        if pestana != .hoy {
+            Toggle("Mostrar hechas y archivadas", isOn: $verHechas)
+                .tint(paleta.primario.color)
+                .padding(.top, 20)
+        }
+    }
+
+    @ViewBuilder
+    private var vistaProyectos: some View {
+        if activos.isEmpty {
+            Text("Ningún proyecto por ahora. Dictá uno o tocá “Nuevo proyecto”.")
+                .font(.subheadline).foregroundStyle(paleta.secundario.color).padding(.top, 30)
+        }
+        ForEach(activos, id: \.uid) { p in
+            NavigationLink { ProyectoDetalleView(proyecto: p, paleta: paleta) } label: { TarjetaProyecto(proyecto: p, paleta: paleta) }
+                .buttonStyle(.plain)
+        }
+        Button { creandoProyecto = true } label: {
+            Label("Nuevo proyecto", systemImage: "plus")
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(paleta.linea.color))
+        }
+        .foregroundStyle(paleta.primario.color)
+        .padding(.top, 6)
     }
 
     private func titulo(_ dia: Date) -> String {
         if dia == .distantPast { return "Falta elegir hora" }
-        let cal = Calendar.current
         if cal.isDateInToday(dia) { return "Hoy" }
         if cal.isDateInTomorrow(dia) { return "Mañana" }
         if cal.isDateInYesterday(dia) { return "Ayer" }
@@ -189,43 +174,42 @@ struct TarjetaTarea: View {
     let paleta: Paleta
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(tarea.estado == .faltaHora ? "—" : Formato.hora(tarea.inicioReal ?? tarea.inicio))
-                    .font(.numero(20)).monospacedDigit()
-                Text("\(tarea.duracionMinutos) min").font(.caption).foregroundStyle(paleta.secundario.color)
-            }
-            .frame(width: 58, alignment: .leading)
-            VStack(alignment: .leading, spacing: 5) {
-                Text(tarea.titulo).font(.serif(19, relativoA: .headline))
-                    .strikethrough(tarea.estado == .terminada)
-                    .foregroundStyle(tarea.estado == .terminada || tarea.estado == .archivada ? paleta.secundario.color : paleta.texto.color)
-                    .multilineTextAlignment(.leading)
-                if let p = tarea.proyecto {
-                    Label(p.titulo, systemImage: "square.stack.3d.up").font(.caption).foregroundStyle(paleta.secundario.color)
-                }
-                if !tarea.lugar.isEmpty {
-                    Label(tarea.lugar, systemImage: "mappin.and.ellipse").font(.caption).foregroundStyle(paleta.secundario.color)
-                }
-                if !tarea.notas.isEmpty {
-                    Text(tarea.notas).font(.caption).foregroundStyle(paleta.secundario.color).lineLimit(1)
-                }
-                HStack(spacing: 8) {
-                    if tarea.esCita { Chip(texto: "Cita", paleta: paleta) }
-                    Chip(texto: tarea.estado.nombre, paleta: paleta, destacado: tarea.estado == .enCurso || tarea.estado == .faltaHora)
-                    if !tarea.pasos.isEmpty {
-                        Text("\(tarea.pasos.filter(\.hecho).count)/\(tarea.pasos.count) pasos")
-                            .font(.caption).foregroundStyle(paleta.secundario.color)
+        let t = tarea
+        let apagada = t.estado == .terminada || t.estado == .archivada
+        TarjetaBanda(categoria: t.categoria, paleta: paleta) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack {
+                    EtiquetaCategoria(categoria: t.categoria, paleta: paleta, extra: t.proyecto?.titulo)
+                    Spacer()
+                    if t.estado != .programada {
+                        Text(t.estado.nombre)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(t.estado == .faltaHora ? Paleta.aviso.color : paleta.secundario.color)
                     }
                 }
+                HStack(alignment: .firstTextBaseline) {
+                    Text(t.titulo)
+                        .font(.serif(18, relativoA: .headline))
+                        .strikethrough(t.estado == .terminada)
+                        .foregroundStyle(apagada ? paleta.secundario.color : paleta.texto.color)
+                        .multilineTextAlignment(.leading)
+                    Spacer(minLength: 8)
+                    Text(t.estado == .faltaHora ? "—" : Formato.hora(t.inicioReal ?? t.inicio))
+                        .font(.serif(17, relativoA: .headline))
+                        .monospacedDigit()
+                }
+                Text(detalle).font(.caption).foregroundStyle(paleta.secundario.color).lineLimit(1)
             }
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right").font(.caption).foregroundStyle(paleta.secundario.color).padding(.top, 6)
         }
-        .padding(14)
-        .background(paleta.superficie.color, in: RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(paleta.linea.color))
-        .contentShape(Rectangle())
+    }
+
+    private var detalle: String {
+        var partes = [Formato.minutos(tarea.duracionMinutos)]
+        if let s = tarea.salida { partes.append("salí \(Formato.hora(s))") }
+        if !tarea.lugar.isEmpty { partes.append(tarea.lugar) }
+        if !tarea.pasos.isEmpty { partes.append("\(tarea.pasos.filter(\.hecho).count)/\(tarea.pasos.count) pasos") }
+        if tarea.pasos.isEmpty && !tarea.notas.isEmpty { partes.append(tarea.notas) }
+        return partes.joined(separator: " · ")
     }
 }
 
@@ -240,6 +224,130 @@ struct Chip: View {
             .padding(.horizontal, 9).padding(.vertical, 3)
             .foregroundStyle(destacado ? paleta.fondo.color : paleta.primario.color)
             .background(destacado ? paleta.primario.color : paleta.halo.color.opacity(0.35), in: Capsule())
+    }
+}
+
+// MARK: - Cajón: inbox e ideas
+
+/// Lo que todavía no tiene forma: el Inbox para ordenar y las Ideas para la revisión semanal. Una sola lista con dos secciones.
+struct CajonView: View {
+    let paleta: Paleta
+
+    @Environment(\.dismiss) private var cerrar
+    @Environment(\.modelContext) private var ctx
+    @Query(sort: \Captura.creada, order: .reverse) private var capturas: [Captura]
+    @Query private var tareas: [Tarea]
+    @State private var pasarATarea: Captura?
+    @State private var ordenando: UUID?
+    @State private var mensaje: String?
+
+    private var inbox: [Captura] { capturas.filter { $0.tipo == "inbox" && !$0.archivada } }
+    private var ideas: [Captura] { capturas.filter { $0.tipo == "idea" && !$0.archivada } }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 10) {
+                    encabezado("Inbox · \(inbox.count)")
+                    if inbox.isEmpty { vacio("Nada para ordenar.") }
+                    ForEach(inbox, id: \.uid) { filaInbox($0) }
+                    encabezado("Ideas · \(ideas.count)").padding(.top, 10)
+                    if ideas.isEmpty { vacio("Ninguna idea guardada. Dictá una cuando se te ocurra.") }
+                    ForEach(ideas, id: \.uid) { filaIdea($0) }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 30)
+            }
+            .background(paleta.fondo.color.ignoresSafeArea())
+            .navigationTitle("Cajón")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Listo") { cerrar() } } }
+            .sheet(item: $pasarATarea) { c in
+                NuevaTareaView(tarea: nil, tituloInicial: c.tituloVisible) {
+                    c.archivada = true
+                    Acciones.guardar(ctx)
+                }
+                .environment(\.paleta, paleta)
+            }
+            .alert(mensaje ?? "", isPresented: Binding(get: { mensaje != nil }, set: { if !$0 { mensaje = nil } })) {
+                Button("Listo", role: .cancel) {}
+            }
+        }
+        .environment(\.paleta, paleta)
+        .tint(paleta.primario.color)
+    }
+
+    private func encabezado(_ texto: String) -> some View {
+        Text(texto).font(.serif(22, relativoA: .title3)).foregroundStyle(paleta.primario.color).padding(.top, 14)
+    }
+
+    private func vacio(_ texto: String) -> some View {
+        Text(texto).font(.footnote).foregroundStyle(paleta.secundario.color)
+    }
+
+    private func fecha(_ d: Date) -> String {
+        d.formatted(.relative(presentation: .named, unitsStyle: .wide).locale(Locale(identifier: "es")))
+    }
+
+    /// Lo que no se clasificó: se puede ordenar de nuevo, pasar a tarea a mano o archivar.
+    private func filaInbox(_ c: Captura) -> some View {
+        TarjetaBanda(categoria: .inbox, paleta: paleta) {
+            VStack(alignment: .leading, spacing: 6) {
+                EtiquetaCategoria(categoria: .inbox, paleta: paleta, extra: fecha(c.creada))
+                Text(c.tituloVisible).font(.serif(17, relativoA: .body))
+                HStack(spacing: 16) {
+                    Button {
+                        Task { await ordenar(c) }
+                    } label: {
+                        if ordenando == c.uid { ProgressView() } else { Label("Ordenar", systemImage: "sparkles") }
+                    }
+                    .disabled(ordenando != nil || !ClaveIA.hay)
+                    Button("Pasar a tarea") { pasarATarea = c }
+                    Spacer()
+                    Button { c.archivada = true; Acciones.guardar(ctx) } label: { Image(systemName: "archivebox") }
+                        .accessibilityLabel("Archivar")
+                }
+                .font(.footnote)
+                .buttonStyle(.borderless)
+                .padding(.top, 2)
+            }
+        }
+    }
+
+    private func filaIdea(_ idea: Captura) -> some View {
+        TarjetaBanda(categoria: .idea, paleta: paleta) {
+            VStack(alignment: .leading, spacing: 6) {
+                EtiquetaCategoria(categoria: .idea, paleta: paleta, extra: idea.tema.isEmpty ? nil : idea.tema)
+                Text(idea.tituloVisible).font(.serif(17, relativoA: .body))
+                if !idea.titulo.isEmpty && idea.texto != idea.titulo {
+                    Text(idea.texto).font(.footnote).foregroundStyle(paleta.secundario.color).lineLimit(3)
+                }
+                HStack(spacing: 16) {
+                    Button("Pasar a tarea") { pasarATarea = idea }
+                    Spacer()
+                    Button { idea.archivada = true; Acciones.guardar(ctx) } label: { Image(systemName: "archivebox") }
+                        .accessibilityLabel("Archivar")
+                }
+                .font(.footnote)
+                .buttonStyle(.borderless)
+                .padding(.top, 2)
+            }
+        }
+    }
+
+    private func ordenar(_ c: Captura) async {
+        ordenando = c.uid
+        defer { ordenando = nil }
+        do {
+            let items = try await ClienteClaude.clasificar(c.texto)
+            let utiles = items.map { Propuesta(ia: $0) }.filter { $0.tipo != "inbox" }
+            guard !utiles.isEmpty else { mensaje = "Tampoco pude decidir qué es. Queda en el Inbox."; return }
+            Guardado.guardar(utiles, ctx: ctx, tareas: tareas)
+            c.archivada = true
+            Acciones.guardar(ctx)
+        } catch {
+            mensaje = error.localizedDescription
+        }
     }
 }
 
@@ -307,7 +415,10 @@ struct CalendarioView: View {
                             .frame(width: 34, height: 34)
                             .background(elegido ? paleta.primario.color : .clear, in: Circle())
                             .foregroundStyle(elegido ? paleta.fondo.color : paleta.texto.color)
-                        Circle().fill(tieneTareas(d) ? paleta.halo.color : .clear).frame(width: 5, height: 5)
+                        HStack(spacing: 2) {
+                            ForEach(categorias(d), id: \.self) { c in Circle().fill(c.rgb.color).frame(width: 5, height: 5) }
+                        }
+                        .frame(height: 5)
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -353,9 +464,17 @@ struct CalendarioView: View {
         ZStack(alignment: .topLeading) {
             ForEach(cerrados, id: \.persistentModelID) { r in
                 RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(paleta.secundario.color.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                    .overlay(alignment: .topLeading) {
-                        Text("\(r.titulo) · slot cerrado").font(.caption).foregroundStyle(paleta.secundario.color).padding(6).lineLimit(1)
+                    .fill(paleta.fondo.color)
+                    .overlay(Rayado().stroke(Categoria.tarea.rgb.color.opacity(0.55), lineWidth: 1.2))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Categoria.tarea.rgb.color.opacity(0.6), lineWidth: 1))
+                    .overlay(alignment: .leading) {
+                        Text("\(r.titulo) · slot cerrado")
+                            .font(.caption).foregroundStyle(paleta.secundario.color)
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(paleta.fondo.color.opacity(0.85), in: RoundedRectangle(cornerRadius: 4))
+                            .padding(.leading, 6)
+                            .lineLimit(1)
                     }
                     .frame(height: 30)
                     .padding(.leading, 56)
@@ -376,10 +495,13 @@ struct CalendarioView: View {
                     .padding(8)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .frame(height: alto)
-                    .background((t.estado == .enCurso ? paleta.energia : paleta.halo).color.opacity(t.estado == .terminada ? 0.25 : 0.55),
-                                in: RoundedRectangle(cornerRadius: 10))
+                    .padding(.leading, 4)
+                    .background(t.categoria.fondo(en: paleta).opacity(t.estado == .terminada ? 0.55 : 1), in: RoundedRectangle(cornerRadius: 10))
                     .overlay(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 2).fill(paleta.primario.color).frame(width: 3).padding(.vertical, 6)
+                        RoundedRectangle(cornerRadius: 2).fill(t.categoria.rgb.color).frame(width: 3).padding(.vertical, 5).padding(.leading, 3)
+                    }
+                    .overlay {
+                        if t.estado == .enCurso { RoundedRectangle(cornerRadius: 10).stroke(paleta.energia.color, lineWidth: 1.5) }
                     }
                 }
                 .buttonStyle(.plain)
@@ -399,8 +521,10 @@ struct CalendarioView: View {
         .allowsHitTesting(false)
     }
 
-    private func tieneTareas(_ d: Date) -> Bool {
-        tareas.contains { $0.ocupaAgenda && cal.isDate($0.inicioReal ?? $0.inicio, inSameDayAs: d) }
+    /// Las categorías de lo que hay ese día, para los puntitos de color de la semana (como máximo tres).
+    private func categorias(_ d: Date) -> [Categoria] {
+        let delDia = tareas.filter { ($0.ocupaAgenda || $0.estado == .terminada) && cal.isDate($0.inicioReal ?? $0.inicio, inSameDayAs: d) }
+        return Categoria.allCases.filter { c in delDia.contains { $0.categoria == c } }.prefix(3).map { $0 }
     }
 
     private func mover(_ dias: Int) {

@@ -12,6 +12,8 @@ final class Dictado {
     var texto = ""
     var escuchando = false
     var error: String?
+    /// Qué tan fuerte se está hablando (0 a 1): el halo reacciona a la voz.
+    var nivel: Double = 0
 
     @ObservationIgnored private let reconocedor = SFSpeechRecognizer(locale: Locale(identifier: "es-AR")) ?? SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
     @ObservationIgnored private let motor = AVAudioEngine()
@@ -43,8 +45,10 @@ final class Dictado {
             textoPrevio = texto.isEmpty ? "" : texto + " "
             let entrada = motor.inputNode
             entrada.removeTap(onBus: 0)
-            entrada.installTap(onBus: 0, bufferSize: 1024, format: entrada.outputFormat(forBus: 0)) { buffer, _ in
+            entrada.installTap(onBus: 0, bufferSize: 1024, format: entrada.outputFormat(forBus: 0)) { [weak self] buffer, _ in
                 pedido.append(buffer)
+                let n = Dictado.volumen(buffer)
+                DispatchQueue.main.async { if let self { self.nivel = self.nivel * 0.55 + n * 0.45 } }
             }
             motor.prepare()
             try motor.start()
@@ -73,7 +77,19 @@ final class Dictado {
         pedido = nil
         tarea = nil
         escuchando = false
+        nivel = 0
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    /// Volumen de un pedazo de audio, de 0 (silencio) a 1 (voz fuerte).
+    static func volumen(_ buffer: AVAudioPCMBuffer) -> Double {
+        guard let canal = buffer.floatChannelData?[0], buffer.frameLength > 0 else { return 0 }
+        let n = Int(buffer.frameLength)
+        var suma: Float = 0
+        for i in 0..<n { suma += canal[i] * canal[i] }
+        let rms = sqrt(suma / Float(n))
+        let db = 20 * log10(max(rms, 0.000_01))
+        return Double(min(1, max(0, (db + 50) / 40)))
     }
 }
 
@@ -93,21 +109,62 @@ final class Viaje: NSObject, CLLocationManagerDelegate {
         esperaPermiso = nil
     }
 
+    var autorizada: Bool { ubicacion.authorizationStatus == .authorizedWhenInUse || ubicacion.authorizationStatus == .authorizedAlways }
+
+    @MainActor
+    func pedirPermiso() async {
+        guard ubicacion.authorizationStatus == .notDetermined else { return }
+        await withCheckedContinuation { c in
+            esperaPermiso = c
+            ubicacion.requestWhenInUseAuthorization()
+        }
+    }
+
+    /// Busca un lugar o dirección en Mapas, cerca de la ciudad del usuario si está cargada.
+    @MainActor
+    func buscar(_ texto: String) async -> MKMapItem? {
+        let busqueda = MKLocalSearch.Request()
+        busqueda.naturalLanguageQuery = texto
+        if let r = await regionSugerida() { busqueda.region = r }
+        return try? await MKLocalSearch(request: busqueda).start().mapItems.first
+    }
+
+    @MainActor private var regionCiudad: (ciudad: String, region: MKCoordinateRegion)?
+
+    /// Dónde buscar lugares: alrededor de donde estás o, si no, de tu ciudad (Ajustes → Lugares).
+    @MainActor
+    func regionSugerida() async -> MKCoordinateRegion? {
+        if autorizada, let aca = ubicacion.location?.coordinate {
+            return MKCoordinateRegion(center: aca, latitudinalMeters: 40_000, longitudinalMeters: 40_000)
+        }
+        let ciudad = (UserDefaults.standard.string(forKey: "ciudad") ?? "").trimmingCharacters(in: .whitespaces)
+        guard !ciudad.isEmpty else { return nil }
+        if let c = regionCiudad, c.ciudad == ciudad { return c.region }
+        let busqueda = MKLocalSearch.Request()
+        busqueda.naturalLanguageQuery = ciudad
+        guard let item = try? await MKLocalSearch(request: busqueda).start().mapItems.first else { return nil }
+        let region = MKCoordinateRegion(center: item.placemark.coordinate, latitudinalMeters: 40_000, longitudinalMeters: 40_000)
+        regionCiudad = (ciudad, region)
+        return region
+    }
+
+    /// Minutos de viaje en transporte público desde donde estás ahora. Sin permiso de ubicación, desde tu casa
+    /// (Ajustes → Lugares). Devuelve nil si no se puede calcular.
     @MainActor
     func minutos(hasta direccion: String) async -> Int? {
-        if ubicacion.authorizationStatus == .notDetermined {
-            await withCheckedContinuation { c in
-                esperaPermiso = c
-                ubicacion.requestWhenInUseAuthorization()
-            }
+        await pedirPermiso()
+        let origen: MKMapItem
+        if autorizada {
+            origen = MKMapItem.forCurrentLocation()
+        } else {
+            let casa = (UserDefaults.standard.string(forKey: "casa") ?? "").trimmingCharacters(in: .whitespaces)
+            guard !casa.isEmpty, let item = await buscar(casa) else { return nil }
+            origen = item
         }
-        guard ubicacion.authorizationStatus == .authorizedWhenInUse || ubicacion.authorizationStatus == .authorizedAlways else { return nil }
-        let busqueda = MKLocalSearch.Request()
-        busqueda.naturalLanguageQuery = direccion
-        guard let destino = try? await MKLocalSearch(request: busqueda).start().mapItems.first else { return nil }
+        guard let destino = await buscar(direccion) else { return nil }
         for medio in [MKDirectionsTransportType.transit, .walking, .automobile] {
             let pedido = MKDirections.Request()
-            pedido.source = MKMapItem.forCurrentLocation()
+            pedido.source = origen
             pedido.destination = destino
             pedido.transportType = medio
             if let eta = try? await MKDirections(request: pedido).calculateETA() {

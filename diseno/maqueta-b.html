@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maqueta B · Organización</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,400&display=swap" rel="stylesheet">
+<style>
+/* Layout: teléfono de muestra a la izquierda (arriba en el celular) y variantes a la derecha (abajo). */
+:root {
+  --bg: #F5F2EB;
+  --surface: #FFFFFF;
+  --ink: #2C2A25;
+  --muted: #6F6A60;
+  --line: #E2DBCF;
+  --accent: #4E6B55;
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-body: -apple-system, "SF Pro Text", system-ui, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #161917; --surface: #1F2420; --ink: #E9EBE4; --muted: #A2A99F; --line: #333B35; --accent: #9DBBA4; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #161917; --surface: #1F2420; --ink: #E9EBE4; --muted: #A2A99F; --line: #333B35; --accent: #9DBBA4; color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.5; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 28px 16px 64px; display: grid; gap: 24px; }
+.intro h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(30px, 6vw, 40px); line-height: 1.1; margin: 0 0 8px; }
+.intro p { margin: 0; color: var(--muted); max-width: 64ch; }
+.layout { display: grid; grid-template-columns: minmax(300px, 360px) 1fr; gap: 36px; align-items: start; }
+.left { position: sticky; top: 16px; display: grid; gap: 12px; justify-items: center; }
+@media (max-width: 760px) { .layout { grid-template-columns: 1fr; } .left { position: static; } }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.tabs button { font: inherit; font-size: 14px; padding: 7px 12px; min-height: 36px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.tabs button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.note { font-size: 14px; color: var(--muted); text-align: center; max-width: 36ch; min-height: 42px; }
+button:focus-visible, .chips input:focus-visible + label { outline: 3px solid var(--accent); outline-offset: 2px; }
+.side { display: grid; gap: 22px; }
+fieldset { border: 0; margin: 0; padding: 0 0 20px; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
+legend { font-family: var(--font-display); font-size: 21px; padding: 0; }
+.help { font-size: 14px; color: var(--muted); margin: -4px 0 2px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips input { position: absolute; opacity: 0; pointer-events: none; }
+.chips label { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-size: 15px; }
+.chips input:checked + label { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.chips input:checked + label::before { content: "✓"; color: var(--accent); font-weight: 700; }
+.sw { display: inline-flex; gap: 3px; }
+.sw i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+.save { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 12px; }
+.save h2 { font-family: var(--font-display); font-weight: 400; font-size: 22px; margin: 0; }
+.save textarea { font: inherit; width: 100%; min-height: 100px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 10px; }
+.save label { font-size: 14px; color: var(--muted); }
+.primary { font: inherit; font-weight: 600; font-size: 16px; padding: 14px; border-radius: 12px; border: 0; background: var(--accent); color: var(--bg); cursor: pointer; min-height: 48px; }
+.status-msg { font-size: 14px; color: var(--muted); min-height: 21px; }
+.summary { font-size: 13px; color: var(--muted); white-space: pre-wrap; background: var(--bg); border-radius: 10px; padding: 10px; margin: 0; }
+.leyenda { display: flex; flex-wrap: wrap; gap: 10px; font-size: 14px; color: var(--muted); }
+.leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.leyenda i { width: 14px; height: 14px; border-radius: 4px; display: block; }
+
+/* ---------- Teléfono ---------- */
+.phone { width: min(340px, 100%); aspect-ratio: 9 / 19.3; border-radius: 48px; padding: 10px; background: #111; box-shadow: 0 20px 44px rgba(30,30,20,.22); }
+.screen { --s-bg: #F1F0E9; --s-surface: #FBF8F1; --s-ink: #35302A; --s-muted: #7B746A; --s-primary: #4E6B55; --s-line: #DAD1C2; --s-halo: #ABC3A6;
+  height: 100%; border-radius: 39px; overflow: hidden; position: relative; background: var(--s-bg); color: var(--s-ink); }
+.sbar { position: absolute; top: 14px; left: 32px; right: 30px; display: flex; justify-content: space-between; font: 600 14px -apple-system, system-ui, sans-serif; z-index: 9; }
+.view { position: absolute; inset: 0; display: none; padding: 50px 16px 16px; overflow-y: auto; scrollbar-width: none; }
+.view::-webkit-scrollbar { display: none; }
+.view.on { display: block; }
+.serif { font-family: var(--font-display); font-weight: 400; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--s-muted); font-weight: 600; }
+.titulo { font-family: var(--font-display); font-size: 26px; margin: 6px 0 10px; }
+.ic { width: 40px; height: 40px; display: grid; place-items: center; color: var(--s-primary); cursor: pointer; }
+
+/* Inicio */
+.top { display: flex; align-items: center; gap: 4px; }
+.top .grow { flex: 1; }
+.circulo { position: absolute; left: 50%; top: 46%; width: 168px; height: 168px; margin: -84px 0 0 -84px; border-radius: 50%; display: grid; place-items: center;
+  background: radial-gradient(circle, var(--s-bg) 0 58%, var(--s-halo) 60%, rgba(171,195,166,.5) 72%, rgba(171,195,166,0) 100%); animation: respira 6s ease-in-out infinite; }
+@keyframes respira { 0%,100% { transform: scale(1.42); } 50% { transform: scale(1.6); } }
+.circulo svg { transform: scale(.67); }
+.hint { text-align: center; font-size: 14px; color: var(--s-muted); margin-top: 6px; }
+.tirador { position: absolute; top: 44px; left: 50%; transform: translateX(-50%); width: 42px; height: 5px; border-radius: 3px; background: var(--s-line); display: none; cursor: pointer; }
+.screen[data-acceso="deslizar"] .tirador { display: block; }
+.screen[data-acceso="deslizar"] .ic.cajon { display: none; }
+.fichero { position: absolute; left: 14px; right: 14px; bottom: 22px; }
+.fichero .ficha { position: absolute; left: 0; right: 0; bottom: 0; }
+.fichero .ficha:nth-child(1) { z-index: 3; transform: translateY(-16px); }
+.fichero .ficha:nth-child(2) { z-index: 2; transform: translateY(-8px) scale(.97); }
+.fichero .ficha:nth-child(3) { z-index: 1; transform: scale(.94); }
+
+/* Tarjetas con color de categoría */
+.ficha { background: var(--s-surface); border: 1px solid var(--s-line); border-radius: 16px; padding: 11px 13px; display: grid; gap: 1px; position: relative; overflow: hidden; }
+.ficha .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.ficha b { font-family: var(--font-display); font-weight: 400; font-size: 17px; }
+.ficha small { color: var(--s-muted); font-size: 12.5px; }
+.ficha .hora { font-family: var(--font-display); font-size: 16px; font-variant-numeric: tabular-nums; }
+.ficha .tag { font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 1px 7px; border-radius: 999px; justify-self: start; margin-top: 3px; }
+.ficha.hecha b { text-decoration: line-through; color: var(--s-muted); }
+.screen[data-estilo="banda"] .ficha { padding-left: 18px; }
+.screen[data-estilo="banda"] .ficha::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--cat); }
+.screen[data-estilo="banda"] .ficha .tag { background: none; padding: 0; color: color-mix(in srgb, var(--cat) 72%, #2C2A25); }
+.screen[data-estilo="punto"] .ficha .tag { background: color-mix(in srgb, var(--cat) 25%, transparent); color: color-mix(in srgb, var(--cat) 70%, #2C2A25); }
+.screen[data-estilo="tenido"] .ficha { background: color-mix(in srgb, var(--cat) 18%, var(--s-surface)); border-color: color-mix(in srgb, var(--cat) 40%, var(--s-line)); }
+.screen[data-estilo="tenido"] .ficha .tag { display: none; }
+.lista { display: grid; gap: 8px; }
+
+/* Pestañas del listado */
+.pest { display: flex; gap: 4px; background: var(--s-surface); border-radius: 12px; padding: 3px; margin-bottom: 12px; }
+.pest button { flex: 1; font: inherit; font-size: 13px; padding: 7px 0; border: 0; border-radius: 9px; background: transparent; color: var(--s-ink); cursor: pointer; }
+.pest button[aria-pressed="true"] { background: var(--s-primary); color: var(--s-bg); }
+.grupo { font-family: var(--font-display); font-size: 19px; color: var(--s-primary); margin: 10px 0 4px; }
+.barra { height: 4px; border-radius: 2px; background: var(--s-line); margin-top: 6px; overflow: hidden; }
+.barra i { display: block; height: 100%; background: var(--cat); }
+
+/* Calendario */
+.dias { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.dias span { width: 34px; text-align: center; font-size: 11px; color: var(--s-muted); display: grid; gap: 2px; }
+.dias span b { font-family: var(--font-display); font-weight: 400; font-size: 16px; color: var(--s-ink); width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto; }
+.dias span.hoy b { background: var(--s-primary); color: var(--s-bg); }
+.dias span i { width: 5px; height: 5px; border-radius: 50%; display: block; margin: 0 auto; }
+.grilla { position: relative; height: 760px; }
+.hr { position: absolute; left: 0; right: 0; display: flex; gap: 8px; align-items: flex-start; font-size: 10.5px; color: var(--s-muted); }
+.hr::after { content: ""; flex: 1; height: 1px; background: var(--s-line); margin-top: 6px; }
+.bloque { position: absolute; left: 44px; right: 0; border-radius: 10px; padding: 5px 8px 5px 12px; font-size: 13px; overflow: hidden; background: color-mix(in srgb, var(--cat) 30%, var(--s-surface)); }
+.bloque::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 3px; border-radius: 2px; background: var(--cat); }
+.bloque b { font-weight: 600; display: block; }
+.bloque small { color: var(--s-muted); font-size: 11px; }
+.bloque.hecha b { text-decoration: line-through; }
+.ahora { position: absolute; left: 36px; right: 0; height: 1.5px; background: var(--s-primary); }
+.ahora::before { content: ""; position: absolute; left: -4px; top: -3.5px; width: 8px; height: 8px; border-radius: 50%; background: var(--s-primary); }
+
+/* Cajón */
+.cajon-v .item { display: grid; gap: 4px; }
+.acciones { display: flex; gap: 14px; font-size: 12.5px; color: var(--s-primary); margin-top: 4px; }
+.screen[data-cajon="secciones"] .pest.cajonpest { display: none; }
+.screen[data-cajon="pestanas"] .seccion-titulo { display: none; }
+.screen[data-cajon="pestanas"][data-vercajon="inbox"] .ideas { display: none; }
+.screen[data-cajon="pestanas"][data-vercajon="ideas"] .inbox { display: none; }
+.cerrar { position: absolute; top: 48px; right: 16px; font-size: 14px; color: var(--s-primary); cursor: pointer; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="intro">
+    <h1>Maqueta B · Organización</h1>
+    <p>Colores por categoría, el listado con pestañas, el calendario y el cajón para inbox e ideas. Desde “Inicio” tocá los íconos de arriba para ir al listado, al calendario o al cajón. Elegí variantes y guardá tu elección.</p>
+  </header>
+
+  <div class="layout">
+    <div class="left">
+      <div class="tabs" role="group" aria-label="Pantalla">
+        <button type="button" data-view="inicio" aria-pressed="true">Inicio</button>
+        <button type="button" data-view="lista" aria-pressed="false">Listado</button>
+        <button type="button" data-view="calendario" aria-pressed="false">Calendario</button>
+        <button type="button" data-view="cajon" aria-pressed="false">Cajón</button>
+      </div>
+      <div class="phone"><div class="screen" id="screen">
+        <div class="sbar"><span>9:30</span><span>▮▮▮</span></div>
+
+        <!-- INICIO -->
+        <section class="view on" data-view="inicio">
+          <div class="tirador" data-ir="cajon" title="Deslizá hacia abajo para abrir el cajón"></div>
+          <div class="top">
+            <span class="ic" data-ir="lista" aria-label="Listado"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="7" width="16" height="12" rx="2"/><path d="M6 4h12"/></svg></span>
+            <span class="ic" data-ir="calendario" aria-label="Calendario"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></span>
+            <span class="grow"></span>
+            <span class="ic cajon" data-ir="cajon" aria-label="Cajón: inbox e ideas"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1.5 2.5h5L16 13h5"/></svg></span>
+            <span class="ic" aria-label="Ajustes"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span>
+          </div>
+          <div class="hint">Tocá y decí lo que tenés en la cabeza</div>
+          <div class="circulo"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4E6B55" stroke-width="1.5" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/></svg></div>
+          <div class="fichero" id="fichero"></div>
+        </section>
+
+        <!-- LISTADO -->
+        <section class="view" data-view="lista">
+          <div class="pest" id="pestLista">
+            <button type="button" data-p="hoy" aria-pressed="true">Hoy</button>
+            <button type="button" data-p="tarea" aria-pressed="false">Tareas</button>
+            <button type="button" data-p="cita" aria-pressed="false">Citas</button>
+            <button type="button" data-p="proyecto" aria-pressed="false">Proyectos</button>
+          </div>
+          <div id="contLista"></div>
+        </section>
+
+        <!-- CALENDARIO -->
+        <section class="view" data-view="calendario">
+          <div class="serif" style="font-size:20px;text-align:center;margin-bottom:8px">Sábado, 15 de noviembre</div>
+          <div class="dias" id="dias"></div>
+          <div class="grilla" id="grilla"></div>
+        </section>
+
+        <!-- CAJÓN -->
+        <section class="view cajon-v" data-view="cajon">
+          <div class="titulo">Cajón</div>
+          <div class="pest cajonpest" id="pestCajon">
+            <button type="button" data-c="inbox" aria-pressed="true">Inbox · 2</button>
+            <button type="button" data-c="ideas" aria-pressed="false">Ideas · 3</button>
+          </div>
+          <div class="inbox">
+            <div class="grupo seccion-titulo">Inbox · 2</div>
+            <div class="lista" id="contInbox"></div>
+          </div>
+          <div class="ideas">
+            <div class="grupo seccion-titulo">Ideas · 3</div>
+            <div class="lista" id="contIdeas"></div>
+          </div>
+        </section>
+      </div></div>
+      <div class="note" id="note"></div>
+    </div>
+
+    <div class="side">
+      <fieldset><legend>Colores por categoría</legend>
+        <p class="help">Todos dentro de la paleta Respiro: terrosos y apagados.</p>
+        <div class="chips">
+          <input type="radio" name="paleta" id="p1" value="bosque"><label for="p1"><span class="sw" id="sw-bosque"></span>Bosque</label>
+          <input type="radio" name="paleta" id="p2" value="tierra"><label for="p2"><span class="sw" id="sw-tierra"></span>Tierra</label>
+          <input type="radio" name="paleta" id="p3" value="bruma"><label for="p3"><span class="sw" id="sw-bruma"></span>Bruma</label>
+        </div>
+        <div class="leyenda" id="leyenda"></div>
+      </fieldset>
+      <fieldset><legend>Cómo se ve el color en las tarjetas</legend>
+        <div class="chips">
+          <input type="radio" name="estilo" id="s1" value="banda"><label for="s1">Banda a la izquierda</label>
+          <input type="radio" name="estilo" id="s2" value="punto"><label for="s2">Etiqueta con color</label>
+          <input type="radio" name="estilo" id="s3" value="tenido"><label for="s3">Tarjeta teñida</label>
+        </div></fieldset>
+      <fieldset><legend>Cómo se llega al cajón</legend>
+        <p class="help">Inbox e ideas quedan fuera del listado.</p>
+        <div class="chips">
+          <input type="radio" name="acceso" id="a1" value="icono"><label for="a1">Ícono de bandeja arriba</label>
+          <input type="radio" name="acceso" id="a2" value="deslizar"><label for="a2">Deslizar hacia abajo en Inicio</label>
+        </div></fieldset>
+      <fieldset><legend>Dentro del cajón</legend>
+        <div class="chips">
+          <input type="radio" name="cajon" id="k1" value="pestanas"><label for="k1">Inbox e Ideas en pestañas</label>
+          <input type="radio" name="cajon" id="k2" value="secciones"><label for="k2">Una lista con dos secciones</label>
+        </div></fieldset>
+
+      <section class="save">
+        <h2>Mi elección</h2>
+        <pre class="summary" id="summary"></pre>
+        <label for="nota">Comentarios sobre esta maqueta</label>
+        <textarea id="nota" placeholder="Lo que cambiarías, lo que falta…"></textarea>
+        <button class="primary" type="button" id="saveBtn">Guardar</button>
+        <div class="status-msg" id="saveMsg" role="status"></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script>
+const PALETAS = {
+  bosque: { tarea: "#7FA383", cita: "#C9A35E", proyecto: "#8EA3B8", idea: "#9C92B4", inbox: "#C2B49C" },
+  tierra: { tarea: "#6E8B5E", cita: "#C08A6A", proyecto: "#6F8F92", idea: "#A08AA0", inbox: "#B3AA9A" },
+  bruma:  { tarea: "#9DB79F", cita: "#D7BC8A", proyecto: "#A9BACB", idea: "#B9B0CB", inbox: "#D3C8B5" }
+};
+const CATS = { tarea: "Tarea", cita: "Cita", proyecto: "Proyecto", idea: "Idea", inbox: "Inbox" };
+const S = { paleta: "bosque", estilo: "banda", acceso: "icono", cajon: "secciones" };
+const NOMBRES = { paleta: { bosque: "Bosque", tierra: "Tierra", bruma: "Bruma" }, estilo: { banda: "banda a la izquierda", punto: "etiqueta con color", tenido: "tarjeta teñida" },
+  acceso: { icono: "ícono de bandeja arriba", deslizar: "deslizar hacia abajo en Inicio" }, cajon: { pestanas: "pestañas", secciones: "una lista con secciones" } };
+const NOTES = { inicio: "Los íconos de arriba llevan al listado, al calendario y al cajón. El fichero ya muestra el color de cada categoría.",
+  lista: "Por defecto “Hoy” en orden de hora, con todo junto. Las pestañas filtran por tipo.",
+  calendario: "Cada bloque toma el color de su categoría; el rayado es un slot cerrado con “Ahora no”.",
+  cajon: "Lo que todavía no tiene forma: inbox para ordenar e ideas para la revisión semanal." };
+
+const HOY = [
+  { cat: "tarea", h: "8:30", d: 30, t: "Responder el mail del estudio", sub: "Hecha · 32 min de foco", hecha: true },
+  { cat: "cita", h: "10:00", d: 45, t: "Dentista", sub: "Salí 9:25 · Consultorio" },
+  { cat: "proyecto", h: "12:30", d: 60, t: "Mudanza · Embalar la cocina", sub: "Sesión de proyecto · faltan 22 días", barra: .35 },
+  { cat: "tarea", h: "15:00", d: 20, t: "Llamar al banco", sub: "Banco · 2 pasos" },
+  { cat: "cita", h: "18:00", d: 60, t: "Reunión con el estudio", sub: "Videollamada" },
+  { cat: "tarea", h: "20:30", d: 15, t: "Regar las plantas", sub: "Se repite cada 3 días" }
+];
+const MAS = {
+  tarea: [{ dia: "Mañana", items: [{ cat: "tarea", h: "9:15", d: 45, t: "Preparar el menú semanal", sub: "Mirar la heladera antes" }, { cat: "tarea", h: "17:00", d: 30, t: "Devolver el paquete", sub: "Correo" }] }],
+  cita: [{ dia: "Lunes 17", items: [{ cat: "cita", h: "11:00", d: 60, t: "Turno en la oficina pública", sub: "Salí 10:20 · Llevar documentos" }] }, { dia: "Jueves 20", items: [{ cat: "cita", h: "19:30", d: 120, t: "Cumpleaños de Juli", sub: "Restaurante" }] }],
+  proyecto: [{ dia: "", items: [{ cat: "proyecto", h: "", d: 0, t: "Mudanza", sub: "Ahora: Embalar la cocina · próxima sesión hoy 12:30", barra: .35 }, { cat: "proyecto", h: "", d: 0, t: "Portfolio nuevo", sub: "Ahora: Elegir 6 proyectos · próxima sesión martes 10:00", barra: .15 }] }]
+};
+const INBOX = [{ cat: "inbox", t: "lo de Martín", sub: "hace 2 horas" }, { cat: "inbox", t: "pintar el living", sub: "ayer" }];
+const IDEAS = [{ cat: "idea", t: "Lámpara que respira", sub: "diseño" }, { cat: "idea", t: "Viaje en tren por el norte", sub: "viajes" }, { cat: "idea", t: "Banco de madera para el balcón", sub: "casa" }];
+
+const screen = document.getElementById("screen");
+function ficha(x) {
+  return `<div class="ficha ${x.hecha ? "hecha" : ""}" style="--cat:${PALETAS[S.paleta][x.cat]}">
+    <div class="row"><b>${x.t}</b>${x.h ? `<span class="hora">${x.h}</span>` : ""}</div>
+    <small>${x.sub}${x.d ? ` · ${x.d} min` : ""}</small>
+    ${x.barra !== undefined ? `<div class="barra"><i style="width:${x.barra * 100}%"></i></div>` : ""}
+    <span class="tag">${CATS[x.cat]}</span></div>`;
+}
+let pestana = "hoy", verCajon = "inbox";
+function render() {
+  const p = PALETAS[S.paleta];
+  document.getElementById("fichero").innerHTML = [HOY[1], HOY[2], HOY[3]].map(ficha).join("");
+  const cont = document.getElementById("contLista");
+  cont.innerHTML = pestana === "hoy"
+    ? `<div class="grupo">Hoy</div><div class="lista">${HOY.map(ficha).join("")}</div>`
+    : (pestana === "proyecto" ? "" : `<div class="grupo">Hoy</div><div class="lista">${HOY.filter(x => x.cat === pestana).map(ficha).join("")}</div>`) +
+      MAS[pestana].map(g => `${g.dia ? `<div class="grupo">${g.dia}</div>` : ""}<div class="lista">${g.items.map(ficha).join("")}</div>`).join("");
+  document.getElementById("contInbox").innerHTML = INBOX.map(x => ficha(x).replace("</small>", '</small><div class="acciones"><span>✦ Ordenar con Claude</span><span>Pasar a tarea</span><span>Archivar</span></div>')).join("");
+  document.getElementById("contIdeas").innerHTML = IDEAS.map(ficha).join("");
+  // Calendario
+  const dias = ["D 9", "L 10", "M 11", "X 12", "J 13", "V 14", "S 15"].map((d, i) => {
+    const [l, n] = d.split(" "); const cats = [["tarea"], ["cita", "tarea"], ["proyecto"], ["tarea", "tarea"], ["cita"], ["proyecto", "tarea"], ["tarea", "cita", "proyecto"]][i];
+    return `<span class="${i === 6 ? "hoy" : ""}">${l}<b>${n}</b><span style="display:flex;gap:2px;justify-content:center">${cats.map(c => `<i style="background:${p[c]}"></i>`).join("")}</span></span>`;
+  }).join("");
+  document.getElementById("dias").innerHTML = dias;
+  const y = h => (h - 8) * 56;
+  const aMin = s => { const [hh, mm] = s.split(":").map(Number); return hh + mm / 60; };
+  let g = "";
+  for (let h = 8; h <= 21; h++) g += `<div class="hr" style="top:${y(h)}px"><span style="width:36px;text-align:right">${String(h).padStart(2, "0")}:00</span></div>`;
+  HOY.forEach(x => { const t = aMin(x.h); g += `<div class="bloque ${x.hecha ? "hecha" : ""}" style="--cat:${p[x.cat]};top:${y(t) + 6}px;height:${Math.max(26, x.d / 60 * 56)}px"><b>${x.t}</b>${x.d >= 40 ? `<small>${x.h} · ${x.d} min</small>` : ""}</div>`; });
+  g += `<div class="bloque" style="--cat:transparent;top:${y(13.75) + 6}px;height:26px;background:repeating-linear-gradient(135deg, transparent 0 6px, ${p.tarea}77 6px 7.5px);border:1px solid ${p.tarea}99"><small>Ordenar el escritorio · slot cerrado</small></div>`;
+  g += `<div class="ahora" style="top:${y(9.5) + 6}px"></div>`;
+  document.getElementById("grilla").innerHTML = g;
+  // Leyenda y muestras
+  document.getElementById("leyenda").innerHTML = Object.keys(CATS).map(c => `<span><i style="background:${p[c]}"></i>${CATS[c]}</span>`).join("");
+  Object.keys(PALETAS).forEach(k => { document.getElementById("sw-" + k).innerHTML = Object.values(PALETAS[k]).map(c => `<i style="background:${c}"></i>`).join(""); });
+}
+function apply() {
+  document.querySelectorAll('.side input[type="radio"]').forEach(i => { i.checked = S[i.name] === i.value; });
+  screen.dataset.estilo = S.estilo; screen.dataset.acceso = S.acceso; screen.dataset.cajon = S.cajon; screen.dataset.vercajon = verCajon;
+  document.getElementById("summary").textContent = `Colores: ${NOMBRES.paleta[S.paleta]}\nColor en tarjetas: ${NOMBRES.estilo[S.estilo]}\nAcceso al cajón: ${NOMBRES.acceso[S.acceso]}\nDentro del cajón: ${NOMBRES.cajon[S.cajon]}`;
+  render();
+}
+document.querySelector(".side").addEventListener("change", e => { if (e.target.name) { S[e.target.name] = e.target.value; apply(); } });
+function show(v) {
+  document.querySelectorAll(".view").forEach(x => x.classList.toggle("on", x.dataset.view === v));
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === v)));
+  document.getElementById("note").textContent = NOTES[v];
+}
+document.querySelector(".tabs").addEventListener("click", e => { const b = e.target.closest("button[data-view]"); if (b) show(b.dataset.view); });
+screen.addEventListener("click", e => { const t = e.target.closest("[data-ir]"); if (t) show(t.dataset.ir); });
+document.getElementById("pestLista").addEventListener("click", e => {
+  const b = e.target.closest("button[data-p]"); if (!b) return; pestana = b.dataset.p;
+  document.querySelectorAll("#pestLista button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); render();
+});
+document.getElementById("pestCajon").addEventListener("click", e => {
+  const b = e.target.closest("button[data-c]"); if (!b) return; verCajon = b.dataset.c;
+  document.querySelectorAll("#pestCajon button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); apply();
+});
+
+/* Guardar */
+const saveMsg = document.getElementById("saveMsg"); let db = null;
+document.getElementById("saveBtn").addEventListener("click", async () => {
+  const data = { ...S, maqueta: "B", nota: document.getElementById("nota").value.trim(), guardado: new Date().toISOString() };
+  if (!db) { saveMsg.textContent = "No pude guardar desde acá. Copiá el resumen y tus comentarios en Claude Code."; return; }
+  saveMsg.textContent = "Guardando…";
+  try { await db.doc("elecciones/maqueta-b").set(data); saveMsg.textContent = "Guardado. Avisame en Claude Code y lo leo."; }
+  catch (err) { saveMsg.textContent = "No se pudo guardar. Copiá el resumen en Claude Code."; }
+});
+(async () => {
+  try {
+    for (let i = 0; i < 30 && !(window.claude && window.claude.use); i++) await new Promise(r => setTimeout(r, 100));
+    if (!window.claude || !window.claude.use) return;
+    db = await window.claude.use("db"); if (!db) return;
+    const snap = await Promise.race([db.doc("elecciones/maqueta-b").get(), new Promise(r => setTimeout(() => r(null), 10000))]);
+    const prev = snap && (snap.data ? (typeof snap.data === "function" ? snap.data() : snap.data) : snap);
+    if (prev && prev.maqueta === "B") { Object.keys(S).forEach(k => { if (prev[k] !== undefined) S[k] = prev[k]; }); if (prev.nota) document.getElementById("nota").value = prev.nota; apply(); saveMsg.textContent = "Cargué lo último que guardaste."; }
+  } catch (e) {}
+})();
+
+apply(); show("inicio");
+</script>
+</body>
+</html>

@@ -147,7 +147,7 @@ enum Avisos {
         let contenido = UNMutableNotificationContent()
         contenido.title = titulo
         contenido.body = cuerpo
-        contenido.sound = .default
+        contenido.sound = Alarmas.sonido == "campanita" ? UNNotificationSound(named: UNNotificationSoundName(Alarmas.archivoCampanita)) : .default
         let partes = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: fecha)
         let pedido = UNNotificationRequest(identifier: id, content: contenido,
                                            trigger: UNCalendarNotificationTrigger(dateMatching: partes, repeats: false))
@@ -434,12 +434,13 @@ enum DatosDemo {
 
         let notasBanco = "Tener a mano el número de cliente. Preguntar también por la tarjeta nueva."
         func proyectoDemo() -> Proyecto {
-            let p = Proyecto(titulo: "Mudanza", deadline: ahora.addingTimeInterval(24 * 86_400))
-            p.creado = ahora.addingTimeInterval(-10 * 86_400)
+            let cal = Calendar.current
+            let p = Proyecto(titulo: "Mudanza", deadline: cal.startOfDay(for: ahora.addingTimeInterval(23 * 86_400)))
+            p.fechaInicio = cal.startOfDay(for: ahora.addingTimeInterval(-12 * 86_400))
             ctx.insert(p)
             for (i, (titulo, dias, hecha)) in [("Elegir empresa de mudanza", -3.0, true), ("Embalar la cocina y el living", 6.0, false),
-                                              ("Cambiar dirección en bancos y servicios", 14.0, false), ("Día de la mudanza", 24.0, false)].enumerated() {
-                let e = Etapa(titulo: titulo, fechaObjetivo: ahora.addingTimeInterval(dias * 86_400), orden: i)
+                                              ("Cambiar dirección en bancos y servicios", 14.0, false), ("Día de la mudanza", 23.0, false)].enumerated() {
+                let e = Etapa(titulo: titulo, fechaObjetivo: cal.startOfDay(for: ahora.addingTimeInterval(dias * 86_400)), orden: i)
                 e.cumplida = hecha
                 ctx.insert(e)
                 e.proyecto = p
@@ -465,7 +466,7 @@ enum DatosDemo {
             t2.etapa = segunda
         case "captura":
             break
-        case "lista", "calendario":
+        case "lista", "calendario", "cajon", "proyectos":
             let hecha = tarea("Responder el mail del estudio", en: -3 * 3600, 30)
             hecha.estado = .terminada
             hecha.inicioReal = hecha.inicio

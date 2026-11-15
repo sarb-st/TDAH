@@ -63,6 +63,19 @@ enum Guardado {
         return MotorSlots.sugerencias(duracion: duracion, ocupados: ocupados, desde: desde, cantidad: 1).first?.inicio
     }
 
+    /// Convierte lo que devolvió la IA en propuestas editables; a las tareas sin hora les sugiere un hueco libre.
+    static func propuestas(_ items: [PropuestaIA], tareas: [Tarea]) -> [Propuesta] {
+        let ocupado = ocupados(tareas)
+        return items.map { ia in
+            var p = Propuesta(ia: ia)
+            if p.tipo == "tarea" && p.fecha == nil, let hueco = huecos(duracion: p.duracion, desde: .now, ocupados: ocupado, p: p) {
+                p.fecha = hueco
+                p.horaPropuesta = true
+            }
+            return p
+        }
+    }
+
     static func ocupados(_ tareas: [Tarea]) -> [DateInterval] {
         tareas.filter(\.ocupaAgenda).map(\.intervalo) + Calendario.ocupados()
     }
@@ -96,6 +109,7 @@ enum Guardado {
                 }
             case "proyecto":
                 let proyecto = Proyecto(titulo: p.titulo, deadline: p.deadline ?? .now.addingTimeInterval(30 * 86_400))
+                proyecto.fechaInicio = Calendar.current.startOfDay(for: .now)
                 proyecto.notas = p.notas
                 ctx.insert(proyecto)
                 var primera: Etapa?
@@ -131,9 +145,107 @@ enum Guardado {
     }
 }
 
-// MARK: - Pantalla de captura
+// MARK: - Dictado en la pantalla principal
 
-/// Dictar (o escribir) lo que hay en la cabeza; Claude lo separa y clasifica, y el usuario revisa antes de guardar.
+/// Dictar desde el círculo de la pantalla principal: un toque y escucha; "Listo" (o tocar de nuevo) y se ordena.
+/// La captura se guarda al instante en el Inbox; si la IA responde, se reemplaza por lo que propone.
+@Observable
+@MainActor
+final class CapturaInicio {
+    let dictado = Dictado()
+    var pensando = false
+    var propuestas: [Propuesta] = DatosDemo.pantalla == "captura" ? CapturaView.ejemplo : []
+    var revisando = DatosDemo.pantalla == "captura"
+    var escribiendo = false
+    var aviso: String?
+
+    func tocar(ctx: ModelContext) {
+        guard !pensando else { return }
+        if dictado.escuchando {
+            terminar(ctx: ctx)
+        } else {
+            dictado.texto = ""
+            dictado.error = nil
+            Task { await dictado.empezar() }
+        }
+    }
+
+    func terminar(ctx: ModelContext) {
+        dictado.detener()
+        let texto = dictado.texto.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !texto.isEmpty else { return }
+        procesar(texto, ctx: ctx)
+    }
+
+    func procesar(_ texto: String, ctx: ModelContext) {
+        let respaldo = Captura(tipo: "inbox", texto: texto)
+        ctx.insert(respaldo)
+        Acciones.guardar(ctx)
+        guard ClaveIA.hay else {
+            aviso = "Quedó guardado en el cajón, en el Inbox. Para que se ordene solo, cargá tu clave en Ajustes → Inteligencia artificial."
+            return
+        }
+        pensando = true
+        Task {
+            do {
+                let items = try await ClienteClaude.clasificar(texto)
+                let tareas = (try? ctx.fetch(FetchDescriptor<Tarea>())) ?? []
+                propuestas = Guardado.propuestas(items, tareas: tareas)
+                ctx.delete(respaldo)
+                Acciones.guardar(ctx)
+                pensando = false
+                if propuestas.isEmpty { aviso = "No encontré nada para guardar. Quedó en el cajón por las dudas." } else { revisando = true }
+            } catch {
+                pensando = false
+                aviso = "\(error.localizedDescription)\n\nNo se perdió nada: quedó guardado en el cajón."
+            }
+        }
+    }
+}
+
+/// Lo que se entendió del dictado, para revisar y cambiar antes de guardar.
+struct RevisionView: View {
+    @Binding var propuestas: [Propuesta]
+    let paleta: Paleta
+    var onListo: () -> Void
+
+    @Environment(\.modelContext) private var ctx
+    @Query private var tareas: [Tarea]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(propuestas.count == 1 ? "Entendí esto" : "Entendí \(propuestas.count) cosas")
+                        .font(.serif(28, relativoA: .title))
+                    Text("Revisá y cambiá lo que quieras. Nada se guarda hasta que toques Guardar.")
+                        .font(.subheadline).foregroundStyle(paleta.secundario.color)
+                    ForEach($propuestas) { $p in
+                        TarjetaPropuesta(p: $p, paleta: paleta, ocupados: Guardado.ocupados(tareas)) {
+                            propuestas.removeAll { $0.id == p.id }
+                        }
+                    }
+                }
+                .padding(20)
+            }
+            Button(propuestas.isEmpty ? "Cerrar" : "Guardar todo") {
+                if !propuestas.isEmpty { Guardado.guardar(propuestas, ctx: ctx, tareas: tareas) }
+                propuestas = []
+                onListo()
+            }
+            .buttonStyle(BotonPrimario(paleta: paleta))
+            .padding(20)
+        }
+        .background(paleta.fondo.color.ignoresSafeArea())
+        .environment(\.paleta, paleta)
+        .tint(paleta.primario.color)
+    }
+}
+
+// MARK: - Escribir en vez de dictar
+
+/// Escribir (o dictar) lo que hay en la cabeza; la IA lo separa y clasifica, y el usuario revisa antes de guardar.
+/// Se abre manteniendo apretado el círculo de la pantalla principal.
 struct CapturaView: View {
     let paleta: Paleta
     var onEscribirAMano: () -> Void
@@ -144,8 +256,8 @@ struct CapturaView: View {
     @Environment(\.modelContext) private var ctx
     @Query private var tareas: [Tarea]
     @State private var dictado = Dictado()
-    @State private var estado: Estado = DatosDemo.pantalla == "captura" ? .revision : .captura
-    @State private var propuestas: [Propuesta] = DatosDemo.pantalla == "captura" ? CapturaView.ejemplo : []
+    @State private var estado: Estado = .captura
+    @State private var propuestas: [Propuesta] = []
 
     var body: some View {
         NavigationStack {
@@ -200,7 +312,7 @@ struct CapturaView: View {
             Button("Listo", action: procesar)
                 .buttonStyle(BotonPrimario(paleta: paleta))
                 .disabled(dictado.texto.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            Button("Cargar una tarea a mano") { dictado.detener(); cerrar(); onEscribirAMano() }
+            Button("Cargar una tarea a mano, con hora") { dictado.detener(); cerrar(); onEscribirAMano() }
                 .font(.subheadline)
                 .foregroundStyle(paleta.secundario.color)
         }
@@ -224,28 +336,7 @@ struct CapturaView: View {
     }
 
     private var vistaRevision: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(propuestas.count == 1 ? "Entendí esto" : "Entendí \(propuestas.count) cosas")
-                        .font(.serif(28, relativoA: .title))
-                    Text("Revisá y cambiá lo que quieras. Nada se guarda hasta que toques Guardar.")
-                        .font(.subheadline).foregroundStyle(paleta.secundario.color)
-                    ForEach($propuestas) { $p in
-                        TarjetaPropuesta(p: $p, paleta: paleta, ocupados: Guardado.ocupados(tareas)) {
-                            propuestas.removeAll { $0.id == p.id }
-                        }
-                    }
-                }
-                .padding(20)
-            }
-            Button(propuestas.isEmpty ? "Cerrar" : "Guardar todo") {
-                if !propuestas.isEmpty { Guardado.guardar(propuestas, ctx: ctx, tareas: tareas) }
-                cerrar()
-            }
-            .buttonStyle(BotonPrimario(paleta: paleta))
-            .padding(20)
-        }
+        RevisionView(propuestas: $propuestas, paleta: paleta) { cerrar() }
     }
 
     /// La captura se guarda al instante en el Inbox; si la IA responde, se reemplaza por lo clasificado.
@@ -257,27 +348,19 @@ struct CapturaView: View {
         ctx.insert(respaldo)
         Acciones.guardar(ctx)
         guard ClaveIA.hay else {
-            estado = .aviso("Quedó guardado en el Inbox. Para que Claude lo ordene solo, cargá tu clave en Ajustes → Inteligencia artificial.")
+            estado = .aviso("Quedó guardado en el cajón, en el Inbox. Para que se ordene solo, cargá tu clave en Ajustes → Inteligencia artificial.")
             return
         }
         estado = .procesando
         Task {
             do {
                 let items = try await ClienteClaude.clasificar(texto)
-                let ocupado = Guardado.ocupados(tareas)
-                propuestas = items.map { ia in
-                    var p = Propuesta(ia: ia)
-                    if p.tipo == "tarea" && p.fecha == nil, let hueco = Guardado.huecos(duracion: p.duracion, desde: .now, ocupados: ocupado, p: p) {
-                        p.fecha = hueco
-                        p.horaPropuesta = true
-                    }
-                    return p
-                }
+                propuestas = Guardado.propuestas(items, tareas: tareas)
                 ctx.delete(respaldo)
                 Acciones.guardar(ctx)
-                estado = propuestas.isEmpty ? .aviso("No encontré nada para guardar. Quedó en el Inbox por las dudas.") : .revision
+                estado = propuestas.isEmpty ? .aviso("No encontré nada para guardar. Quedó en el cajón por las dudas.") : .revision
             } catch {
-                estado = .aviso("\(error.localizedDescription)\n\nNo se perdió nada: quedó guardado en el Inbox.")
+                estado = .aviso("\(error.localizedDescription)\n\nNo se perdió nada: quedó guardado en el cajón.")
             }
         }
     }
@@ -359,7 +442,7 @@ struct TarjetaPropuesta: View {
                         .font(.caption).foregroundStyle(paleta.secundario.color)
                 }
                 if !p.lugar.isEmpty || p.tipo == "cita" {
-                    TextField("Lugar", text: $p.lugar).font(.subheadline)
+                    CampoLugar(lugar: $p.lugar, direccion: $p.direccion).font(.subheadline)
                 }
                 if !p.pasos.isEmpty {
                     Text(p.pasos.map { "· \($0)" }.joined(separator: "\n")).font(.footnote).foregroundStyle(paleta.secundario.color)

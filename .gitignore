@@ -49,3 +49,7 @@ CLAUDE.local.md
 
 # --- Generado por XcodeGen en la nube ---
 Soporte/Info.plist
+
+# --- Clave de la API guardada a mano por el usuario: NUNCA al repositorio ---
+apikey.txt
+*apikey*

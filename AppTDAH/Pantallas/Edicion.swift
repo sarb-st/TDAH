@@ -9,6 +9,7 @@ struct NuevaTareaView: View {
     var proyectoInicial: Proyecto? = nil
     var etapaInicial: Etapa? = nil
     var tituloInicial: String = ""
+    var esCitaInicial = false
     var alGuardar: (() -> Void)? = nil
 
     @Environment(\.modelContext) private var ctx
@@ -82,7 +83,7 @@ struct NuevaTareaView: View {
                     }
                 }
                 Section {
-                    TextField("Lugar", text: $lugar).focused($foco)
+                    CampoLugar(lugar: $lugar, direccion: $direccion)
                     TextField("Dirección", text: $direccion).focused($foco).textContentType(.fullStreetAddress)
                     TextField("Notas: qué llevar, qué no olvidar…", text: $notas, axis: .vertical)
                         .lineLimit(2...5)
@@ -135,9 +136,9 @@ struct NuevaTareaView: View {
         defer { calculandoViaje = false }
         if let m = await Viaje.shared.minutos(hasta: direccion.isEmpty ? lugar : direccion) {
             minutosViaje = m
-            avisoViaje = "Unos \(m) min desde donde estás ahora."
+            avisoViaje = Viaje.shared.autorizada ? "Unos \(m) min desde donde estás ahora. Lo recalculo cuando abrís la app." : "Unos \(m) min desde tu casa."
         } else {
-            avisoViaje = "No pude calcularlo. Revisá la dirección o el permiso de ubicación, o cargalo a mano."
+            avisoViaje = "No pude calcularlo. Revisá la dirección, el permiso de ubicación o tu casa en Ajustes, o cargalo a mano."
         }
     }
 
@@ -145,6 +146,7 @@ struct NuevaTareaView: View {
         proyecto = proyectoInicial
         etapa = etapaInicial
         if tarea == nil && !tituloInicial.isEmpty { titulo = tituloInicial }
+        if tarea == nil { esCita = esCitaInicial }
         guard let t = tarea else { return }
         esCita = t.esCita
         minutosViaje = t.minutosViaje
@@ -216,6 +218,9 @@ struct AjustesView: View {
     @AppStorage("apariencia") private var apariencia = Apariencia.automatico.rawValue
     @AppStorage("alarmas") private var alarmas = true
     @AppStorage("calendario") private var calendario = true
+    @AppStorage("sonidoAlarma") private var sonidoAlarma = "campanita"
+    @AppStorage("ciudad") private var ciudad = ""
+    @AppStorage("casa") private var casa = ""
     @State private var clave = ""
     @State private var hayClave = ClaveIA.hay
     @State private var importando = false
@@ -282,6 +287,10 @@ struct AjustesView: View {
                         .onChange(of: alarmas) { _, activa in
                             if activa { Task { await Alarmas.pedirPermiso() } }
                         }
+                    Picker("Sonido", selection: $sonidoAlarma) {
+                        Text("Campanita suave").tag("campanita")
+                        Text("El de iOS").tag("sistema")
+                    }
                     if Alarmas.soportadas && alarmas && !Alarmas.autorizadas {
                         Text("Falta el permiso: cuando cargues una tarea te lo va a pedir, o activalo en Ajustes del iPhone → AppTDAH.")
                             .font(.footnote).foregroundStyle(.secondary)
@@ -290,8 +299,17 @@ struct AjustesView: View {
                     Text("Avisos")
                 } footer: {
                     Text(Alarmas.soportadas
-                         ? "El comienzo y el fin de cada slot suenan como un despertador, aunque el iPhone esté en silencio."
+                         ? "El comienzo y el fin de cada slot suenan como un despertador, aunque el iPhone esté en silencio. Las tareas que se programen desde ahora usan el sonido elegido."
                          : "Para que suene como alarma hace falta iOS 26 o más nuevo. Por ahora llegan como notificación.")
+                }
+
+                Section {
+                    TextField("Tu ciudad", text: $ciudad).textContentType(.addressCity)
+                    TextField("Tu casa (dirección)", text: $casa).textContentType(.fullStreetAddress)
+                } header: {
+                    Text("Lugares")
+                } footer: {
+                    Text("La ciudad sirve para sugerirte lugares cerca. La casa se usa para calcular cuándo salir si no hay permiso de ubicación. Todo queda solo en este iPhone.")
                 }
 
                 Section {

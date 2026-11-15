@@ -54,6 +54,10 @@ struct Paleta: Equatable, Sendable {
     var esOscura: Bool { fondo.luminancia < 0.45 }
     var punto: RGB { primario.mezcla(halo, 0.35) }
     static let aviso = RGB(0xB0812F)
+    /// El blanco cálido de la app: "Empiezo", "Ahora no" y "Está bien, lo movemos." sobre la pantalla llena.
+    static let blancoCalido = RGB(0xFBF8F1)
+    /// Salvia apagada: llena la pantalla al sostener "Ahora no".
+    var ahoraNo: RGB { esOscura ? halo.mezcla(fondo, 0.25) : RGB(0xB9C4B3) }
 
     func mezcla(_ o: Paleta, _ t: Double) -> Paleta {
         Paleta(fondo: fondo.mezcla(o.fondo, t), superficie: superficie.mezcla(o.superficie, t),

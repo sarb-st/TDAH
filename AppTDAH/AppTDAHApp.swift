@@ -40,12 +40,13 @@ struct RaizView: View {
     @AppStorage("apariencia") private var apariencia = Apariencia.automatico.rawValue
 
     @State private var creando = false
-    @State private var capturando = DatosDemo.pantalla == "captura"
+    @State private var captura = CapturaInicio()
     @State private var ajustes = DatosDemo.pantalla == "ajustes"
     @State private var proyectoDemo = DatosDemo.pantalla == "proyecto"
     @Query private var proyectos: [Proyecto]
-    @State private var lista = DatosDemo.pantalla == "lista"
+    @State private var lista = DatosDemo.pantalla == "lista" || DatosDemo.pantalla == "proyectos"
     @State private var calendario = DatosDemo.pantalla == "calendario"
+    @State private var cajon = DatosDemo.pantalla == "cajon"
     @State private var transicion: Transicion? = RaizView.transicionDemo
 
     private static var transicionDemo: Transicion? {
@@ -86,28 +87,45 @@ struct RaizView: View {
             if !Task.isCancelled { withAnimation(.easeInOut(duration: 0.6)) { transicion = nil } }
         }
         .sheet(isPresented: $creando) { NuevaTareaView(tarea: nil) }
-        .sheet(isPresented: $capturando) { CapturaView(paleta: paleta) { creando = true } }
+        .sheet(isPresented: $captura.escribiendo) { CapturaView(paleta: paleta) { creando = true } }
+        .sheet(isPresented: $captura.revisando) {
+            RevisionView(propuestas: $captura.propuestas, paleta: paleta) { captura.revisando = false }
+                .presentationDetents([.fraction(0.82), .large])
+                .presentationDragIndicator(.visible)
+        }
         .sheet(isPresented: $ajustes) { AjustesView() }
-        .sheet(isPresented: $lista) { ListaView(paleta: paleta) }
+        .sheet(isPresented: $lista) { ListaView(paleta: paleta, pestanaInicial: DatosDemo.pantalla == "proyectos" ? .proyectos : .hoy) }
         .sheet(isPresented: $calendario) { CalendarioView(paleta: paleta) }
+        .sheet(isPresented: $cajon) { CajonView(paleta: paleta) }
+        .alert(captura.aviso ?? "", isPresented: Binding(get: { captura.aviso != nil }, set: { if !$0 { captura.aviso = nil } })) {
+            Button("Listo", role: .cancel) {}
+        }
         .sheet(isPresented: $proyectoDemo) {
             NavigationStack { if let p = proyectos.first { ProyectoDetalleView(proyecto: p, paleta: paleta) } }
                 .environment(\.paleta, paleta)
         }
         .onChange(of: fase) { _, nueva in
-            if nueva == .background { CopiaSeguridad.guardar(ctx) }
-            if nueva == .active && DatosDemo.pantalla == nil { Acciones.mantenimiento(ctx: ctx) }
+            if nueva == .background {
+                captura.dictado.detener()
+                CopiaSeguridad.guardar(ctx)
+            }
+            if nueva == .active && DatosDemo.pantalla == nil {
+                Alarmas.detenerSonando()
+                Acciones.mantenimiento(ctx: ctx)
+                Salidas.recalcular(ctx)
+            }
         }
         .task {
             guard DatosDemo.pantalla == nil else { return }
             Firma.programarAviso()
+            Alarmas.detenerSonando()
             Acciones.mantenimiento(ctx: ctx)
+            Salidas.recalcular(ctx)
         }
     }
 
     private var navegacion: Navegacion {
-        Navegacion(captura: { capturando = true }, nueva: { creando = true }, ajustes: { ajustes = true },
-                   lista: { lista = true }, calendario: { calendario = true })
+        Navegacion(ajustes: { ajustes = true }, lista: { lista = true }, calendario: { calendario = true }, cajon: { cajon = true })
     }
 
     @ViewBuilder
@@ -142,9 +160,9 @@ struct RaizView: View {
     private func pantalla(ahora: Date) -> some View {
         switch MotorSlots.pantalla(tareas, ahora: ahora) {
         case .vacio:
-            VacioView(navegacion: navegacion)
+            InicioView(tareas: [], ahora: ahora, navegacion: navegacion, captura: captura)
         case .espera(let lista):
-            EsperaView(tareas: lista, ahora: ahora, navegacion: navegacion)
+            InicioView(tareas: lista, ahora: ahora, navegacion: navegacion, captura: captura)
         case .decidir(let t):
             DecidirView(tarea: t,
                         onEmpiezo: { Acciones.empezar(t, ctx: ctx) },

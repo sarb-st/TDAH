@@ -12,6 +12,10 @@ import AppIntents
 enum Alarmas {
     static var activadas: Bool { UserDefaults.standard.object(forKey: "alarmas") as? Bool ?? true }
 
+    /// "campanita" (sonido propio, corto y suave) o "sistema" (el de iOS).
+    static var sonido: String { UserDefaults.standard.string(forKey: "sonidoAlarma") ?? "campanita" }
+    static let archivoCampanita = "campanita.wav"
+
     static var soportadas: Bool {
         #if canImport(AlarmKit)
         if #available(iOS 26.0, *) { return true }
@@ -60,6 +64,17 @@ enum Alarmas {
         #endif
     }
 
+    /// Al abrir la app se apaga cualquier alarma que esté sonando: ya estás adentro para decidir.
+    static func detenerSonando() {
+        #if canImport(AlarmKit)
+        if #available(iOS 26.0, *) {
+            for a in (try? AlarmManager.shared.alarms) ?? [] where a.state == .alerting {
+                try? AlarmManager.shared.stop(id: a.id)
+            }
+        }
+        #endif
+    }
+
     static func cancelar(_ ids: [UUID]) {
         #if canImport(AlarmKit)
         if #available(iOS 26.0, *) {
@@ -77,15 +92,22 @@ enum Alarmas {
 @available(iOS 26.0, *)
 struct MetadatosAlarma: AlarmMetadata {}
 
-/// El botón "Abrir" de la alarma lleva directo a la app, donde se decide.
+/// El botón "Abrir" de la alarma apaga el sonido y lleva directo a la app, donde se decide.
 @available(iOS 26.0, *)
 struct AbrirAppIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Abrir AppTDAH"
     static var openAppWhenRun: Bool = true
 
-    init() {}
+    @Parameter(title: "Alarma")
+    var alarma: String
 
-    func perform() async throws -> some IntentResult { .result() }
+    init() { self.alarma = "" }
+    init(alarma: String) { self.alarma = alarma }
+
+    func perform() async throws -> some IntentResult {
+        if let id = UUID(uuidString: alarma) { try? AlarmManager.shared.stop(id: id) }
+        return .result()
+    }
 }
 
 @available(iOS 26.0, *)
@@ -107,8 +129,8 @@ enum MotorAlarmas {
             schedule: .fixed(fecha),
             attributes: atributos,
             stopIntent: nil,
-            secondaryIntent: AbrirAppIntent(),
-            sound: .default)
+            secondaryIntent: AbrirAppIntent(alarma: id.uuidString),
+            sound: Alarmas.sonido == "campanita" ? .named(Alarmas.archivoCampanita) : .default)
         do {
             _ = try await AlarmManager.shared.schedule(id: id, configuration: configuracion)
         } catch {

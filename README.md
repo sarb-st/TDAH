@@ -1,7 +1,8 @@
 ﻿# AppTDAH
 
-App de iPhone (SwiftUI) en etapa de prueba. Por ahora solo muestra **"Hola"** y la fecha y hora
-en que fue compilada, para confirmar que estás viendo la última versión.
+App de iPhone (SwiftUI) para personas con TDAH: dictás lo que tenés en la cabeza, la app lo ordena en tareas,
+citas, proyectos e ideas, y a la hora de cada tarea te empuja a empezar. La fecha y hora de compilación está en
+Ajustes → Versión, para confirmar que estás viendo la última versión.
 
 La app se compila en una Mac en la nube (GitHub Actions), sin necesidad de tener Mac ni Xcode.
 
@@ -22,16 +23,20 @@ Este enlace siempre apunta a la última versión compilada.
 | `AppTDAH/Logica/MotorSlots.swift` | Las reglas: qué pantalla toca, los avisos, los choques y los huecos libres para "¿Cuándo?". |
 | `AppTDAH/Diseno/Paleta.swift` | Los colores de la estética "Respiro" y cómo cambian a lo largo del día. |
 | `AppTDAH/Diseno/CirculoQueRespira.swift` | El círculo que respira y las piezas comunes de las pantallas. |
-| `AppTDAH/Pantallas/Principal.swift` | Las pantallas principales: Espera, Decidir, ¿Cuándo?, En curso, Fin del slot y las transiciones. |
-| `AppTDAH/Pantallas/Agenda.swift` | El listado de tareas en tarjetas, el calendario por día y el detalle de cada tarea. |
+| `AppTDAH/Diseno/Categoria.swift` | Los colores de cada categoría, las tarjetas con banda de color y la lista que se reordena con manijas. |
+| `AppTDAH/Logica/Plan.swift` | Las cuentas de las etapas de un proyecto: duraciones, correr, achicar, repartir y reordenar. |
+| `AppTDAH/Pantallas/Principal.swift` | Las pantallas principales: Inicio (micrófono y fichero), Decidir, ¿Cuándo?, En curso, Fin del slot y las transiciones. |
+| `AppTDAH/Pantallas/Agenda.swift` | El listado con pestañas, el cajón (inbox e ideas), el calendario por día y el detalle de cada tarea. |
+| `AppTDAH/Pantallas/Lugar.swift` | Las sugerencias de lugares al escribir y el recálculo de la hora de salida desde donde estás. |
 | `AppTDAH/Pantallas/Edicion.swift` | Nueva tarea, Ajustes y Diagnóstico. |
 | `AppTDAH/Pantallas/Captura.swift` | Dictar lo que tenés en la cabeza y revisar lo que Claude propone antes de guardar. |
-| `AppTDAH/Pantallas/Proyectos.swift` | Proyectos: etapas, barra hasta la fecha final, tareas de cada etapa y replanteo. |
+| `AppTDAH/Pantallas/Proyectos.swift` | Proyectos: tarjeta, etapas que se abren y se reordenan, ficha de cada etapa, fechas con calendario y replanteo. |
 | `AppTDAH/Servicios/IA.swift` | La conexión con Claude (clasificar dictados y replanear proyectos) y la clave guardada en el Keychain. |
 | `AppTDAH/Servicios/Dispositivo.swift` | Dictado por voz, tiempo de viaje con Mapas y el espejo en el calendario del iPhone. |
 | `AppTDAH/Servicios/Alarmas.swift` | Las alarmas que suenan aunque el iPhone esté en silencio (iOS 26 en adelante). |
 | `AppTDAH/Servicios/Servicios.swift` | Avisos, firma, copia de seguridad, registro de errores y datos de muestra para las capturas. |
 | `AppTDAH/Fuentes/` | La tipografía Fraunces y su licencia libre (SIL Open Font License). |
+| `AppTDAH/Sonidos/` | La campanita corta y suave de la alarma (hecha para esta app). |
 | `AppTDAH/Textos.swift` | Cómo se escribe la fecha de compilación. |
 | `AppTDAH/BuildInfo.swift` | Fecha y versión de compilación; la nube lo reescribe en cada compilación. |
 | `AppTDAHTests/` | Pruebas automáticas de las reglas, los colores y los textos. |
@@ -40,6 +45,7 @@ Este enlace siempre apunta a la última versión compilada.
 | `.gitignore` | Lista de archivos que nunca se suben (compilaciones, archivos temporales, claves). |
 | `diseno/DISENO.md` | Guía de diseño: colores, tipografía, el círculo que respira y cada pantalla. |
 | `diseno/configurador.html` | Muestra interactiva de la estética (se abre en el navegador). |
+| `diseno/maqueta-a.html`, `-b`, `-c` | Las maquetas aprobadas: inicio y decidir; colores, listado y cajón; proyectos. |
 | `CLAUDE.md` | Reglas permanentes del proyecto (por ejemplo: nunca subir claves ni datos personales). |
 | `README.md` | Este documento. |
 
@@ -65,7 +71,7 @@ Después, cada vez que quieras instalar una versión nueva:
 3. Abrí **SideStore** → pestaña **My Apps** → botón **+** (arriba a la izquierda).
 4. Elegí `AppTDAH.ipa` desde **Descargas**.
 5. SideStore la firma con tu Apple ID y la instala. Aparece en tu pantalla de inicio.
-6. Abrila: tiene que decir **Hola** y la fecha y hora de la última compilación.
+6. Abrila y mirá en **Ajustes → Versión** la fecha y hora de la compilación.
 
 Si la fecha coincide con la de la última compilación en GitHub, estás viendo la versión más nueva.
 

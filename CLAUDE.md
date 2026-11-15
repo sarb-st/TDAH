@@ -46,13 +46,14 @@ Cada acción es una cita con **hora de arranque**, no con fecha de entrega. A es
 
 ### 2.3 "Empiezo" o "Ahora no"
 A la hora del slot, la app pide una decisión binaria. **No existe snooze ni recordatorio que se silencia.** La decisión se toma con un gesto consciente sobre el círculo (ver `diseno/DISENO.md`), no con un toque reflejo.
-- **Empiezo** (el círculo sigue al dedo; deslizar hacia arriba) → empieza el timer del slot.
+- **Empiezo** (el círculo sigue al dedo; deslizar hacia arriba mientras la pantalla se llena de verde) → empieza el timer del slot.
 - **Ahora no** (deslizar hacia abajo hasta el borde y sostener 2 s, mientras el halo se agranda) → acto explícito y registrado. Primero aparece "Está bien, lo movemos." solo y grande; después el slot queda cerrado y la app pregunta **"¿Cuándo, entonces?"**. Nada queda en el aire:
   - Propone **3 slots concretos** que respetan el calendario del usuario y el **horario del lugar** (ver 5.1), cada uno con un renglón que explica por qué.
   - **Otra hora**: días y horarios libres para elegir a mano.
   - **Ya no la voy a hacer**: archiva la tarea a propósito (se puede recuperar).
   - La pantalla es liviana: quien pospone suele estar cansado o abrumado.
-- **Alarma**: con iOS 26 o más nuevo, el comienzo (y sus repeticiones) y el fin del slot **suenan como un despertador aunque el iPhone esté en silencio** (AlarmKit), porque con hiperfoco una vibración no alcanza. Se puede apagar en Ajustes; sin AlarmKit llega una notificación común.
+- **Alarma**: con iOS 26 o más nuevo, el comienzo (y sus repeticiones) y el fin del slot **suenan como un despertador aunque el iPhone esté en silencio** (AlarmKit), porque con hiperfoco una vibración no alcanza. El sonido es una **campanita corta y suave** propia (en Ajustes se puede elegir el de iOS). Tocar "Abrir" o abrir la app apaga el sonido. Se puede apagar en Ajustes; sin AlarmKit llega una notificación común.
+  - Alternativa anotada por si la alarma no convence: notificación común con una vibración más intensa e insistente.
 - **Notificación**: a la hora llega una notificación común. Si se descarta sin decidir, vuelve a los **3 minutos**; al **tercer descarte** el slot se cierra como "Ahora no" y, al abrir la app, lo primero es "¿Cuándo, entonces?". Los tres avisos se programan de antemano y se cancelan apenas el usuario decide (iOS no permite impedir que se descarte una notificación).
 
 ### 2.4 Fin del slot
@@ -98,6 +99,9 @@ Un ajuste que regula cuánto cuesta decir "Ahora no". Existe porque el cerebro s
 ## 4. Captura y clasificación
 
 - El usuario dicta (o escribe) y la IA clasifica en **cinco categorías**: CITA, TAREA, PROYECTO, IDEA, INBOX.
+- **Se dicta desde el círculo de la pantalla principal:** un toque y escucha (el halo reacciona a la voz), "Listo" y se ordena;
+  después aparece la revisión. Manteniendo apretado el círculo se escribe en vez de dictar.
+- **La interfaz nunca nombra a la IA** (Claude): los botones dicen cosas como "Armar las etapas" u "Ordenar". Solo Ajustes la nombra.
 - **La captura se guarda siempre al instante**, aunque falten datos.
 - **Varias cosas en un dictado** → la IA las separa en capturas distintas ("llamar al banco, idea para el portfolio y el jueves dentista" = tres).
 - **Si la IA duda** → muestra sus dos mejores opciones ("¿tarea o idea?") y el usuario elige con un toque. Si no contesta, va al INBOX.
@@ -105,10 +109,13 @@ Un ajuste que regula cuánto cuesta decir "Ahora no". Existe porque el cerebro s
 - **La IA nunca inventa contenido** que el usuario no dijo.
 
 ### Pantalla principal: "la una cosa"
-- Muestra solo lo próximo (slot o cita), con su countdown y descripción.
-- Deslizando hacia el costado se ven los **dos siguientes**; a los pocos segundos vuelve sola a lo próximo.
-- Debajo del título se ven el **lugar** y las **notas** de la tarea (qué llevar, qué no olvidar).
-- Abajo, tres accesos que se abren a propósito: **listado de tareas en tarjetas**, **nueva tarea** y **calendario por día** (con franjas horarias y el rastro de los slots cerrados). Tocando una tarea se ve su detalle, se edita, se archiva o se borra.
+- En el centro, el círculo que respira es el **micrófono**.
+- Abajo, un **fichero** con lo próximo (slot o cita) y su countdown; las dos siguientes asoman debajo. Un toque lo despliega y aparece **"Ver todo"** (abre el listado); a los pocos segundos vuelve solo.
+- En la primera tarjeta se ven el **lugar** y las **notas** de la tarea (qué llevar, qué no olvidar).
+- Arriba, accesos que se abren a propósito: **listado** y **calendario por día** a la izquierda; **cajón** (inbox e ideas) y **ajustes** a la derecha.
+  - **Listado** con pestañas: Hoy (por defecto, todo junto por hora), Tareas, Citas y Proyectos. Tocando una tarea se ve su detalle, se edita, se archiva o se borra.
+  - **Calendario** con franjas horarias, colores por categoría y el rastro rayado de los slots cerrados.
+- **Colores por categoría** (tarea, cita, proyecto, idea, inbox): ver `diseno/DISENO.md`.
 - Al cargar o editar una tarea, la app avisa si se pisa con otra y ofrece el próximo hueco libre.
 - Lo pendiente de resolver **ocupa esta pantalla hasta resolverlo**: una tarea sin hora, una sesión pausada sin respuesta.
 
@@ -126,17 +133,19 @@ Cosas de corto plazo, que se terminan en el día o en una o dos sesiones. Ejempl
   - La IA decide sola si la tarea necesita desglose.
   - Botón para desglosar más, **por paso** (no toda la lista), hasta **3 niveles** de profundidad. El tope evita que desglosar se vuelva una forma de no arrancar.
 - **Horario del lugar.** Si la tarea depende de que algo esté abierto (llamar al banco, ir a una oficina), la IA estima el horario de atención, el usuario lo confirma o corrige una vez, y la app lo recuerda. Las horas propuestas siempre lo respetan.
-- **Lugar, dirección y notas.** Opcionales y distintos de los pasos. La dirección se abre en Mapas.
+- **Lugar, dirección y notas.** Opcionales y distintos de los pasos. La dirección se abre en Mapas. Al escribir el lugar, Mapas **sugiere lugares y direcciones** (cerca de donde estás o de tu ciudad) y corrige errores de tipeo.
 - **Slot.** Cubre la tarea entera, con duración. Adentro el usuario va tachando pasos en una ruleta.
 - **Cierre.** Terminé / necesito más / paro por hoy (con nueva hora obligatoria). Ver 2.4.
 - **Recurrencia.** Para tareas que se repiten (regar plantas, surtido semanal).
 
 ### 5.2 PROYECTO
-Algo con etapas, deadline final y puntos de control, que dura días o semanas. Ejemplos: organizar un cumpleaños, un proyecto de diseño, una mudanza, un viaje.
+Algo con etapas, **fecha de inicio**, deadline final y puntos de control, que dura días o semanas. Ejemplos: organizar un cumpleaños, un proyecto de diseño, una mudanza, un viaje.
 
 **Un proyecto es un contenedor de tareas.** Cada tarea de un proyecto funciona exactamente igual que una TAREA (hora, countdown, "Empiezo" o "Ahora no"). El proyecto solo agrega deadline, etapas, hitos y la vista del conjunto.
 
-- **Plan.** La IA propone las etapas con **fechas repartidas hacia atrás desde el deadline**. El usuario edita.
+- **Plan.** Al crear el proyecto se eligen la fecha de inicio y la final (dos campos que abren un calendario y muestran cuánto dura) y "Armar las etapas" las reparte entre las dos fechas. El usuario las renombra, reordena, agrega o quita.
+  - Las etapas van una detrás de otra. Cada una se edita en su ficha: nombre y **duración en días u horas**; las siguientes se corren. Si el plan se pasa de la fecha final, la app ofrece correr la fecha final o achicar las etapas que siguen.
+  - **Reordenar** con manijas siempre visibles: una sesión que se mueve toma el horario del lugar al que va; una etapa que se mueve mantiene su duración y las fechas se reparten de nuevo.
 - **Desglose por etapa.** Las tareas de cada etapa se desglosan **recién cuando se llega a esa etapa**, para no mostrar la montaña completa.
 - **Estimación de tiempo.**
   - Cada tarea trae una estimación de tiempo.
@@ -149,8 +158,9 @@ Algo con etapas, deadline final y puntos de control, que dura días o semanas. E
   - Después de **X replanteos seguidos** (por defecto 2, ajustable en el dial), el siguiente replanteo avisa a la persona de accountability.
   - Un hito cumplido a tiempo **resetea el contador** y también puede avisarle.
 - **Vista.**
-  - En la pantalla principal: solo la próxima tarea del proyecto, más una **barra de tiempo restante hasta el deadline**.
-  - El plan completo vive en una vista aparte del proyecto.
+  - En el listado, **un proyecto es una sola tarjeta**: etapas completas ("1/4"), etapa actual, días que faltan, línea de tiempo (las divisiones son las etapas) y próxima sesión.
+  - En la pantalla principal: solo la próxima sesión del proyecto, como una tarjeta más del fichero, con su barra.
+  - El plan completo vive adentro del proyecto: etapas que se abren, solo la actual con sus sesiones.
 
 ### 5.3 IDEA
 Un bolazo que el usuario quiere sacar de la cabeza, sin compromiso de hacer nada ahora.
@@ -163,6 +173,7 @@ Un bolazo que el usuario quiere sacar de la cabeza, sin compromiso de hacer nada
 La red de seguridad para lo que la IA no pudo clasificar: capturas apuradas, dictados cortados o mal transcritos, cosas que el usuario todavía no decidió. Ejemplos: "lo de Martín", "pintar el living", "sacar turno".
 
 - Solo llega lo que el usuario no resolvió con el toque de duda en el momento de capturar (ver 4).
+- Vive en el **cajón** junto con las ideas (una lista con dos secciones), fuera del listado.
 - **Repaso diario corto** (unos 2 min, al final del día).
 - Lo que pasa **2 semanas sin procesar se archiva solo**. No se borra: se puede recuperar.
 
@@ -171,8 +182,9 @@ Día y hora fija, normalmente con otra persona o en un lugar. Ejemplos: dentista
 
 - Va al calendario. **No entra en el "Empiezo" o "Ahora no"**.
 - **Aviso de salida** = tiempo de trayecto + **buffer de 10 min** (ajustable), con countdown hasta la hora de salida.
+  - El trayecto se calcula **desde donde estás** (permiso de ubicación "mientras se usa la app") y se recalcula cada vez que se abre la app, para las citas de las próximas 24 h. Sin permiso, desde la casa cargada en Ajustes.
   - Medio de transporte por defecto: **transporte público**. Se puede cambiar por cita.
-  - La ciudad del usuario se configura en Ajustes de la app (nunca en el código).
+  - La ciudad y la casa del usuario se configuran en Ajustes de la app (nunca en el código).
 - **Preparación.** La IA detecta si la cita necesita algo antes (documentos, compras) y propone una **TAREA de preparación** con su propia hora. El usuario la acepta o no.
 
 ---
@@ -263,6 +275,9 @@ Sin una Mac al lado no se ven los errores en el momento. Estas reglas lo compens
 - [ ] **Minutos de foco**: ya se suman y se muestran en la celebración y en Ajustes; falta definir para qué más se usan.
 - [x] **Proveedor de IA**: Claude (Anthropic), modelo `claude-opus-5-5` con esfuerzo bajo y salida JSON con esquema. La clave se carga en Ajustes y vive en el Keychain.
 - [x] **Fase 2 (captura)** en marcha junto con versiones básicas de **citas** (Fase 3) y **proyectos** (Fase 5), a pedido del usuario: dictado, clasificación, revisión antes de guardar, inbox, ideas, citas con salida y alarma, espejo en el calendario del iPhone, resumen nocturno, proyectos con etapas, barra y replanteo con IA.
+- [x] **Maquetas A, B y C** (2026-11-15): inicio con micrófono en el círculo y fichero, decidir con llenado de pantalla, colores por categoría, listado con pestañas, cajón, calendario rayado y proyectos como tarjeta con fechas, etapas editables y reordenables. Ver `diseno/`.
+- [ ] **Ubicación en segundo plano** (permiso "Siempre" con cambios significativos de ubicación) para recalcular la salida sin abrir la app. Por ahora se recalcula al abrirla.
+- [ ] **Alarma**: probar la campanita; si no convence, alternativa de notificación con vibración más intensa.
 - [ ] **Nombre definitivo de la app** (provisorio: AppTDAH).
 
 ## 11. Fase futura (no construir todavía)

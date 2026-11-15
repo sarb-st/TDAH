@@ -46,13 +46,13 @@ enum ErrorIA: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .sinClave: "Falta la clave de Claude. Cargala en Ajustes → Inteligencia artificial."
-        case .claveInvalida: "La clave de Claude no es válida. Revisala en Ajustes."
-        case .sinCredito: "La cuenta de Claude se quedó sin crédito o llegó a su límite."
-        case .ocupado: "Claude está muy ocupado en este momento. Probá en un rato."
+        case .sinClave: "Falta la clave de la IA. Cargala en Ajustes → Inteligencia artificial."
+        case .claveInvalida: "La clave de la IA no es válida. Revisala en Ajustes."
+        case .sinCredito: "La cuenta de la IA se quedó sin crédito o llegó a su límite."
+        case .ocupado: "La IA está muy ocupada en este momento. Probá en un rato."
         case .sinConexion: "No hay conexión a internet."
-        case .rechazado: "Claude no quiso procesar ese texto."
-        case .respuestaRara(let detalle): "No entendí la respuesta de Claude (\(detalle))."
+        case .rechazado: "No se pudo procesar ese texto."
+        case .respuestaRara(let detalle): "No entendí la respuesta (\(detalle))."
         }
     }
 }
@@ -82,6 +82,13 @@ struct PropuestaIA: Codable, Equatable {
 }
 
 struct ClasificacionIA: Codable { var items: [PropuestaIA] }
+
+/// Las etapas de un proyecto nuevo, con lo que dura cada una en días (puede ser una fracción), y las sesiones de la primera.
+struct PlanIA: Codable {
+    struct EtapaPlan: Codable { var titulo: String; var dias: Double }
+    var etapas: [EtapaPlan]
+    var tareas_primera_etapa: [PropuestaIA.TareaIA]
+}
 struct ReplanteoIA: Codable { var explicacion: String; var etapas: [PropuestaIA.EtapaIA] }
 
 /// Llama a la API de Mensajes de Anthropic directamente (en Swift no hay SDK oficial) y pide JSON con esquema.
@@ -172,6 +179,29 @@ enum ClienteClaude {
         "required": ["explicacion", "etapas"], "additionalProperties": false
     ]
 
+    private static let esquemaPlan: [String: Any] = [
+        "type": "object",
+        "properties": [
+            "etapas": [
+                "type": "array",
+                "items": [
+                    "type": "object",
+                    "properties": ["titulo": ["type": "string"], "dias": ["type": "number"]],
+                    "required": ["titulo", "dias"], "additionalProperties": false
+                ]
+            ],
+            "tareas_primera_etapa": [
+                "type": "array",
+                "items": [
+                    "type": "object",
+                    "properties": ["titulo": ["type": "string"], "duracion_min": ["type": "integer"]],
+                    "required": ["titulo", "duracion_min"], "additionalProperties": false
+                ]
+            ]
+        ],
+        "required": ["etapas", "tareas_primera_etapa"], "additionalProperties": false
+    ]
+
     static func contextoFecha(_ ahora: Date = .now) -> String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "es")
@@ -183,6 +213,25 @@ enum ClienteClaude {
         let pedido = "\(contextoFecha(ahora))\n\nDictado:\n\(dictado)"
         let r: ClasificacionIA = try await pedir(sistema: instrucciones, usuario: pedido, esquema: esquemaClasificacion)
         return r.items
+    }
+
+    /// Propone las etapas de un proyecto nuevo entre la fecha de inicio y la final.
+    static func armarEtapas(titulo: String, notas: String, inicio: Date, fin: Date, ahora: Date = .now) async throws -> PlanIA {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withFullDate]
+        let dias = max(1, (Calendar.current.dateComponents([.day], from: inicio, to: fin).day ?? 0) + 1)
+        let pedido = """
+        \(contextoFecha(ahora))
+        Proyecto: \(titulo)
+        \(notas.isEmpty ? "" : "Notas del usuario: \(notas)\n")Empieza el \(f.string(from: inicio)) y termina el \(f.string(from: fin)) (\(dias) días en total).
+
+        Proponé de 3 a 6 etapas en orden, con un título corto cada una y cuántos días dura (puede ser una fracción si es
+        menos de un día). La suma no tiene que pasar de \(dias). Agregá solo las sesiones de la primera etapa: título corto
+        en infinitivo y duración en minutos (las demás se arman cuando se llegue a cada etapa).
+        No inventes cosas que no se deduzcan del proyecto.
+        """
+        return try await pedir(sistema: "Ayudás a planificar proyectos de una persona con TDAH, en español rioplatense: etapas concretas y alcanzables.",
+                               usuario: pedido, esquema: esquemaPlan)
     }
 
     static func replantear(_ p: Proyecto, ahora: Date = .now) async throws -> ReplanteoIA {
@@ -233,7 +282,7 @@ enum ClienteClaude {
         let codigo = (respuesta as? HTTPURLResponse)?.statusCode ?? 0
         guard codigo == 200 else {
             let detalle = String(data: datos.prefix(300), encoding: .utf8) ?? ""
-            Registro.anotar("Claude respondió \(codigo): \(detalle)")
+            Registro.anotar("La IA respondió \(codigo): \(detalle)")
             switch codigo {
             case 401, 403: throw ErrorIA.claveInvalida
             case 402: throw ErrorIA.sinCredito

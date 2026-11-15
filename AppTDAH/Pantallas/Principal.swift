@@ -37,166 +37,221 @@ struct NotasTarea: View {
     }
 }
 
-/// Abajo de la pantalla principal: listado, capturar (dictar) y calendario.
-struct BarraInferior: View {
-    var onLista: () -> Void
-    var onNueva: () -> Void
-    var onCalendario: () -> Void
+/// Arriba de la pantalla principal: listado y calendario a la izquierda; cajón y ajustes a la derecha.
+struct BarraSuperior: View {
+    let navegacion: Navegacion
     @Environment(\.paleta) private var paleta
 
     var body: some View {
-        HStack(spacing: 34) {
-            Button(action: onLista) { Image(systemName: "rectangle.stack").frame(width: 48, height: 48) }
-                .accessibilityLabel("Listado de tareas")
-            Button(action: onNueva) {
-                Image(systemName: "mic").font(.title2.weight(.light))
-                    .frame(width: 60, height: 60)
-                    .background(paleta.superficie.color, in: Circle())
-                    .overlay(Circle().stroke(paleta.linea.color))
-            }
-            .accessibilityLabel("Capturar: dictá lo que tenés en la cabeza")
-            Button(action: onCalendario) { Image(systemName: "calendar").frame(width: 48, height: 48) }
-                .accessibilityLabel("Calendario")
+        HStack(spacing: 2) {
+            boton("rectangle.stack", "Listado", navegacion.lista)
+            boton("calendar", "Calendario", navegacion.calendario)
+            Spacer()
+            boton("tray", "Cajón: inbox e ideas", navegacion.cajon)
+            boton("gearshape", "Ajustes", navegacion.ajustes)
         }
         .font(.title3)
         .foregroundStyle(paleta.primario.color)
-        .frame(maxWidth: .infinity)
-        .padding(.bottom, 6)
+        .padding(.horizontal, 10)
     }
-}
 
-struct BotonAjustes: View {
-    var accion: () -> Void
-    @Environment(\.paleta) private var paleta
-
-    var body: some View {
-        Button(action: accion) { Image(systemName: "gearshape").font(.title3).frame(width: 44, height: 44) }
-            .foregroundStyle(paleta.primario.color)
-            .padding(.trailing, 12)
-            .accessibilityLabel("Ajustes")
+    private func boton(_ icono: String, _ nombre: String, _ accion: @escaping () -> Void) -> some View {
+        Button(action: accion) { Image(systemName: icono).frame(width: 44, height: 44) }
+            .accessibilityLabel(nombre)
     }
 }
 
 struct Navegacion {
-    var captura: () -> Void
-    var nueva: () -> Void
     var ajustes: () -> Void
     var lista: () -> Void
     var calendario: () -> Void
+    var cajon: () -> Void
 }
 
-// MARK: - Espera
+// MARK: - Inicio
 
-/// Solo el próximo slot. Deslizando al costado se ven los dos siguientes; a los 6 s vuelve solo.
-struct EsperaView: View {
+/// La pantalla principal: el círculo es el micrófono (un toque y escucha) y abajo, el fichero con lo próximo.
+struct InicioView: View {
     let tareas: [Tarea]
     let ahora: Date
     let navegacion: Navegacion
+    let captura: CapturaInicio
 
     @Environment(\.paleta) private var paleta
-    @State private var pagina = 0
-    @ScaledMetric(relativeTo: .largeTitle) private var tamanoNumero: CGFloat = 46
-
-    private let etiquetas = ["Lo próximo", "Después", "Más tarde"]
+    @Environment(\.modelContext) private var ctx
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            TabView(selection: $pagina) {
-                ForEach(Array(tareas.enumerated()), id: \.element.uid) { i, t in
-                    vistaPagina(t, etiqueta: etiquetas[min(i, 2)]).tag(i)
+        GeometryReader { geo in
+            let centroY = geo.size.height * Medidas.alturaCentro
+            let escuchando = captura.dictado.escuchando
+            ZStack(alignment: .top) {
+                VStack(spacing: 4) {
+                    BarraSuperior(navegacion: navegacion)
+                    Text("Tocá y decí lo que tenés en la cabeza")
+                        .font(.subheadline)
+                        .foregroundStyle(paleta.secundario.color)
+                        .opacity(escuchando || captura.pensando ? 0 : 1)
                 }
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
 
-            BotonAjustes(accion: navegacion.ajustes)
+                circulo
+                    .position(x: geo.size.width / 2, y: centroY)
 
-            VStack(spacing: 10) {
-                Spacer()
-                if tareas.count > 1 {
-                    HStack(spacing: 7) {
-                        ForEach(tareas.indices, id: \.self) { i in
-                            Circle().fill(paleta.secundario.color.opacity(i == pagina ? 0.9 : 0.3)).frame(width: 6, height: 6)
-                        }
+                VStack(spacing: 10) {
+                    if escuchando {
+                        Button("Listo") { captura.terminar(ctx: ctx) }
+                            .font(.body.weight(.semibold))
+                            .padding(.horizontal, 26).padding(.vertical, 10)
+                            .background(paleta.superficie.color, in: Capsule())
+                            .overlay(Capsule().stroke(paleta.linea.color))
+                            .foregroundStyle(paleta.primario.color)
                     }
-                    .accessibilityHidden(true)
+                    if let error = captura.dictado.error {
+                        Text(error).font(.footnote).foregroundStyle(Paleta.aviso.color).multilineTextAlignment(.center)
+                        Button("Escribirlo") { captura.escribiendo = true }.font(.footnote.weight(.semibold))
+                    }
                 }
-                BarraInferior(onLista: navegacion.lista, onNueva: navegacion.captura, onCalendario: navegacion.calendario)
+                .padding(.horizontal, 30)
+                .position(x: geo.size.width / 2, y: centroY + Medidas.circulo * 0.95)
+
+                VStack {
+                    Spacer()
+                    if tareas.isEmpty {
+                        Text("Nada a la vista por ahora.")
+                            .font(.subheadline)
+                            .foregroundStyle(paleta.secundario.color)
+                            .padding(.bottom, 24)
+                    } else {
+                        Fichero(tareas: tareas, ahora: ahora, onVerTodo: navegacion.lista)
+                            .padding(.horizontal, 14)
+                            .padding(.bottom, 10)
+                    }
+                }
             }
-        }
-        .task(id: pagina) {
-            guard pagina != 0 else { return }
-            try? await Task.sleep(for: .seconds(6))
-            if !Task.isCancelled { withAnimation { pagina = 0 } }
         }
     }
 
-    private func vistaPagina(_ t: Tarea, etiqueta: String) -> some View {
-        // Para una cita con viaje, la cuenta regresiva es hasta la hora de salir.
-        let objetivo = t.salida ?? t.inicio
-        let empezo = t.esCita && t.inicio <= ahora
-        let leyenda = empezo ? "ahora" : (t.salida != nil ? (objetivo <= ahora ? "salí ya" : "salí en") : "comienza en")
-        let detalle = t.esCita && t.salida != nil
-            ? "\(Formato.diaYHora(t.inicio, ahora: ahora)) · salí \(Formato.hora(objetivo)) (\(t.minutosViaje) min de viaje)"
-            : "\(Formato.diaYHora(t.inicio, ahora: ahora)) · \(t.duracionMinutos) min"
-        return LienzoCirculo {
-            VStack(alignment: .leading, spacing: 0) {
-                Encabezado(etiqueta: t.esCita ? "Cita · \(etiqueta)" : etiqueta, titulo: t.titulo, detalle: detalle)
-                    .padding(.trailing, 44)
-                if let p = t.proyecto { BarraProyecto(proyecto: p, ahora: ahora).padding(.top, 10) }
-                NotasTarea(tarea: t)
-            }
-        } centro: {
-            CirculoQueRespira(halo: paleta.halo, fondo: paleta.fondo) {
-                VStack(spacing: 2) {
-                    Text(leyenda).font(.footnote).foregroundStyle(paleta.secundario.color)
-                    if !empezo {
-                        Text(Formato.cuenta(Int(objetivo.timeIntervalSince(ahora))))
-                            .font(.numero(objetivo.timeIntervalSince(ahora) >= 3600 ? tamanoNumero * 0.7 : tamanoNumero))
-                            .monospacedDigit()
-                    } else {
-                        Text(Formato.hora(t.inicio)).font(.numero(tamanoNumero * 0.8)).monospacedDigit()
-                    }
+    private var circulo: some View {
+        let escuchando = captura.dictado.escuchando
+        let intensidad = escuchando ? 0.15 + captura.dictado.nivel * 0.85 : (captura.pensando ? 0.2 : 0)
+        return CirculoQueRespira(halo: escuchando ? paleta.energia : paleta.halo, fondo: paleta.fondo, intensidad: intensidad) {
+            Group {
+                if captura.pensando {
+                    Image(systemName: "brain")
+                        .symbolEffect(.pulse, options: .repeating)
+                } else if escuchando {
+                    Image(systemName: "stop.fill")
+                } else {
+                    Image(systemName: "mic")
                 }
             }
-            .accessibilityElement(children: .combine)
-        } abajo: {
-            EmptyView()
+            .font(.system(size: 30, weight: .light))
+            .foregroundStyle(paleta.primario.color)
+            .frame(width: Medidas.circulo, height: Medidas.circulo)
+            .contentShape(Circle())
+            .onTapGesture { captura.tocar(ctx: ctx) }
+            .onLongPressGesture(minimumDuration: 0.6) { captura.escribiendo = true }
         }
+        .accessibilityElement()
+        .accessibilityLabel(captura.pensando ? "Ordenando lo que dijiste" : (escuchando ? "Dejar de escuchar" : "Dictar"))
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { captura.tocar(ctx: ctx) }
+        .accessibilityAction(named: "Escribir") { captura.escribiendo = true }
     }
 }
 
-struct VacioView: View {
-    let navegacion: Navegacion
+/// Lo próximo en tres tarjetas apiladas. Un toque las despliega (y aparece "Ver todo"); a los pocos segundos vuelven solas.
+struct Fichero: View {
+    let tareas: [Tarea]
+    let ahora: Date
+    var onVerTodo: () -> Void
+
+    @Environment(\.paleta) private var paleta
+    @State private var abierto = false
+
+    var body: some View {
+        let lista = Array(tareas.prefix(3))
+        VStack(spacing: abierto ? 8 : 0) {
+            ForEach(Array(lista.enumerated()), id: \.element.uid) { i, t in
+                FichaInicio(tarea: t, ahora: ahora, primera: i == 0)
+                    .frame(height: i == 0 || abierto ? nil : 8, alignment: .bottom)
+                    .clipped()
+                    .scaleEffect(x: abierto ? 1 : 1 - 0.03 * CGFloat(i), y: 1, anchor: .top)
+                    .opacity(i == 0 || abierto ? 1 : 0.9)
+                    .zIndex(Double(3 - i))
+            }
+            if abierto {
+                Button { abierto = false; onVerTodo() } label: {
+                    Label("Ver todo", systemImage: "rectangle.stack")
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, 18).padding(.vertical, 9)
+                        .background(paleta.superficie.color, in: Capsule())
+                        .overlay(Capsule().stroke(paleta.linea.color))
+                }
+                .foregroundStyle(paleta.primario.color)
+                .padding(.top, 4)
+                .transition(.opacity)
+            }
+        }
+        .shadow(color: .black.opacity(0.06), radius: 8, y: -2)
+        .contentShape(Rectangle())
+        .onTapGesture { withAnimation(.spring(duration: 0.4, bounce: 0.15)) { abierto.toggle() } }
+        .task(id: abierto) {
+            guard abierto else { return }
+            try? await Task.sleep(for: .seconds(8))
+            if !Task.isCancelled { withAnimation(.spring(duration: 0.4)) { abierto = false } }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityHint(abierto ? "Tocá para cerrar" : "Tocá para ver las próximas")
+    }
+}
+
+/// Una tarjeta del fichero: categoría en su color, título, cuenta regresiva y, en la primera, lugar y notas.
+struct FichaInicio: View {
+    let tarea: Tarea
+    let ahora: Date
+    var primera = false
     @Environment(\.paleta) private var paleta
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            LienzoCirculo {
-                Encabezado(etiqueta: "Lo próximo", titulo: "Nada a la vista", detalle: "Tocá el micrófono y dictá lo que tenés en la cabeza.")
-            } centro: {
-                CirculoQueRespira(halo: paleta.halo, fondo: paleta.fondo) {
-                    Button(action: navegacion.captura) {
-                        Image(systemName: "mic").font(.largeTitle.weight(.light)).foregroundStyle(paleta.primario.color)
-                            .frame(width: 120, height: 120)
+        let t = tarea
+        // Para una cita con viaje, la cuenta regresiva es hasta la hora de salir.
+        let objetivo = t.salida ?? t.inicio
+        let empezo = t.esCita && t.inicio <= ahora
+        let detalle = t.esCita && t.salida != nil
+            ? "\(Formato.diaYHora(t.inicio, ahora: ahora)) · salí \(Formato.hora(objetivo)) (\(t.minutosViaje) min de viaje)"
+            : "\(Formato.diaYHora(t.inicio, ahora: ahora)) · \(Formato.minutos(t.duracionMinutos))"
+        TarjetaBanda(categoria: t.categoria, paleta: paleta) {
+            VStack(alignment: .leading, spacing: 3) {
+                EtiquetaCategoria(categoria: t.categoria, paleta: paleta, extra: t.proyecto?.titulo ?? (primera ? "lo próximo" : nil))
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(t.titulo).font(.serif(19, relativoA: .headline)).lineLimit(2)
+                    Spacer(minLength: 4)
+                    VStack(alignment: .trailing, spacing: 0) {
+                        if empezo {
+                            Text("ahora").font(.serif(18, relativoA: .headline))
+                        } else {
+                            Text(Formato.cuenta(Int(objetivo.timeIntervalSince(ahora)))).font(.serif(18, relativoA: .headline)).monospacedDigit()
+                            Text(t.salida != nil ? "para salir" : "para empezar").font(.caption2).foregroundStyle(paleta.secundario.color)
+                        }
                     }
-                    .accessibilityLabel("Capturar lo próximo")
+                    .foregroundStyle(paleta.primario.color)
                 }
-            } abajo: {
-                EmptyView()
-            }
-            BotonAjustes(accion: navegacion.ajustes)
-            VStack {
-                Spacer()
-                BarraInferior(onLista: navegacion.lista, onNueva: navegacion.captura, onCalendario: navegacion.calendario)
+                Text(detalle).font(.caption).foregroundStyle(paleta.secundario.color).lineLimit(1)
+                if primera {
+                    if let p = t.proyecto { BarraProyecto(proyecto: p, ahora: ahora, mostrarNombre: false).padding(.top, 6) }
+                    NotasTarea(tarea: t)
+                }
             }
         }
+        .accessibilityElement(children: .combine)
     }
 }
 
 // MARK: - Decidir
 
-/// El círculo sigue al dedo. Hacia arriba: Empiezo. Hacia abajo hasta el borde y sostener 2 s: Ahora no
-/// (el halo se agranda mientras tanto).
+/// El círculo sigue al dedo con un elástico de costado. Hacia arriba: la pantalla se va llenando de verde y al
+/// llegar arriba (o al soltar pasada la mitad) empieza. Hacia abajo hasta el borde y sostener 2 s: Ahora no
+/// (la pantalla se llena de salvia apagada).
 struct DecidirView: View {
     let tarea: Tarea
     var onEmpiezo: () -> Void
@@ -204,84 +259,119 @@ struct DecidirView: View {
 
     @Environment(\.paleta) private var paleta
     @State private var arrastre: CGSize = .zero
+    @State private var rellenoArriba: Double = 0
     @State private var enBorde = false
     @State private var sostenDesde: Date?
     @State private var trabajo: DispatchWorkItem?
-    @State private var decidido = 0
+    @State private var decidido = false
+    @State private var golpe = 0
     @AppStorage("vecesDecidir") private var veces = 0
 
-    private let distanciaEmpezar: CGFloat = 90
     private let distanciaPosponer: CGFloat = 170
     private let segundosSosten: Double = 2
-
-    private var subida: Double { Double(min(1, max(0, -arrastre.height / distanciaEmpezar))) }
-    private var bajada: Double { Double(min(1, max(0, arrastre.height / distanciaPosponer))) }
+    private let elastico: CGFloat = 60
 
     var body: some View {
-        LienzoCirculo {
-            VStack(alignment: .leading, spacing: 0) {
-                Encabezado(etiqueta: "Es la hora", titulo: tarea.titulo,
-                           detalle: "\(Formato.hora(tarea.inicio)) · \(tarea.duracionMinutos) min")
-                if let p = tarea.proyecto { BarraProyecto(proyecto: p).padding(.top, 10) }
-                NotasTarea(tarea: tarea)
-            }
-        } centro: {
-            circulo
-        } abajo: {
-            if veces <= 5 {
-                HStack(spacing: 22) {
-                    Label("deslizá: empiezo", systemImage: "arrow.up")
-                    Label("bajá y sostené: ahora no", systemImage: "arrow.down")
+        GeometryReader { geo in
+            let alto = geo.size.height
+            let centro = CGPoint(x: geo.size.width / 2, y: alto * Medidas.alturaCentro)
+            TimelineView(.animation(minimumInterval: 1.0 / 30, paused: sostenDesde == nil)) { linea in
+                let sosten = sostenDesde.map { min(1, linea.date.timeIntervalSince($0) / segundosSosten) } ?? 0
+                let bajada = Double(min(1, max(0, arrastre.height / distanciaPosponer)))
+                let rellenoNo = enBorde ? sosten : 0
+                let relleno = max(rellenoArriba, rellenoNo)
+                let colorRelleno = rellenoNo > rellenoArriba ? paleta.ahoraNo : paleta.energia
+                let radioMax = hypot(geo.size.width, alto) * 1.15
+                ZStack {
+                    LienzoCirculo {
+                        VStack(alignment: .leading, spacing: 0) {
+                            Encabezado(etiqueta: "Es la hora", titulo: tarea.titulo,
+                                       detalle: "\(Formato.hora(tarea.inicio)) · \(Formato.minutos(tarea.duracionMinutos))")
+                            if let p = tarea.proyecto { BarraProyecto(proyecto: p).padding(.top, 10) }
+                            NotasTarea(tarea: tarea)
+                        }
+                    } centro: {
+                        Color.clear.frame(width: Medidas.circulo, height: Medidas.circulo)
+                    } abajo: {
+                        if veces <= 5 {
+                            HStack(spacing: 22) {
+                                Label("deslizá: empiezo", systemImage: "chevron.up")
+                                Label("bajá y sostené: ahora no", systemImage: "chevron.down")
+                            }
+                            .font(.footnote)
+                            .foregroundStyle(paleta.secundario.color)
+                            .frame(maxWidth: .infinity)
+                            .opacity(1 - max(rellenoArriba, bajada))
+                        }
+                    }
+
+                    // La pantalla se llena de color desde el círculo.
+                    Circle()
+                        .fill(colorRelleno.color)
+                        .frame(width: radioMax * 2 * relleno, height: radioMax * 2 * relleno)
+                        .blur(radius: 24)
+                        .position(x: centro.x + arrastre.width, y: centro.y + arrastre.height)
+                        .opacity(relleno > 0.001 ? 1 : 0)
+                        .allowsHitTesting(false)
+
+                    CirculoQueRespira(halo: paleta.halo, fondo: paleta.fondo,
+                                      intensidad: enBorde ? 0.3 + 0.7 * sosten : bajada * 0.3,
+                                      interior: 1 - relleno * 1.25) {
+                        VStack(spacing: 10) {
+                            Image(systemName: "chevron.up")
+                            Image(systemName: "chevron.down")
+                        }
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(paleta.primario.color)
+                        .opacity(1 - max(rellenoArriba * 2, bajada))
+                    }
+                    .contentShape(Circle())
+                    .gesture(DragGesture(minimumDistance: 0, coordinateSpace: .global)
+                                .onChanged { cambio($0, alto: alto) }
+                                .onEnded(fin))
+                    .offset(arrastre)
+                    .position(centro)
+                    .accessibilityElement()
+                    .accessibilityLabel("Decidir: \(tarea.titulo)")
+                    .accessibilityHint("Deslizá hacia arriba para empezar, o hacia abajo y sostené para posponer.")
+                    .accessibilityAction(named: "Empiezo") { onEmpiezo() }
+                    .accessibilityAction(named: "Ahora no") { onAhoraNo() }
+
+                    // Las palabras quedan fijas en el centro, en el blanco cálido de la app.
+                    Text("Empiezo")
+                        .font(.serif(32, relativoA: .largeTitle))
+                        .foregroundStyle(Paleta.blancoCalido.color)
+                        .opacity(rellenoArriba)
+                        .position(x: centro.x, y: alto * 0.46)
+                        .allowsHitTesting(false)
+                    Text("Ahora no")
+                        .font(.serif(32, relativoA: .largeTitle))
+                        .foregroundStyle(Paleta.blancoCalido.color)
+                        .opacity(enBorde ? 0.5 + 0.5 * sosten : bajada * 0.5)
+                        .position(x: centro.x, y: alto * 0.46)
+                        .allowsHitTesting(false)
                 }
-                .font(.footnote)
-                .foregroundStyle(paleta.secundario.color)
-                .frame(maxWidth: .infinity)
-                .opacity(1 - max(subida, bajada))
             }
         }
-        .overlay(paleta.energia.color.opacity(subida * 0.3).ignoresSafeArea().allowsHitTesting(false))
-        .sensoryFeedback(.success, trigger: decidido)
+        .sensoryFeedback(.success, trigger: golpe)
         .sensoryFeedback(.impact(weight: .light), trigger: enBorde)
         .onAppear { veces += 1 }
     }
 
-    private var circulo: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: sostenDesde == nil)) { linea in
-            let sosten = sostenDesde.map { min(1, linea.date.timeIntervalSince($0) / segundosSosten) } ?? 0
-            CirculoQueRespira(halo: paleta.halo, fondo: paleta.fondo, intensidad: max(sosten, bajada * 0.35)) {
-                ZStack {
-                    PuntoQueLate().opacity(1 - max(subida, bajada))
-                    Text("Empiezo").font(.pregunta).foregroundStyle(paleta.primario.color).opacity(subida)
-                    Text("Ahora no").font(.pregunta).foregroundStyle(paleta.secundario.color)
-                        .opacity(max(sosten, bajada * 0.6))
-                }
-            }
-        }
-        .contentShape(Circle())
-        .offset(arrastre)
-        .gesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged(cambio)
-                .onEnded(fin)
-        )
-        .accessibilityElement()
-        .accessibilityLabel("Decidir: \(tarea.titulo)")
-        .accessibilityHint("Deslizá hacia arriba para empezar, o hacia abajo y sostené para posponer.")
-        .accessibilityAction(named: "Empiezo", onEmpiezo)
-        .accessibilityAction(named: "Ahora no", onAhoraNo)
-    }
-
-    private func cambio(_ v: DragGesture.Value) {
-        // Sigue al dedo en las dos direcciones; lo que decide es cuánto sube o baja.
-        arrastre = CGSize(width: v.translation.width * 0.85, height: v.translation.height)
-        let llego = v.translation.height > distanciaPosponer
+    private func cambio(_ v: DragGesture.Value, alto: CGFloat) {
+        guard !decidido else { return }
+        let dx = v.translation.width
+        let x = (dx < 0 ? -1 : 1) * elastico * (1 - exp(-abs(dx) / (elastico * 1.6)))
+        let dy = v.translation.height
+        arrastre = CGSize(width: x, height: dy)
+        let recorrido = max(80, alto * 0.46 - 40)
+        rellenoArriba = dy < 0 ? Double(min(1, -dy / recorrido)) : 0
+        if rellenoArriba >= 1 { empezar(); return }
+        let llego = dy > distanciaPosponer
         if llego && !enBorde {
             enBorde = true
             sostenDesde = .now
-            let w = DispatchWorkItem {
-                decidido += 1
-                onAhoraNo()
-            }
+            let w = DispatchWorkItem { aMover() }
             trabajo = w
             DispatchQueue.main.asyncAfter(deadline: .now() + segundosSosten, execute: w)
         } else if !llego && enBorde {
@@ -292,16 +382,35 @@ struct DecidirView: View {
     }
 
     private func fin(_ v: DragGesture.Value) {
+        guard !decidido else { return }
         trabajo?.cancel()
+        let estabaEnBorde = enBorde
         enBorde = false
         sostenDesde = nil
-        if v.translation.height < -distanciaEmpezar {
-            decidido += 1
-            withAnimation(.easeIn(duration: 0.4)) { arrastre = CGSize(width: arrastre.width, height: -800) }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { onEmpiezo() }
+        if !estabaEnBorde && rellenoArriba >= 0.55 && v.translation.height < 0 {
+            empezar()
         } else {
-            withAnimation(.spring(duration: 0.45, bounce: 0.25)) { arrastre = .zero }
+            withAnimation(.spring(duration: 0.45, bounce: 0.25)) {
+                arrastre = .zero
+                rellenoArriba = 0
+            }
         }
+    }
+
+    private func empezar() {
+        guard !decidido else { return }
+        decidido = true
+        trabajo?.cancel()
+        golpe += 1
+        withAnimation(.easeOut(duration: 0.4)) { rellenoArriba = 1 }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { onEmpiezo() }
+    }
+
+    private func aMover() {
+        guard !decidido else { return }
+        decidido = true
+        golpe += 1
+        onAhoraNo()
     }
 }
 
@@ -333,17 +442,19 @@ struct CuandoView: View {
 
     var body: some View {
         let lista = sugerencias
-        VStack(alignment: .leading, spacing: 6) {
-            Text(tarea.titulo).font(.tituloTarea).lineLimit(3).padding(.top, 12)
-            if sinRespuesta {
-                Text("No llegaste a decidir. No pasa nada.").font(.subheadline).foregroundStyle(paleta.secundario.color)
-            }
-            Text("¿Cuándo, entonces?")
-                .font(.serif(34, relativoA: .largeTitle))
-                .foregroundStyle(paleta.primario.color)
-                .padding(.top, 10)
+        VStack(alignment: .leading, spacing: 0) {
+            Text(tarea.titulo).font(.serif(32, relativoA: .largeTitle)).lineLimit(3).padding(.top, 12)
+            Text(sinRespuesta ? "No llegaste a decidir. No pasa nada." : "Lo movemos.")
+                .font(.serifItalica(19, relativoA: .title3))
+                .foregroundStyle(paleta.secundario.color)
             Spacer(minLength: 12)
             VStack(spacing: 8) {
+                Text("¿Cuándo, entonces?")
+                    .font(.serif(22, relativoA: .title2))
+                    .foregroundStyle(paleta.primario.color)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 2)
+                    .padding(.bottom, 8)
                 ForEach(Array(lista.enumerated()), id: \.offset) { i, s in
                     opcion(i, titulo: Formato.diaYHora(s.inicio, ahora: ahora), motivo: motivo(i, s)) { onAgendar(s.inicio) }
                 }
@@ -720,17 +831,17 @@ struct CelebracionView: View {
     }
 }
 
-/// "Está bien, lo movemos." solo y grande, antes de preguntar cuándo.
+/// "Está bien, lo movemos." solo y grande sobre la salvia de "Ahora no", antes de preguntar cuándo.
 struct MovidaView: View {
     @Environment(\.paleta) private var paleta
     @State private var aparecer = false
 
     var body: some View {
         ZStack {
-            paleta.fondo.color.ignoresSafeArea()
+            paleta.ahoraNo.color.ignoresSafeArea()
             Text("Está bien,\nlo movemos.")
                 .font(.serifItalica(40, relativoA: .largeTitle))
-                .foregroundStyle(paleta.primario.color)
+                .foregroundStyle(Paleta.blancoCalido.color)
                 .multilineTextAlignment(.center)
                 .scaleEffect(aparecer ? 1 : 0.94)
                 .opacity(aparecer ? 1 : 0)

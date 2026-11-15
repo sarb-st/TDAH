@@ -27,7 +27,7 @@ targets:
         NSMicrophoneUsageDescription: "Para que puedas dictar lo que tenés en la cabeza."
         NSSpeechRecognitionUsageDescription: "Para pasar a texto lo que dictás."
         NSCalendarsFullAccessUsageDescription: "Para poner tus tareas y citas en tu calendario y no proponerte horas que ya tenés ocupadas."
-        NSLocationWhenInUseUsageDescription: "Para calcular cuánto tardás en llegar a una cita."
+        NSLocationWhenInUseUsageDescription: "Para calcular cuándo salir hacia una cita desde donde estás y sugerirte lugares cerca."
     settings:
       base:
         # SideStore reemplaza este identificador al instalar con tu Apple ID.

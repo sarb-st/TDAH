@@ -78,7 +78,10 @@ final class Paso {
 final class Proyecto {
     var uid: UUID = UUID()
     var titulo: String = ""
+    /// Fecha final: el final del último día del proyecto.
     var deadline: Date = Date()
+    /// Cuándo empieza el proyecto. Los proyectos viejos no la tienen: se usa la fecha de creación.
+    var fechaInicio: Date?
     var notas: String = ""
     var creado: Date = Date()
     var archivado: Bool = false
@@ -97,11 +100,36 @@ final class Proyecto {
     /// La primera etapa que no está cumplida.
     var etapaActual: Etapa? { etapasOrdenadas.first { !$0.cumplida } }
 
-    /// Qué parte del tiempo hasta el deadline ya pasó (0 a 1).
+    var inicioEfectivo: Date { fechaInicio ?? creado }
+
+    /// El último día del proyecto, para mostrarlo (la fecha final guardada es el final de ese día).
+    var ultimoDia: Date { deadline.addingTimeInterval(-60) }
+
+    /// Qué parte del tiempo entre el inicio y la fecha final ya pasó (0 a 1).
     func avanceTiempo(ahora: Date = .now) -> Double {
-        let total = deadline.timeIntervalSince(creado)
+        let total = deadline.timeIntervalSince(inicioEfectivo)
         guard total > 0 else { return 1 }
-        return min(1, max(0, ahora.timeIntervalSince(creado) / total))
+        return min(1, max(0, ahora.timeIntervalSince(inicioEfectivo) / total))
+    }
+
+    /// Inicio y fin de cada etapa: cada una empieza donde termina la anterior.
+    var rangos: [(etapa: Etapa, inicio: Date, fin: Date)] {
+        var desde = inicioEfectivo
+        var r: [(etapa: Etapa, inicio: Date, fin: Date)] = []
+        for e in etapasOrdenadas {
+            r.append((etapa: e, inicio: desde, fin: e.fechaObjetivo))
+            desde = max(desde, e.fechaObjetivo)
+        }
+        return r
+    }
+
+    var etapasHechas: Int { etapas.filter(\.cumplida).count }
+
+    /// La próxima sesión agendada del proyecto.
+    var proximaSesion: Tarea? { tareas.filter { $0.estado == .programada }.min { $0.inicio < $1.inicio } }
+
+    func diasRestantes(ahora: Date = .now) -> Int {
+        max(0, Calendar.current.dateComponents([.day], from: ahora, to: deadline).day ?? 0)
     }
 
     /// Hay atraso si una etapa ya venció y todavía no se cumplió.
