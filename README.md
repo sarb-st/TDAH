@@ -34,6 +34,9 @@ Este enlace siempre apunta a la última versión compilada.
 | `AppTDAH/Servicios/IA.swift` | La conexión con Claude (clasificar dictados y replanear proyectos) y la clave guardada en el Keychain. |
 | `AppTDAH/Servicios/Dispositivo.swift` | Dictado por voz, tiempo de viaje con Mapas y el espejo en el calendario del iPhone. |
 | `AppTDAH/Servicios/Alarmas.swift` | Las alarmas que suenan aunque el iPhone esté en silencio (iOS 26 en adelante). |
+| `AppTDAH/Servicios/Widgets.swift` | Le deja anotado al widget "Lo que viene" lo próximo cada vez que cambia algo. |
+| `AppTDAHWidgets/` | Los widgets: Captura (abre el dictado o escribir) y Lo que viene (con cuenta regresiva). |
+| `Compartido/` | Lo que usan la app y los widgets: lo próximo, cómo se dibuja cada widget y la carpeta compartida. |
 | `AppTDAH/Servicios/Servicios.swift` | Avisos, firma, copia de seguridad, registro de errores y datos de muestra para las capturas. |
 | `AppTDAH/Fuentes/` | La tipografía Fraunces y su licencia libre (SIL Open Font License). |
 | `AppTDAH/Sonidos/` | La campanita corta y suave de la alarma (hecha para esta app). |
@@ -79,6 +82,18 @@ Si la fecha coincide con la de la última compilación en GitHub, estás viendo 
 - Las apps vencen a los **7 días**. Abrí SideStore y tocá **Refresh All** antes de que venzan.
 - Podés tener hasta **3 apps** instaladas así a la vez (SideStore cuenta como una).
 - Instalar una versión nueva reemplaza a la anterior.
+- **Los widgets cuentan como una app más.** SideStore + AppTDAH + sus widgets = 3. Si al instalar SideStore pregunta
+  si querés conservar las extensiones (*Keep App Extensions*), elegí que sí; si no, la app anda igual pero sin widgets.
+
+### Cómo agregar los widgets
+
+1. En la pantalla de inicio, mantené apretado un espacio vacío hasta que los íconos tiemblen.
+2. Tocá **Editar → Agregar widget** (o el **+** arriba a la izquierda) y buscá **AppTDAH**.
+3. Elegí **Captura** (un toque abre el dictado; el mediano también tiene "Escribí") o **Lo que viene**
+   (lo próximo con su cuenta regresiva). Los dos se pueden poner también en la pantalla de bloqueo.
+
+Si "Lo que viene" queda en "Nada por ahora" aunque tengas cosas cargadas, abrí la app una vez. Si sigue igual,
+copiá el registro de **Ajustes → Diagnóstico** (la línea "Widgets:") y pegalo en Claude Code.
 
 ## Cómo conseguir la clave de Claude (una sola vez)
 

@@ -92,7 +92,7 @@ jobs:
           mkdir -p capturas
           i=1
           # pantalla:hora del día con la que se pintan los colores
-          for item in captura:9.5 cita:9.5 proyecto:9.5 espera:9.5 decidir:9.5 movida:9.5 cuando:9.5 encurso:16 fin:17 celebracion:17 lista:9.5 proyectos:9.5 cajon:9.5 calendario:9.5 vacio:9.5 ajustes:9.5 espera:20.6 espera:23; do
+          for item in captura:9.5 cita:9.5 proyecto:9.5 espera:9.5 decidir:9.5 movida:9.5 cuando:9.5 encurso:16 fin:17 celebracion:17 lista:9.5 proyectos:9.5 cajon:9.5 calendario:9.5 vacio:9.5 ajustes:9.5 widgets:9.5 widgets:21 espera:20.6 espera:23; do
             p="${item%%:*}"; h="${item##*:}"
             xcrun simctl launch --terminate-running-process "$UDID" app.tdah.AppTDAH -demo "$p" -hora "$h"
             sleep 6
@@ -120,6 +120,19 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY=""
 
+      # Sin firmar no quedan anotados los permisos (la carpeta compartida con los widgets).
+      # Se firman "ad hoc" con sus permisos para que SideStore los lea y registre la carpeta con tu Apple ID.
+      - name: Anotar los permisos de la app y los widgets
+        run: |
+          set -e
+          APP=build/device/Build/Products/Release-iphoneos/AppTDAH.app
+          WID="$APP/PlugIns/AppTDAHWidgets.appex"
+          test -d "$WID" || { echo "::error::Falta la extensión de widgets en la app"; ls -R "$APP" | head -50; exit 1; }
+          codesign --force --sign - --entitlements Soporte/Widgets.entitlements "$WID"
+          codesign --force --sign - --entitlements Soporte/AppTDAH.entitlements "$APP"
+          codesign -d --entitlements - "$WID"
+          codesign -d --entitlements - "$APP"
+
       - name: Empaquetar como .ipa
         run: |
           mkdir -p dist/Payload
@@ -146,7 +159,9 @@ jobs:
             || { echo "::error::No es una compilación para iPhone real"; exit 1; }
           echo "$ARCHS" | grep -q arm64 \
             || { echo "::error::El ejecutable no es arm64"; exit 1; }
-          echo "OK: estructura Payload/AppTDAH.app, compilado para iPhone (arm64), sin firmar."
+          test -d "$APP/PlugIns/AppTDAHWidgets.appex" || { echo "::error::Falta la extensión de widgets"; exit 1; }
+          codesign -d --entitlements - "$APP/PlugIns/AppTDAHWidgets.appex" 2>&1 | grep -q "group.app.tdah.AppTDAH"             || { echo "::error::Los widgets no tienen anotada la carpeta compartida"; exit 1; }
+          echo "OK: estructura Payload/AppTDAH.app con widgets, compilado para iPhone (arm64), firma ad hoc para SideStore."
 
       - name: Publicar en un Release
         env:

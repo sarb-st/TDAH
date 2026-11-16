@@ -68,7 +68,7 @@ struct RaizView: View {
             let paleta = Paleta.para(Apariencia(rawValue: apariencia) ?? .automatico,
                                      hora: DatosDemo.hora ?? Paleta.hora(de: ahora))
             ZStack {
-                pantalla(ahora: ahora)
+                if DatosDemo.pantalla == "widgets" { DemoWidgetsView(ahora: ahora) } else { pantalla(ahora: ahora) }
                 if let t = transicion {
                     vistaTransicion(t)
                         .transition(.opacity)
@@ -110,13 +110,18 @@ struct RaizView: View {
             if nueva == .background {
                 captura.dictado.detener()
                 CopiaSeguridad.guardar(ctx)
+                Widgets.actualizar(tareas)
             }
             if nueva == .active && DatosDemo.pantalla == nil {
                 Alarmas.detenerSonando()
                 Acciones.mantenimiento(ctx: ctx)
                 Salidas.recalcular(ctx)
+                Widgets.actualizar(tareas)
             }
         }
+        // Cada vez que cambia algo de la agenda, el widget "Lo que viene" se entera.
+        .onChange(of: huellaAgenda) { _, _ in Widgets.actualizar(tareas) }
+        .onOpenURL { abrirEnlace($0) }
         .task {
             guard DatosDemo.pantalla == nil else { return }
             Firma.programarAviso()
@@ -124,6 +129,43 @@ struct RaizView: View {
             Alarmas.cancelarTodas()
             Acciones.mantenimiento(ctx: ctx)
             Salidas.recalcular(ctx)
+            Widgets.actualizar(tareas)
+            Registro.anotar(Widgets.estado)
+        }
+    }
+
+    /// Cambia cuando cambia algo que el widget muestra.
+    private var huellaAgenda: [String] {
+        tareas.map { t in
+            "\(t.uid)|\(t.titulo)|\(t.inicio.timeIntervalSince1970)|\(t.duracionMinutos)|\(t.minutosExtra)|\(t.estadoRaw)|\(t.lugar)|\(t.notas)|\(t.minutosViaje)|\(t.proyecto?.titulo ?? "")"
+        }
+    }
+
+    /// Los widgets abren la app con "apptdah://dictar", "apptdah://escribir" o "apptdah://inicio".
+    private func abrirEnlace(_ url: URL) {
+        lista = false; calendario = false; cajon = false; ajustes = false; abierta = nil; cargarAMano = nil
+        let enInicio: Bool = {
+            switch MotorSlots.pantalla(tareas, ahora: .now) {
+            case .vacio, .espera, .enCurso: true
+            default: false
+            }
+        }()
+        Task { @MainActor in
+            // Un momento para que se cierre lo que estaba abierto.
+            try? await Task.sleep(for: .milliseconds(600))
+            switch url.host {
+            case "dictar":
+                // El dictado vive en el círculo de Inicio; si hay algo pendiente de decidir, se abre la captura aparte.
+                if enInicio && !captura.escribiendo {
+                    if !captura.dictado.escuchando { captura.tocar(ctx: ctx) }
+                } else {
+                    captura.escribiendo = true
+                }
+            case "escribir":
+                captura.escribiendo = true
+            default:
+                break
+            }
         }
     }
 

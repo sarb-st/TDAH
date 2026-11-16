@@ -18,7 +18,15 @@ targets:
   AppTDAH:
     type: application
     platform: iOS
-    sources: [AppTDAH]
+    sources: [AppTDAH, Compartido]
+    dependencies:
+      # Los widgets viajan adentro de la app (PlugIns/AppTDAHWidgets.appex).
+      - target: AppTDAHWidgets
+    # La carpeta compartida con los widgets. SideStore la registra con tu Apple ID al instalar.
+    entitlements:
+      path: Soporte/AppTDAH.entitlements
+      properties:
+        com.apple.security.application-groups: [group.app.tdah.AppTDAH]
     # Se genera en la nube; solo agrega lo que no se puede poner como INFOPLIST_KEY.
     info:
       path: Soporte/Info.plist
@@ -28,6 +36,12 @@ targets:
         NSSpeechRecognitionUsageDescription: "Para pasar a texto lo que dictás."
         NSCalendarsFullAccessUsageDescription: "Para poner tus tareas y citas en tu calendario y no proponerte horas que ya tenés ocupadas."
         NSLocationWhenInUseUsageDescription: "Para calcular cuándo salir hacia una cita desde donde estás y sugerirte lugares cerca."
+        # Los widgets abren la app con apptdah://dictar, apptdah://escribir o apptdah://inicio.
+        CFBundleURLTypes:
+          - CFBundleURLName: app.tdah.AppTDAH
+            CFBundleURLSchemes: [apptdah]
+        # SideStore anota acá el nombre real de la carpeta compartida.
+        ALTAppGroups: [group.app.tdah.AppTDAH]
     settings:
       base:
         # SideStore reemplaza este identificador al instalar con tu Apple ID.
@@ -41,6 +55,34 @@ targets:
         INFOPLIST_KEY_UIFileSharingEnabled: YES
         INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace: YES
         TARGETED_DEVICE_FAMILY: "1"
+
+  AppTDAHWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - AppTDAHWidgets
+      - Compartido
+      - path: AppTDAH/Fuentes
+        buildPhase: resources
+    info:
+      path: Soporte/Widgets-Info.plist
+      properties:
+        CFBundleDisplayName: AppTDAH
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        UIAppFonts: [Fraunces.ttf, Fraunces-Italic.ttf]
+        ALTAppGroups: [group.app.tdah.AppTDAH]
+    entitlements:
+      path: Soporte/Widgets.entitlements
+      properties:
+        com.apple.security.application-groups: [group.app.tdah.AppTDAH]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.tdah.AppTDAH.Widgets
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: AppTDAH
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
 
   AppTDAHTests:
     type: bundle.unit-test

@@ -443,6 +443,6 @@ struct DiagnosticoView: View {
         let version = "AppTDAH \(BuildInfo.commit ?? "local") · iOS \(UIDevice.current.systemVersion) · \(UIDevice.current.model)"
         let alarmas = "Alarmas: \(Alarmas.soportadas ? (Alarmas.autorizadas ? "autorizadas" : "sin permiso") : "no soportadas")"
         let extra = "IA: \(ClaveIA.hay ? "con clave" : "sin clave") · Calendario: \(Calendario.autorizado ? "autorizado" : "sin permiso")"
-        return version + "\n" + alarmas + "\n" + extra + "\n\n" + texto
+        return version + "\n" + alarmas + "\n" + extra + "\n" + Widgets.estado + "\n\n" + texto
     }
 }

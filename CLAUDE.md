@@ -203,7 +203,14 @@ Día y hora fija, normalmente con otra persona o en un lugar. Ejemplos: dentista
 
 ### Widgets
 - **Captura.** Botones para hablar o escribir. Un widget no puede grabar audio: el toque abre la app directo en el dictado.
+  Chico (un toque → dictado), mediano ("Hablá" y "Escribí") y redondo en la pantalla de bloqueo.
+  Si hay algo pendiente de decidir, en vez del dictado de Inicio se abre la captura aparte.
 - **Lo que viene.** La próxima cosa con su descripción y la cuenta regresiva. En proyectos, también la barra de tiempo hasta el deadline.
+  Chico, mediano (lugar, notas, barra del proyecto y lo que sigue) y en la pantalla de bloqueo. Lo en curso va primero ("quedan");
+  en una cita cuenta hasta la salida, el comienzo y el fin. Más de 6 h se muestra como hora ("mañana 18:00").
+- **Cómo se conectan.** La app deja lo próximo en un archivo de una carpeta compartida (App Group) cada vez que cambia algo;
+  el widget lo lee y cambia solo en cada inicio, salida y fin. SideStore renombra la carpeta: el nombre real se lee del perfil
+  de la firma. La compilación firma "ad hoc" la app y los widgets con sus permisos para que SideStore los registre.
 
 ### Rituales con hora
 | Ritual | Cuándo | Qué hace |
@@ -278,7 +285,7 @@ Sin una Mac al lado no se ven los errores en el momento. Estas reglas lo compens
   1. **Arranque sin IA**: base técnica (capturas del simulador, Diagnóstico, aviso de firma), tareas cargadas a mano, Espera, Decidir, ¿Cuándo?, En curso, Fin del slot, notificaciones y copia de seguridad.
   2. **Captura**: dictado, clasificación con IA, INBOX.
   3. **Calendario y citas**: espejo en Google Calendar, aviso de salida, resumen nocturno.
-  4. **Widgets**.
+  4. **Widgets** (hechos el 2026-11-16).
   5. **Desglose y proyectos**: estimado vs. real, factor personal.
   6. **Ideas, dial y persona de accountability**.
 - [x] **Estética**: cerrada, ver 6b.
