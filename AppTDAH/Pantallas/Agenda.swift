@@ -545,6 +545,7 @@ struct DetalleTareaView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             ForEach(tarea.pasosOrdenados, id: \.uid) { p in
                                 Button {
+                                    Haptica.tachar()
                                     p.hecho.toggle()
                                     Acciones.guardar(ctx)
                                 } label: {

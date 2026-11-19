@@ -119,7 +119,9 @@ Un ajuste que regula cuánto cuesta decir "Ahora no". Existe porque el cerebro s
 - En el centro, el círculo que respira es el **micrófono**.
 - Abajo, un **fichero** con lo próximo (slot o cita) y su countdown; las dos siguientes asoman debajo. Un toque lo despliega y aparece **"Ver todo"** (abre el listado); a los pocos segundos vuelve solo.
 - En la primera tarjeta se ven el **lugar** y las **notas** de la tarea (qué llevar, qué no olvidar).
-- Arriba, accesos que se abren a propósito: **listado** y **calendario por día** a la izquierda; **cajón** (inbox e ideas) y **ajustes** a la derecha.
+- Arriba: **Vos** (la personita) a la izquierda y **Ajustes** (el engranaje) a la derecha. Apoyando el dedo en la pantalla,
+  el halo se estira hacia el dedo (halo imán) y cuatro medias pastillas abren **calendario** (izquierda), **listado** (derecha),
+  **cajón** (arriba: listas, ideas e inbox) y **todo lo que viene** (abajo). Detalle en `diseno/DISENO.md`.
   - **Listado** con pestañas: Hoy (por defecto), Tareas, Citas y Proyectos. En Hoy: "Hecho hoy" arriba (plegable y más tenue), una línea "Ahora" adonde baja solo al abrir, lo que falta elegir hora y lo que viene. El "+" de Hoy pregunta qué cargar; en las otras pestañas carga esa categoría. Tocando una tarea se ve su detalle, se edita, se archiva o se borra.
   - **Calendario** con franjas horarias, colores por categoría y el rastro rayado de los slots cerrados.
 - **Colores por categoría** (tarea, cita, proyecto, idea, inbox): ver `diseno/DISENO.md`.
@@ -215,7 +217,7 @@ Día y hora fija, normalmente con otra persona o en un lugar. Ejemplos: dentista
 ### Rituales con hora
 | Ritual | Cuándo | Qué hace |
 | --- | --- | --- |
-| Resumen nocturno | Cada noche | Citas de mañana, hora de salida y tareas de preparación pendientes. |
+| Preparar mañana | 20:00 | Pantalla en pasos: el día de mañana, qué dejar listo, la importante y el cierre. Los domingos empieza por "¿Qué te toca esta semana?". |
 | Repaso del INBOX | Final del día | Aclarar lo que no se clasificó. |
 | Revisión de ideas | Semanal | Archivar, dejar o desarrollar cada idea. |
 
@@ -299,11 +301,13 @@ Sin una Mac al lado no se ven los errores en el momento. Estas reglas lo compens
 - [ ] **Logo e ícono** para la pantalla de inicio del iPhone.
 - [ ] **Pantalla de carga** con animación al abrir la app.
 - [ ] **Revisar el micrófono**: el usuario lo nota "medio raro" (2026-11-15). Ver si el toque largo (abre escribir) o el corte por silencio confunden.
-- [ ] **Para una tanda grande** (pedido del 2026-11-16):
-  - **Trayecto en auto**: cuando hay lugar o dirección, poder elegir entre transporte público y auto particular.
-  - **Bloquear el trayecto en el calendario**: en las citas, reservar el tiempo de viaje antes y después.
-  - **Resumen de las 21 h como pantalla**: la notificación abre una pantalla con lo de mañana, no queda solo en el aviso.
-  - **Que el aviso encienda la pantalla bloqueada**: avisos "urgentes" (time-sensitive) para que pasen los modos de concentración.
+- [x] **Tanda grande del 2026-11-16 y maquetas D, E y F** (escritas el 2026-11-19): trayecto en auto, viaje bloqueado en el
+  calendario, Preparar mañana a las 20, avisos urgentes, micrófono que reintenta, tus propios pasos, revisión al dictar,
+  Inicio con halo imán, Vos, horarios fijos y esta semana, objetivos y áreas, la importante (suave o firme), empujoncito,
+  los tuyos, repetir, widgets nuevos, cajón con listas, ideas e inbox, vibraciones.
+- [ ] **Avisos urgentes de verdad**: iOS solo los deja pasar los modos de concentración si la firma trae el permiso
+  "Time Sensitive Notifications"; con la cuenta gratis de SideStore puede no estar. Hoy se marcan como urgentes igual.
+- [ ] **Persona de accountability (Telegram)**: en firme, avisar cuando se pospone la importante (Fase 6).
 - [ ] **Al final, cuando todo funcione:** rediseñar las pantallas internas que hoy son formularios con estilo de Ajustes del iPhone (nueva tarea, editar, ajustes, etapa, etc.), algunas muy cargadas o sin diseño.
 
 ## 11. Fase futura (no construir todavía)

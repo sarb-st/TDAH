@@ -459,6 +459,7 @@ struct EnCursoView: View {
             VStack(spacing: 12) {
                 if !tarea.pasos.isEmpty {
                     Ruleta(pasos: tarea.pasosOrdenados) { paso in
+                        Haptica.tachar()
                         paso.hecho.toggle()
                         Acciones.guardar(ctx)
                     }

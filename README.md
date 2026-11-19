@@ -19,23 +19,34 @@ Este enlace siempre apunta a la última versión compilada.
 | Archivo | Para qué sirve |
 |---|---|
 | `AppTDAH/AppTDAHApp.swift` | Arranque de la app y la pantalla raíz, que decide qué mostrar en cada momento. |
-| `AppTDAH/Modelo/Tarea.swift` | Qué se guarda en el iPhone: tareas, pasos y el rastro de cada slot. |
+| `AppTDAH/Modelo/Tarea.swift` | Qué se guarda en el iPhone: tareas, pasos, el rastro de cada slot, los renglones de listas e ideas y tu gente con su hilo. |
+| `AppTDAH/Logica/Perfil.swift` | Lo tuyo: tu día, suave o firme, objetivos y horarios fijos (turnos que alternan, días distintos, la semana elegida). |
+| `AppTDAH/Logica/Repeticion.swift` | Las reglas para repetir una tarea y cuándo toca la próxima vez. |
 | `AppTDAH/Logica/MotorSlots.swift` | Las reglas: qué pantalla toca, los avisos, los choques y los huecos libres para "¿Cuándo?". |
 | `AppTDAH/Diseno/Paleta.swift` | Los colores de la estética "Respiro" y cómo cambian a lo largo del día. |
 | `AppTDAH/Diseno/CirculoQueRespira.swift` | El círculo que respira y las piezas comunes de las pantallas. |
 | `AppTDAH/Diseno/Categoria.swift` | Los colores de cada categoría, las tarjetas con banda de color y la lista que se reordena con manijas. |
 | `AppTDAH/Logica/Plan.swift` | Las cuentas de las etapas de un proyecto: duraciones, correr, achicar, repartir y reordenar. |
-| `AppTDAH/Pantallas/Principal.swift` | Las pantallas principales: Inicio (micrófono y fichero), Decidir, ¿Cuándo?, En curso, Fin del slot y las transiciones. |
-| `AppTDAH/Pantallas/Agenda.swift` | El listado con pestañas, el cajón (inbox e ideas), el calendario por día y el detalle de cada tarea. |
+| `AppTDAH/Pantallas/Inicio.swift` | Inicio: el círculo (micrófono), el halo imán con las cuatro medias pastillas y el fichero con la importante. |
+| `AppTDAH/Pantallas/Principal.swift` | Decidir, ¿Cuándo?, En curso, Fin del slot y las transiciones. |
+| `AppTDAH/Pantallas/Vos.swift` | Vos: tu foto y tu día, objetivos, suave o firme y horarios fijos. |
+| `AppTDAH/Pantallas/Semana.swift` | ¿Qué te toca esta semana? (domingos a las 20). |
+| `AppTDAH/Pantallas/Tuyos.swift` | Los tuyos: con quién estar presente, cómo, de qué hablar y el hilo de lo que te contaron. |
+| `AppTDAH/Pantallas/Preparar.swift` | Preparar mañana: el ritual de las 20 en cuatro pasos y el brote del cierre. |
+| `AppTDAH/Pantallas/Importante.swift` | La importante a la mañana (firme o suave) y el empujoncito cuando un objetivo queda quieto. |
+| `AppTDAH/Pantallas/Repetir.swift` | La pantalla para repetir una tarea, dictada o a mano. |
+| `AppTDAH/Pantallas/Cajon.swift`, `Fichas.swift` | El cajón (listas, ideas e inbox), sus fichas y Convertir. |
+| `AppTDAH/Pantallas/Agenda.swift` | El listado con pestañas, el calendario por día y el detalle de cada tarea. |
+| `AppTDAH/Diseno/Haptica.swift` | Las vibraciones (se apagan en Ajustes). |
 | `AppTDAH/Pantallas/Lugar.swift` | Las sugerencias de lugares al escribir y el recálculo de la hora de salida desde donde estás. |
 | `AppTDAH/Pantallas/Edicion.swift` | Nueva tarea, Ajustes y Diagnóstico. |
-| `AppTDAH/Pantallas/Captura.swift` | Dictar lo que tenés en la cabeza y revisar lo que Claude propone antes de guardar. |
+| `AppTDAH/Pantallas/Captura.swift` | Dictar lo que tenés en la cabeza y revisar antes de guardar: cuándo, hora, duración, lugar y tus pasos. |
 | `AppTDAH/Pantallas/Proyectos.swift` | Proyectos: tarjeta, etapas que se abren y se reordenan, ficha de cada etapa, fechas con calendario y replanteo. |
 | `AppTDAH/Servicios/IA.swift` | La conexión con Claude (clasificar dictados y replanear proyectos) y la clave guardada en el Keychain. |
 | `AppTDAH/Servicios/Dispositivo.swift` | Dictado por voz, tiempo de viaje con Mapas y el espejo en el calendario del iPhone. |
 | `AppTDAH/Servicios/Alarmas.swift` | Las alarmas que suenan aunque el iPhone esté en silencio (iOS 26 en adelante). |
 | `AppTDAH/Servicios/Widgets.swift` | Le deja anotado al widget "Lo que viene" lo próximo cada vez que cambia algo. |
-| `AppTDAHWidgets/` | Los widgets: Captura (abre el dictado o escribir) y Lo que viene (con cuenta regresiva). |
+| `AppTDAHWidgets/` | Los widgets: Hablar, Escribir y Lo que viene (con cuenta regresiva y flechitas para pasar). |
 | `Compartido/` | Lo que usan la app y los widgets: lo próximo, cómo se dibuja cada widget y la carpeta compartida. |
 | `AppTDAH/Servicios/Servicios.swift` | Avisos, firma, copia de seguridad, registro de errores y datos de muestra para las capturas. |
 | `AppTDAH/Fuentes/` | La tipografía Fraunces y su licencia libre (SIL Open Font License). |
@@ -48,7 +59,7 @@ Este enlace siempre apunta a la última versión compilada.
 | `.gitignore` | Lista de archivos que nunca se suben (compilaciones, archivos temporales, claves). |
 | `diseno/DISENO.md` | Guía de diseño: colores, tipografía, el círculo que respira y cada pantalla. |
 | `diseno/configurador.html` | Muestra interactiva de la estética (se abre en el navegador). |
-| `diseno/maqueta-a.html`, `-b`, `-c` | Las maquetas aprobadas: inicio y decidir; colores, listado y cajón; proyectos. |
+| `diseno/maqueta-a.html` a `-f` | Las maquetas aprobadas: inicio y decidir; colores, listado y cajón; proyectos; Vos y widgets; la importante y los tuyos; ideas y revisión al dictar. |
 | `CLAUDE.md` | Reglas permanentes del proyecto (por ejemplo: nunca subir claves ni datos personales). |
 | `README.md` | Este documento. |
 
@@ -89,8 +100,13 @@ Si la fecha coincide con la de la última compilación en GitHub, estás viendo 
 
 1. En la pantalla de inicio, mantené apretado un espacio vacío hasta que los íconos tiemblen.
 2. Tocá **Editar → Agregar widget** (o el **+** arriba a la izquierda) y buscá **AppTDAH**.
-3. Elegí **Captura** (un toque abre el dictado; el mediano también tiene "Escribí") o **Lo que viene**
-   (lo próximo con su cuenta regresiva). Los dos se pueden poner también en la pantalla de bloqueo.
+3. Elegí entre:
+   - **Hablar** (chico): un toque y dictás. También va redondo en la pantalla de bloqueo.
+   - **Escribir** (mediano): un renglón; tocás y se abre la app con el teclado listo. También va en la pantalla de bloqueo.
+   - **Lo que viene** (chico, mediano o grande): lo próximo con su cuenta regresiva. Las flechitas ‹ › pasan a lo
+     siguiente sin abrir la app. Si es la importante, tiene borde dorado.
+
+   Si tenías el widget mediano de Captura, quitalo y agregá Escribir: ese tamaño ahora es de Escribir.
 
 Si "Lo que viene" queda en "Nada por ahora" aunque tengas cosas cargadas, abrí la app una vez. Si sigue igual,
 copiá el registro de **Ajustes → Diagnóstico** (la línea "Widgets:") y pegalo en Claude Code.

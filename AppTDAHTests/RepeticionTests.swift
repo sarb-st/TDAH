@@ -98,3 +98,35 @@ final class RepeticionTests: XCTestCase {
         XCTAssertEqual(p.horarioTrabajo(fecha(2026, 11, 23), calendario: cal)?.inicio, 14 * 60)
     }
 }
+
+/// Lo nuevo del perfil y del widget.
+final class PerfilTests: XCTestCase {
+    func testVentanaDelDiaSegunCuandoTeLevantasYAcostas() {
+        var p = Perfil()
+        p.levanta = 7 * 60
+        p.acuesta = 23 * 60 + 30
+        XCTAssertEqual(p.apertura, 8)
+        XCTAssertEqual(p.cierre, 22)
+    }
+
+    func testHorasEnTexto() {
+        XCTAssertEqual(Perfil.horas(6 * 60, 14 * 60), "06:00 – 14:00")
+        XCTAssertEqual(Perfil.hhmm(25 * 60), "01:00")
+    }
+
+    func testTituloCortoEnElWidget() {
+        var i = LoQueViene.Item(titulo: "Llamar al banco por la tarjeta nueva", categoria: "tarea", inicio: .now, fin: .now)
+        XCTAssertEqual(i.tituloVisible, "Llamar al banco por la tarjeta nueva")
+        i.tituloCorto = "Banco: tarjeta"
+        XCTAssertEqual(i.tituloVisible, "Banco: tarjeta")
+    }
+
+    func testElPerfilSeGuardaYSeLee() {
+        var p = Perfil()
+        p.modo = "firme"
+        p.objetivos = ["Portfolio"]
+        let leido = Perfil.desde(p.datos)
+        XCTAssertTrue(leido.firme)
+        XCTAssertEqual(leido.objetivos, ["Portfolio"])
+    }
+}

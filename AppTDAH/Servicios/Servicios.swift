@@ -217,8 +217,8 @@ enum CopiaSeguridad {
     struct CopiaPersona: Codable { var uid: UUID; var nombre: String; var cadaDias: Int; var ultimaVez: Date?; var color: Int; var notas: [CopiaNota] }
     struct Copia: Codable { var version = 2; var creada: Date; var tareas: [CopiaTarea]; var capturas: [CopiaCaptura]?; var personas: [CopiaPersona]?; var perfil: Data? }
 
-    private static func copia(_ r: Renglon) -> CopiaRenglon {
-        CopiaRenglon(texto: r.texto, orden: r.orden, hecho: r.hecho, origen: r.origen, hijos: r.hijosOrdenados.map(copia))
+    private static func copiaRenglon(_ r: Renglon) -> CopiaRenglon {
+        CopiaRenglon(texto: r.texto, orden: r.orden, hecho: r.hecho, origen: r.origen, hijos: r.hijosOrdenados.map(copiaRenglon))
     }
 
     static var url: URL {
@@ -241,7 +241,7 @@ enum CopiaSeguridad {
                            medioViaje: t.medioViaje, personaUid: t.personaUid, medio: t.medio)
             }, capturas: (try ctx.fetch(FetchDescriptor<Captura>())).map {
                 CopiaCaptura(uid: $0.uid, tipo: $0.tipo, texto: $0.texto, titulo: $0.titulo, tema: $0.tema, creada: $0.creada, archivada: $0.archivada,
-                             renglones: $0.principales.map(copia))
+                             renglones: $0.principales.map(copiaRenglon))
             }, personas: (try ctx.fetch(FetchDescriptor<Persona>())).map { p in
                 CopiaPersona(uid: p.uid, nombre: p.nombre, cadaDias: p.cadaDias, ultimaVez: p.ultimaVez, color: p.color,
                              notas: p.hilo.map { CopiaNota(texto: $0.texto, fecha: $0.fecha) })
