@@ -42,12 +42,18 @@ struct RaizView: View {
     @State private var cargarAMano: Categoria?
     @State private var captura = CapturaInicio()
     @State private var ajustes = DatosDemo.pantalla == "ajustes"
+    @State private var vos = DatosDemo.pantalla == "vos"
     @State private var proyectoDemo = DatosDemo.pantalla == "proyecto"
     @Query private var proyectos: [Proyecto]
     @State private var lista = DatosDemo.pantalla == "lista" || DatosDemo.pantalla == "proyectos"
     @State private var calendario = DatosDemo.pantalla == "calendario"
     @State private var cajon = DatosDemo.pantalla == "cajon"
     @State private var abierta: Tarea?
+    @State private var preguntarPersona: Persona?
+    @State private var preparando = DatosDemo.pantalla == "preparar"
+    @State private var buenDia: Tarea?
+    @State private var recordatorio: Tarea?
+    @State private var empujon: String?
     @State private var transicion: Transicion? = RaizView.transicionDemo
 
     private static var transicionDemo: Transicion? {
@@ -69,6 +75,16 @@ struct RaizView: View {
                                      hora: DatosDemo.hora ?? Paleta.hora(de: ahora))
             ZStack {
                 if DatosDemo.pantalla == "widgets" { DemoWidgetsView(ahora: ahora) } else { pantalla(ahora: ahora) }
+                if let r = recordatorio {
+                    VStack {
+                        RecordatorioImportante(tarea: r)
+                            .padding(.top, 58)
+                            .onTapGesture { withAnimation { recordatorio = nil } }
+                        Spacer()
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(2)
+                }
                 if let t = transicion {
                     vistaTransicion(t)
                         .transition(.opacity)
@@ -95,6 +111,15 @@ struct RaizView: View {
                 .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $ajustes) { AjustesView() }
+        .sheet(isPresented: $vos) { VosView(paleta: paleta) }
+        .fullScreenCover(isPresented: $preparando) { PrepararMananaView(paleta: paleta) { preparando = false } }
+        .fullScreenCover(item: $buenDia) { t in BuenDiaView(tarea: t, paleta: paleta) { buenDia = nil } }
+        .sheet(isPresented: Binding(get: { empujon != nil }, set: { if !$0 { empujon = nil } })) {
+            if let o = empujon { EmpujonView(objetivo: o, paleta: paleta) { empujon = nil }.presentationDetents([.large]) }
+        }
+        .sheet(item: $preguntarPersona) { p in
+            PreguntaPersonaView(persona: p).environment(\.paleta, paleta).presentationDetents([.medium, .large])
+        }
         .sheet(isPresented: $lista) { ListaView(paleta: paleta, pestanaInicial: DatosDemo.pantalla == "proyectos" ? .proyectos : .hoy) }
         .sheet(isPresented: $calendario) { CalendarioView(paleta: paleta) }
         .sheet(isPresented: $cajon) { CajonView(paleta: paleta) }
@@ -113,8 +138,10 @@ struct RaizView: View {
                 Widgets.actualizar(tareas)
             }
             if nueva == .active && DatosDemo.pantalla == nil {
+                if Ritual.toca() { preparando = true }
                 Alarmas.detenerSonando()
                 Acciones.mantenimiento(ctx: ctx)
+                revisarDia()
                 Salidas.recalcular(ctx)
                 Widgets.actualizar(tareas)
             }
@@ -125,12 +152,14 @@ struct RaizView: View {
         .task {
             guard DatosDemo.pantalla == nil else { return }
             Firma.programarAviso()
+            if Ritual.toca() { preparando = true }
             Alarmas.detenerSonando()
             Alarmas.cancelarTodas()
             Acciones.mantenimiento(ctx: ctx)
             Salidas.recalcular(ctx)
             Widgets.actualizar(tareas)
             Registro.anotar(Widgets.estado)
+            revisarDia()
         }
     }
 
@@ -143,7 +172,7 @@ struct RaizView: View {
 
     /// Los widgets abren la app con "apptdah://dictar", "apptdah://escribir" o "apptdah://inicio".
     private func abrirEnlace(_ url: URL) {
-        lista = false; calendario = false; cajon = false; ajustes = false; abierta = nil; cargarAMano = nil
+        lista = false; calendario = false; cajon = false; ajustes = false; vos = false; abierta = nil; cargarAMano = nil
         let enInicio: Bool = {
             switch MotorSlots.pantalla(tareas, ahora: .now) {
             case .vacio, .espera, .enCurso: true
@@ -170,7 +199,7 @@ struct RaizView: View {
     }
 
     private var navegacion: Navegacion {
-        Navegacion(ajustes: { ajustes = true }, lista: { lista = true }, calendario: { calendario = true }, cajon: { cajon = true })
+        Navegacion(ajustes: { ajustes = true }, vos: { vos = true }, lista: { lista = true }, calendario: { calendario = true }, cajon: { cajon = true })
     }
 
     @ViewBuilder
@@ -203,6 +232,11 @@ struct RaizView: View {
         Haptica.termine()
         let minutos = Acciones.terminar(t, ctx: ctx)
         celebrar(t, minutos: minutos)
+        // Si era hablar con alguien de "Los tuyos", después del festejo pregunta qué te contó.
+        if let uid = UUID(uuidString: t.personaUid),
+           let p = (try? ctx.fetch(FetchDescriptor<Persona>()))?.first(where: { $0.uid == uid }) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5.5) { preguntarPersona = p }
+        }
     }
 
     /// "Terminé" o "Ya terminó" en la tarjeta del fichero.
@@ -210,18 +244,43 @@ struct RaizView: View {
         if t.esCita { Acciones.cerrarCita(t, ctx: ctx) } else { terminar(t) }
     }
 
+    /// La primera vez del día: la importante (firme con su pantalla, suave con una tarjetita). Si no, el empujoncito.
+    private func revisarDia() {
+        guard DatosDemo.pantalla == nil, !preparando else { return }
+        let hora = Calendar.current.component(.hour, from: .now)
+        if hora >= 4, !MananaImportante.yaVista(), let imp = importanteDeHoy, imp.inicio > .now {
+            MananaImportante.marcar()
+            if Perfil.actual.firme {
+                buenDia = imp
+            } else {
+                withAnimation(.spring(duration: 0.5)) { recordatorio = imp }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 4.5) { withAnimation(.easeInOut(duration: 0.5)) { recordatorio = nil } }
+            }
+            return
+        }
+        if hora >= 9 && hora < 21, let o = Empujon.objetivo(tareas: tareas) {
+            Empujon.marcar()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { empujon = o }
+        }
+    }
+
+    /// La importante de hoy, si hay una agendada.
+    private var importanteDeHoy: Tarea? {
+        tareas.first { $0.importante && $0.ocupaAgenda && Calendar.current.isDateInToday($0.inicioReal ?? $0.inicio) }
+    }
+
     @ViewBuilder
     private func pantalla(ahora: Date) -> some View {
         switch MotorSlots.pantalla(tareas, ahora: ahora) {
         case .vacio:
-            InicioView(tareas: [], ahora: ahora, navegacion: navegacion, captura: captura, onAbrir: { abierta = $0 }, onTermine: terminarDesdeFichero)
+            InicioView(tareas: [], ahora: ahora, navegacion: navegacion, captura: captura, importante: importanteDeHoy, onAbrir: { abierta = $0 }, onTermine: terminarDesdeFichero)
         case .espera(let lista):
-            InicioView(tareas: lista, ahora: ahora, navegacion: navegacion, captura: captura, onAbrir: { abierta = $0 }, onTermine: terminarDesdeFichero)
+            InicioView(tareas: lista, ahora: ahora, navegacion: navegacion, captura: captura, importante: importanteDeHoy, onAbrir: { abierta = $0 }, onTermine: terminarDesdeFichero)
         case .enCurso(let t):
             // Con algo en curso, la pantalla principal sigue siendo Inicio (se puede capturar);
             // la tarea es la primera tarjeta y al tocarla se ven la cuenta y los pasos.
             InicioView(tareas: [t] + MotorSlots.proximas(tareas, ahora: ahora, cantidad: 2), ahora: ahora,
-                       navegacion: navegacion, captura: captura, onAbrir: { abierta = $0 }, onTermine: terminarDesdeFichero)
+                       navegacion: navegacion, captura: captura, importante: importanteDeHoy, onAbrir: { abierta = $0 }, onTermine: terminarDesdeFichero)
         case .decidir(let t):
             DecidirView(tarea: t,
                         onEmpiezo: { Acciones.empezar(t, ctx: ctx) },

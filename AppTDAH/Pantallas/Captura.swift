@@ -31,6 +31,7 @@ struct Propuesta: Identifiable, Equatable {
     var medioViaje = "transit"
     var notas: String
     var pasos: [PasoP]
+    var renglones: [String]
     var tema: String
     var apertura: Int
     var cierre: Int
@@ -54,6 +55,7 @@ struct Propuesta: Identifiable, Equatable {
         // Si dictó pasos, los sugeridos de la IA quedan para confirmar; si no dictó ninguno, los propuestos ya cuentan.
         let dicto = ia.pasos.contains(where: \.dicho)
         pasos = ia.pasos.map { PasoP(texto: $0.texto, origen: $0.dicho ? "voz" : "ia", grande: $0.grande, sugerido: dicto && !$0.dicho) }
+        renglones = ia.renglones
         tema = ia.tema
         apertura = ia.horario_apertura
         cierre = ia.horario_cierre
@@ -188,10 +190,15 @@ enum Guardado {
                     t.area = p.area
                     if let inicio { desde = inicio.addingTimeInterval(Double(tp.duracion) * 60) }
                 }
-            case "idea":
-                let c = Captura(tipo: "idea", texto: p.texto.isEmpty ? p.titulo : p.texto, titulo: p.titulo, tema: p.tema)
+            case "idea", "lista":
+                let c = Captura(tipo: p.tipo, texto: p.texto.isEmpty ? p.titulo : p.texto, titulo: p.titulo, tema: p.tema)
                 c.audio = audio
                 ctx.insert(c)
+                for (i, t) in (p.tipo == "lista" ? p.pasos.map(\.texto) : p.renglones).enumerated() {
+                    let r = Renglon(texto: t, orden: i, origen: "voz")
+                    ctx.insert(r)
+                    r.captura = c
+                }
             default:
                 let c = Captura(tipo: "inbox", texto: p.texto.isEmpty ? p.titulo : p.texto, titulo: p.titulo)
                 c.audio = audio
@@ -537,7 +544,7 @@ struct CapturaView: View {
                                        .init(texto: "Preparar los papeles", dicho: true, grande: true),
                                        .init(texto: "Tener a mano el último resumen", dicho: false, grande: false),
                                        .init(texto: "Anotar lo que te digan", dicho: true, grande: false)],
-                               tema: "", horario_apertura: 9, horario_cierre: 16, solo_dias_habiles: true, deadline: "", etapas: [], tareas_primera_etapa: [])
+                               renglones: [], tema: "", horario_apertura: 9, horario_cierre: 16, solo_dias_habiles: true, deadline: "", etapas: [], tareas_primera_etapa: [])
         var banco = Propuesta(ia: base)
         banco.fecha = Date.now.addingTimeInterval(20 * 3600)
         var cita = Propuesta(ia: base)

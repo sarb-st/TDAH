@@ -37,286 +37,6 @@ struct NotasTarea: View {
     }
 }
 
-/// Arriba de la pantalla principal: listado y calendario a la izquierda; cajón y ajustes a la derecha.
-struct BarraSuperior: View {
-    let navegacion: Navegacion
-    @Environment(\.paleta) private var paleta
-
-    var body: some View {
-        HStack(spacing: 2) {
-            boton("rectangle.stack", "Listado", navegacion.lista)
-            boton("calendar", "Calendario", navegacion.calendario)
-            Spacer()
-            boton("tray", "Cajón: inbox e ideas", navegacion.cajon)
-            boton("gearshape", "Ajustes", navegacion.ajustes)
-        }
-        .font(.title3)
-        .foregroundStyle(paleta.primario.color)
-        .padding(.horizontal, 10)
-    }
-
-    private func boton(_ icono: String, _ nombre: String, _ accion: @escaping () -> Void) -> some View {
-        Button(action: accion) { Image(systemName: icono).frame(width: 44, height: 44) }
-            .accessibilityLabel(nombre)
-    }
-}
-
-struct Navegacion {
-    var ajustes: () -> Void
-    var lista: () -> Void
-    var calendario: () -> Void
-    var cajon: () -> Void
-}
-
-// MARK: - Inicio
-
-/// La pantalla principal: el círculo es el micrófono (un toque y escucha) y abajo, el fichero con lo próximo.
-struct InicioView: View {
-    let tareas: [Tarea]
-    let ahora: Date
-    let navegacion: Navegacion
-    let captura: CapturaInicio
-    var onAbrir: (Tarea) -> Void = { _ in }
-    var onTermine: (Tarea) -> Void = { _ in }
-
-    @Environment(\.paleta) private var paleta
-    @Environment(\.modelContext) private var ctx
-
-    var body: some View {
-        GeometryReader { geo in
-            let centroY = geo.size.height * Medidas.alturaCentro
-            let escuchando = captura.dictado.escuchando
-            ZStack(alignment: .top) {
-                VStack(spacing: 4) {
-                    BarraSuperior(navegacion: navegacion)
-                    VStack(spacing: 2) {
-                        Text("Tocá y decí lo que tenés en la cabeza")
-                            .font(.subheadline)
-                            .foregroundStyle(paleta.secundario.color)
-                        Button("o escribilo") { captura.escribiendo = true }
-                            .font(.subheadline.weight(.medium))
-                            .underline()
-                            .foregroundStyle(paleta.primario.color)
-                            .accessibilityLabel("Escribir en vez de dictar")
-                    }
-                    .opacity(escuchando || captura.pensando ? 0 : 1)
-                    .disabled(escuchando || captura.pensando)
-                }
-
-                circulo
-                    .position(x: geo.size.width / 2, y: centroY)
-
-                VStack(spacing: 10) {
-                    if escuchando {
-                        Button("Listo") { captura.terminar(ctx: ctx) }
-                            .font(.body.weight(.semibold))
-                            .padding(.horizontal, 26).padding(.vertical, 10)
-                            .background(paleta.superficie.color, in: Capsule())
-                            .overlay(Capsule().stroke(paleta.linea.color))
-                            .foregroundStyle(paleta.primario.color)
-                    }
-                    if let error = captura.dictado.error {
-                        Text(error).font(.footnote).foregroundStyle(Paleta.aviso.color).multilineTextAlignment(.center)
-                        Button("Escribirlo") { captura.escribiendo = true }.font(.footnote.weight(.semibold))
-                    }
-                }
-                .padding(.horizontal, 30)
-                .position(x: geo.size.width / 2, y: centroY + Medidas.circulo * 0.95)
-
-                VStack {
-                    Spacer()
-                    if tareas.isEmpty {
-                        Text("Nada a la vista por ahora.")
-                            .font(.subheadline)
-                            .foregroundStyle(paleta.secundario.color)
-                            .padding(.bottom, 24)
-                    } else {
-                        Fichero(tareas: tareas, ahora: ahora, onVerTodo: navegacion.lista, onAbrir: onAbrir, onTermine: onTermine)
-                            .padding(.horizontal, 14)
-                            .padding(.bottom, 10)
-                    }
-                }
-            }
-        }
-    }
-
-    private var circulo: some View {
-        let escuchando = captura.dictado.escuchando
-        let intensidad = escuchando ? 0.25 : (captura.pensando ? 0.2 : 0)
-        // Mientras hay algo en curso, el halo toma un verde suave: un recordatorio sin ruido.
-        let enCurso = tareas.contains { $0.estado == .enCurso }
-        let halo = escuchando ? paleta.energia : (enCurso ? paleta.halo.mezcla(paleta.energia, 0.55) : paleta.halo)
-        return CirculoQueRespira(halo: halo, fondo: paleta.fondo, intensidad: intensidad,
-                                 voz: escuchando ? captura.dictado.nivel : 0) {
-            Group {
-                if captura.pensando {
-                    Image(systemName: "brain")
-                        .symbolEffect(.pulse, options: .repeating)
-                } else if escuchando {
-                    // Micrófono → oreja → cerebro.
-                    Image(systemName: "ear")
-                        .scaleEffect(1 + captura.dictado.nivel * 0.25)
-                        .animation(.easeOut(duration: 0.12), value: captura.dictado.nivel)
-                } else {
-                    Image(systemName: "mic")
-                }
-            }
-            .font(.system(size: 30, weight: .light))
-            .foregroundStyle(paleta.primario.color)
-            .frame(width: Medidas.circulo, height: Medidas.circulo)
-            .contentShape(Circle())
-            .onTapGesture { captura.tocar(ctx: ctx) }
-            .onLongPressGesture(minimumDuration: 0.6) { captura.escribiendo = true }
-        }
-        .accessibilityElement()
-        .accessibilityLabel(captura.pensando ? "Ordenando lo que dijiste" : (escuchando ? "Dejar de escuchar" : "Dictar"))
-        .accessibilityAddTraits(.isButton)
-        .accessibilityAction { captura.tocar(ctx: ctx) }
-        .accessibilityAction(named: "Escribir") { captura.escribiendo = true }
-    }
-}
-
-/// Lo próximo en tres tarjetas apiladas. Un toque las despliega (y aparece "Ver todo"); a los pocos segundos vuelven solas.
-struct Fichero: View {
-    let tareas: [Tarea]
-    let ahora: Date
-    var onVerTodo: () -> Void
-    var onAbrir: (Tarea) -> Void = { _ in }
-    var onTermine: (Tarea) -> Void = { _ in }
-
-    @Environment(\.paleta) private var paleta
-    @State private var abierto = false
-
-    var body: some View {
-        let lista = Array(tareas.prefix(3))
-        VStack(spacing: abierto ? 8 : 0) {
-            ForEach(Array(lista.enumerated()), id: \.element.uid) { i, t in
-                FichaInicio(tarea: t, ahora: ahora, primera: i == 0, onTermine: i == 0 ? { onTermine(t) } : nil)
-                    .frame(height: i == 0 || abierto ? nil : 8, alignment: .bottom)
-                    .clipped()
-                    .scaleEffect(x: abierto ? 1 : 1 - 0.03 * CGFloat(i), y: 1, anchor: .top)
-                    .opacity(i == 0 || abierto ? 1 : 0.9)
-                    .zIndex(Double(3 - i))
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        // Lo que está pasando ahora (una tarea en curso o una cita) se abre directo.
-                        if abierto || (i == 0 && FichaInicio.directa(t, ahora: ahora)) {
-                            onAbrir(t)
-                        } else {
-                            withAnimation(.spring(duration: 0.4, bounce: 0.15)) { abierto = true }
-                        }
-                    }
-            }
-            if abierto {
-                HStack(spacing: 10) {
-                    Button { abierto = false; onVerTodo() } label: {
-                        Label("Ver todo", systemImage: "rectangle.stack")
-                            .font(.subheadline.weight(.semibold))
-                            .padding(.horizontal, 18).padding(.vertical, 9)
-                            .background(paleta.superficie.color, in: Capsule())
-                            .overlay(Capsule().stroke(paleta.linea.color))
-                    }
-                    Button { withAnimation(.spring(duration: 0.4)) { abierto = false } } label: {
-                        Image(systemName: "chevron.down")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(width: 38, height: 38)
-                            .background(paleta.superficie.color, in: Circle())
-                            .overlay(Circle().stroke(paleta.linea.color))
-                    }
-                    .accessibilityLabel("Cerrar")
-                }
-                .foregroundStyle(paleta.primario.color)
-                .padding(.top, 4)
-                .transition(.opacity)
-            }
-        }
-        .shadow(color: .black.opacity(0.06), radius: 8, y: -2)
-        .task(id: abierto) {
-            guard abierto else { return }
-            try? await Task.sleep(for: .seconds(8))
-            if !Task.isCancelled { withAnimation(.spring(duration: 0.4)) { abierto = false } }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityHint(abierto ? "Tocá una tarjeta para abrirla" : "Tocá para ver las próximas")
-    }
-}
-
-/// Una tarjeta del fichero: categoría en su color, título, cuenta regresiva y, en la primera, lugar y notas.
-struct FichaInicio: View {
-    let tarea: Tarea
-    let ahora: Date
-    var primera = false
-    /// Terminar antes: "Terminé" en una tarea en curso, "Ya terminó" en una cita que empezó.
-    var onTermine: (() -> Void)? = nil
-    @Environment(\.paleta) private var paleta
-
-    /// Lo que está pasando ahora se abre directo al tocarlo: una tarea en curso o una cita que ya empezó.
-    static func directa(_ t: Tarea, ahora: Date) -> Bool { t.estado == .enCurso || (t.esCita && t.inicio <= ahora) }
-
-    var body: some View {
-        let t = tarea
-        // Para una cita con viaje, la cuenta regresiva es hasta la hora de salir.
-        let objetivo = t.salida ?? t.inicio
-        let enCurso = t.estado == .enCurso
-        let empezo = t.esCita && t.inicio <= ahora
-        let finCita = t.inicio.addingTimeInterval(Double(t.duracionMinutos) * 60)
-        let detalle = enCurso
-            ? "Empezaste \(Formato.hora(t.inicioReal ?? t.inicio)) · tocá para ver los pasos"
-            : (t.esCita && t.salida != nil
-                ? "\(Formato.diaYHora(t.inicio, ahora: ahora)) · salí \(Formato.hora(objetivo)) (\(t.minutosViaje) min de viaje)"
-                : "\(Formato.diaYHora(t.inicio, ahora: ahora)) · \(Formato.minutos(t.duracionMinutos))")
-        let etiqueta = enCurso ? "en curso" : (empezo ? "ahora" : (primera ? "lo próximo" : nil))
-        TarjetaBanda(categoria: t.categoria, paleta: paleta) {
-            VStack(alignment: .leading, spacing: 3) {
-                EtiquetaCategoria(categoria: t.categoria, paleta: paleta,
-                                  extra: [t.proyecto?.titulo, etiqueta].compactMap { $0 }.joined(separator: " · ").nilSiVacio)
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(t.titulo).font(.serif(19, relativoA: .headline)).lineLimit(2)
-                    Spacer(minLength: 4)
-                    VStack(alignment: .trailing, spacing: 0) {
-                        if enCurso {
-                            Text(Formato.cuenta(Int((t.finPrevisto ?? ahora).timeIntervalSince(ahora)))).font(.serif(18, relativoA: .headline)).monospacedDigit()
-                            Text("quedan").font(.caption2).foregroundStyle(paleta.secundario.color)
-                        } else if empezo {
-                            Text(Formato.cuenta(Int(finCita.timeIntervalSince(ahora)))).font(.serif(18, relativoA: .headline)).monospacedDigit()
-                            Text("para que termine").font(.caption2).foregroundStyle(paleta.secundario.color)
-                        } else {
-                            Text(Formato.cuenta(Int(objetivo.timeIntervalSince(ahora)))).font(.serif(18, relativoA: .headline)).monospacedDigit()
-                            Text(t.salida != nil ? "para salir" : "para empezar").font(.caption2).foregroundStyle(paleta.secundario.color)
-                        }
-                    }
-                    .foregroundStyle(paleta.primario.color)
-                }
-                HStack(alignment: .center, spacing: 8) {
-                    Text(detalle).font(.caption).foregroundStyle(paleta.secundario.color).lineLimit(1)
-                    if let terminar = onTermine, enCurso || empezo {
-                        Spacer(minLength: 4)
-                        Button(enCurso ? "Terminé" : "Ya terminó", action: terminar)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(paleta.primario.color)
-                            .padding(.horizontal, 14).padding(.vertical, 6)
-                            .background(paleta.superficie.color, in: Capsule())
-                            .overlay(Capsule().stroke(paleta.primario.color.opacity(0.45)))
-                            .buttonStyle(.plain)
-                    }
-                }
-                if primera {
-                    if let p = t.proyecto { BarraProyecto(proyecto: p, ahora: ahora, mostrarNombre: false).padding(.top, 6) }
-                    NotasTarea(tarea: t)
-                }
-            }
-        }
-        .overlay {
-            if enCurso { RoundedRectangle(cornerRadius: 18).stroke(paleta.energia.color, lineWidth: 2) }
-        }
-        .accessibilityElement(children: .combine)
-    }
-}
-
-extension String {
-    var nilSiVacio: String? { isEmpty ? nil : self }
-}
-
 // MARK: - Hojas que se abren desde el fichero
 
 /// Lo que se abre al tocar una tarjeta: la tarea en curso (cuenta y pasos), una cita (cuánto falta) o el detalle.
@@ -415,8 +135,9 @@ struct DecidirView: View {
     @AppStorage("vecesDecidir") private var veces = 0
 
     private let distanciaPosponer: CGFloat = 170
-    private let segundosSosten: Double = 2
     private let elastico: CGFloat = 60
+    /// Decirle "Ahora no" a la importante en modo firme cuesta más: 4 s en vez de 2.
+    private var segundosSosten: Double { tarea.importante && Perfil.actual.firme ? 4 : 2 }
 
     var body: some View {
         GeometryReader { geo in
@@ -432,6 +153,7 @@ struct DecidirView: View {
                 ZStack {
                     LienzoCirculo {
                         VStack(alignment: .leading, spacing: 0) {
+                            if tarea.importante { EtiquetaImportante().padding(.bottom, 12) }
                             Encabezado(etiqueta: "Es la hora", titulo: tarea.titulo,
                                        detalle: "\(Formato.hora(tarea.inicio)) · \(Formato.minutos(tarea.duracionMinutos))")
                             if let p = tarea.proyecto { BarraProyecto(proyecto: p).padding(.top, 10) }
@@ -443,7 +165,7 @@ struct DecidirView: View {
                         if veces <= 5 {
                             HStack(spacing: 22) {
                                 Label("deslizá: empiezo", systemImage: "chevron.up")
-                                Label("bajá y sostené: ahora no", systemImage: "chevron.down")
+                                Label(segundosSosten > 2 ? "bajá y sostené 4 s: ahora no" : "bajá y sostené: ahora no", systemImage: "chevron.down")
                             }
                             .font(.footnote)
                             .foregroundStyle(paleta.secundario.color)
@@ -521,6 +243,7 @@ struct DecidirView: View {
             let w = DispatchWorkItem { aMover() }
             trabajo = w
             DispatchQueue.main.asyncAfter(deadline: .now() + segundosSosten, execute: w)
+            vibrarMientrasSostiene()
         } else if !llego && enBorde {
             enBorde = false
             sostenDesde = nil
@@ -544,10 +267,24 @@ struct DecidirView: View {
         }
     }
 
+    /// Mientras se sostiene "Ahora no", el iPhone vibra cada vez más fuerte.
+    private func vibrarMientrasSostiene() {
+        let total = segundosSosten
+        Task { @MainActor in
+            while enBorde && !decidido, let desde = sostenDesde {
+                let p = Date.now.timeIntervalSince(desde) / total
+                if p >= 1 { break }
+                Haptica.sosten(p)
+                try? await Task.sleep(for: .milliseconds(Int(380 - 250 * min(1, p))))
+            }
+        }
+    }
+
     private func empezar() {
         guard !decidido else { return }
         decidido = true
         trabajo?.cancel()
+        Haptica.empiezo()
         golpe += 1
         withAnimation(.easeOut(duration: 0.4)) { rellenoArriba = 1 }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { onEmpiezo() }
@@ -556,6 +293,7 @@ struct DecidirView: View {
     private func aMover() {
         guard !decidido else { return }
         decidido = true
+        Haptica.ahoraNo()
         golpe += 1
         onAhoraNo()
     }
@@ -578,25 +316,38 @@ struct CuandoView: View {
 
     private static let otra = 99
 
+    private var soloHoy: Bool { tarea.importante && Perfil.actual.firme }
+
     private var sugerencias: [Sugerencia] {
         let perfil = Perfil.actual
         let ocupados = otras.filter { $0.uid != tarea.uid && $0.ocupaAgenda }.flatMap(\.intervalosOcupados)
             + Calendario.ocupados(desde: ahora) + perfil.ocupados(desde: ahora)
+        let lista: [Sugerencia]
         if tarea.apertura >= 0 && tarea.cierre > tarea.apertura {
-            return MotorSlots.sugerencias(duracion: tarea.duracionMinutos, ocupados: ocupados, desde: ahora,
-                                          apertura: tarea.apertura, cierre: tarea.cierre, soloDiasHabiles: tarea.soloDiasHabiles)
+            lista = MotorSlots.sugerencias(duracion: tarea.duracionMinutos, ocupados: ocupados, desde: ahora,
+                                           apertura: tarea.apertura, cierre: tarea.cierre, soloDiasHabiles: tarea.soloDiasHabiles,
+                                           cantidad: soloHoy ? 6 : 3)
+        } else {
+            lista = MotorSlots.sugerencias(duracion: tarea.duracionMinutos, ocupados: ocupados, desde: ahora,
+                                           apertura: perfil.apertura, cierre: perfil.cierre, cantidad: soloHoy ? 6 : 3)
         }
-        return MotorSlots.sugerencias(duracion: tarea.duracionMinutos, ocupados: ocupados, desde: ahora,
-                                      apertura: perfil.apertura, cierre: perfil.cierre)
+        // La importante en modo firme: solo horas de hoy (si queda alguna).
+        if soloHoy {
+            let deHoy = lista.filter { Calendar.current.isDate($0.inicio, inSameDayAs: ahora) }
+            return Array((deHoy.isEmpty ? lista : deHoy).prefix(3))
+        }
+        return lista
     }
 
     var body: some View {
         let lista = sugerencias
         VStack(alignment: .leading, spacing: 0) {
+            if tarea.importante { EtiquetaImportante().padding(.top, 14).padding(.bottom, 4) }
             Text(tarea.titulo).font(.serif(32, relativoA: .largeTitle)).lineLimit(3).padding(.top, 12)
             Text(sinRespuesta ? "No llegaste a decidir. No pasa nada." : "Lo movemos.")
                 .font(.serifItalica(19, relativoA: .title3))
                 .foregroundStyle(paleta.secundario.color)
+                .padding(.top, 6)
             Spacer(minLength: 12)
             VStack(spacing: 8) {
                 Text("¿Cuándo, entonces?")
@@ -604,7 +355,13 @@ struct CuandoView: View {
                     .foregroundStyle(paleta.primario.color)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, 2)
-                    .padding(.bottom, 8)
+                    .padding(.bottom, soloHoy ? 0 : 8)
+                if soloHoy {
+                    Text("Es la importante: te propongo horas de hoy.")
+                        .font(.footnote).foregroundStyle(Dorado.texto.color)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.bottom, 8)
+                }
                 ForEach(Array(lista.enumerated()), id: \.offset) { i, s in
                     opcion(i, titulo: Formato.diaYHora(s.inicio, ahora: ahora), motivo: motivo(i, s)) { onAgendar(s.inicio) }
                 }
@@ -617,6 +374,7 @@ struct CuandoView: View {
             }
             .padding(18)
             .background(paleta.superficie.color, in: RoundedRectangle(cornerRadius: 26))
+            .overlay { if tarea.importante { RoundedRectangle(cornerRadius: 26).stroke(Dorado.borde.color, lineWidth: 1.5) } }
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 8)

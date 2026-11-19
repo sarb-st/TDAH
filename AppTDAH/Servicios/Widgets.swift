@@ -25,6 +25,10 @@ enum Widgets {
         var i = LoQueViene.Item(titulo: t.titulo, categoria: t.categoria.rawValue, inicio: inicio, fin: fin,
                                 enCurso: t.estado == .enCurso, salida: t.salida,
                                 lugar: t.lugar, notas: notas.count > 140 ? String(notas.prefix(140)) + "…" : notas)
+        i.tituloCorto = t.tituloCorto.isEmpty ? nil : t.tituloCorto
+        let pendientes = t.pasosOrdenados.filter { !$0.hecho }.map(\.texto)
+        i.pasos = pendientes.isEmpty ? nil : Array(pendientes.prefix(5))
+        i.importante = t.importante ? true : nil
         if let p = t.proyecto {
             i.proyecto = p.titulo
             i.proyectoInicio = p.inicioEfectivo
@@ -40,6 +44,7 @@ enum Widgets {
         guard nuevos != ultimo else { return }
         if GrupoApp.guardar(nuevos) {
             ultimo = nuevos
+            CarruselWidget.indice = 0
             WidgetCenter.shared.reloadAllTimelines()
         } else if !avisoSinGrupo {
             avisoSinGrupo = true

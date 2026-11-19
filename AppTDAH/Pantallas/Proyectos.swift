@@ -835,6 +835,9 @@ struct SelectorRango: View {
 /// después se renombran, se reordenan o se agregan a mano.
 struct EditarProyectoView: View {
     var proyecto: Proyecto?
+    /// Para convertir una lista o una idea: el nombre y los renglones como etapas.
+    var tituloInicial = ""
+    var etapasIniciales: [String] = []
 
     struct Borrador: Identifiable {
         let id = UUID()
@@ -1000,6 +1003,11 @@ struct EditarProyectoView: View {
     }
 
     private func cargar() {
+        if proyecto == nil && titulo.isEmpty && !tituloInicial.isEmpty {
+            titulo = tituloInicial
+            etapas = etapasIniciales.map { Borrador(titulo: $0, peso: 1) }
+            armadoCon = claveArmado
+        }
         guard let p = proyecto, titulo.isEmpty else { return }
         titulo = p.titulo
         notas = p.notas

@@ -102,22 +102,20 @@ enum Avisos {
         }
     }
 
-    /// Cada noche a las 21: las citas de mañana, con la hora de salida.
+    /// Cada noche a las 20: "Preparemos mañana". Al abrirlo (o al abrir la app esa noche) aparece el ritual.
     @MainActor
     static func programarResumen(_ tareas: [Tarea]) {
         guard activos else { return }
-        centro.removePendingNotificationRequests(withIdentifiers: ["resumen"])
-        let cal = Calendar.current
-        var hoy21 = cal.date(bySettingHour: 21, minute: 0, second: 0, of: .now) ?? .now
-        if hoy21 < .now { hoy21 = cal.date(byAdding: .day, value: 1, to: hoy21) ?? hoy21 }
-        guard let manana = cal.date(byAdding: .day, value: 1, to: hoy21) else { return }
-        let citas = tareas.filter { $0.esCita && $0.estado == .programada && cal.isDate($0.inicio, inSameDayAs: manana) }
-            .sorted { $0.inicio < $1.inicio }
-        guard !citas.isEmpty else { return }
-        let texto = citas.map { c in
-            "\(Formato.hora(c.inicio)) \(c.titulo)" + (c.salida.map { " (salí \(Formato.hora($0)))" } ?? "")
-        }.joined(separator: " · ")
-        agregar(id: "resumen", fecha: hoy21, titulo: "Mañana", cuerpo: texto)
+        centro.removePendingNotificationRequests(withIdentifiers: ["resumen", "preparar"])
+        let contenido = UNMutableNotificationContent()
+        contenido.title = "Preparemos mañana"
+        contenido.body = "Cinco minutos y mañana queda armado."
+        contenido.sound = Alarmas.sonido == "campanita" ? UNNotificationSound(named: UNNotificationSoundName(Alarmas.archivoCampanita)) : .default
+        let pedido = UNNotificationRequest(identifier: "preparar", content: contenido,
+                                           trigger: UNCalendarNotificationTrigger(dateMatching: DateComponents(hour: 20, minute: 0), repeats: true))
+        centro.add(pedido) { error in
+            if let error { Registro.anotar("No se pudo programar Preparar mañana: \(error.localizedDescription)") }
+        }
     }
 
     static func programarFin(_ t: Tarea) {
@@ -205,9 +203,23 @@ enum CopiaSeguridad {
         var esCita: Bool?
         var minutosViaje: Int?
         var pasos: [CopiaPaso]
+        var area: String?
+        var tituloCorto: String?
+        var repeticion: String?
+        var importante: Bool?
+        var medioViaje: String?
+        var personaUid: String?
+        var medio: String?
     }
-    struct CopiaCaptura: Codable { var uid: UUID; var tipo: String; var texto: String; var titulo: String; var tema: String; var creada: Date; var archivada: Bool }
-    struct Copia: Codable { var version = 1; var creada: Date; var tareas: [CopiaTarea]; var capturas: [CopiaCaptura]? }
+    struct CopiaRenglon: Codable { var texto: String; var orden: Int; var hecho: Bool; var origen: String; var hijos: [CopiaRenglon]? }
+    struct CopiaCaptura: Codable { var uid: UUID; var tipo: String; var texto: String; var titulo: String; var tema: String; var creada: Date; var archivada: Bool; var renglones: [CopiaRenglon]? }
+    struct CopiaNota: Codable { var texto: String; var fecha: Date }
+    struct CopiaPersona: Codable { var uid: UUID; var nombre: String; var cadaDias: Int; var ultimaVez: Date?; var color: Int; var notas: [CopiaNota] }
+    struct Copia: Codable { var version = 2; var creada: Date; var tareas: [CopiaTarea]; var capturas: [CopiaCaptura]?; var personas: [CopiaPersona]?; var perfil: Data? }
+
+    private static func copia(_ r: Renglon) -> CopiaRenglon {
+        CopiaRenglon(texto: r.texto, orden: r.orden, hecho: r.hecho, origen: r.origen, hijos: r.hijosOrdenados.map(copia))
+    }
 
     static var url: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("AppTDAH-copia.json")
@@ -224,10 +236,16 @@ enum CopiaSeguridad {
                            estado: t.estadoRaw, inicioReal: t.inicioReal, minutosExtra: t.minutosExtra,
                            lugar: t.lugar, direccion: t.direccion, notas: t.notas,
                            esCita: t.esCita, minutosViaje: t.minutosViaje,
-                           pasos: t.pasosOrdenados.map { CopiaPaso(texto: $0.texto, hecho: $0.hecho, orden: $0.orden) })
+                           pasos: t.pasosOrdenados.map { CopiaPaso(texto: $0.texto, hecho: $0.hecho, orden: $0.orden) },
+                           area: t.area, tituloCorto: t.tituloCorto, repeticion: t.repeticion, importante: t.importante,
+                           medioViaje: t.medioViaje, personaUid: t.personaUid, medio: t.medio)
             }, capturas: (try ctx.fetch(FetchDescriptor<Captura>())).map {
-                CopiaCaptura(uid: $0.uid, tipo: $0.tipo, texto: $0.texto, titulo: $0.titulo, tema: $0.tema, creada: $0.creada, archivada: $0.archivada)
-            })
+                CopiaCaptura(uid: $0.uid, tipo: $0.tipo, texto: $0.texto, titulo: $0.titulo, tema: $0.tema, creada: $0.creada, archivada: $0.archivada,
+                             renglones: $0.principales.map(copia))
+            }, personas: (try ctx.fetch(FetchDescriptor<Persona>())).map { p in
+                CopiaPersona(uid: p.uid, nombre: p.nombre, cadaDias: p.cadaDias, ultimaVez: p.ultimaVez, color: p.color,
+                             notas: p.hilo.map { CopiaNota(texto: $0.texto, fecha: $0.fecha) })
+            }, perfil: UserDefaults.standard.data(forKey: Perfil.clave))
             let codificador = JSONEncoder()
             codificador.dateEncodingStrategy = .iso8601
             codificador.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -258,6 +276,13 @@ enum CopiaSeguridad {
             t.notas = c.notas ?? ""
             t.esCita = c.esCita ?? false
             t.minutosViaje = c.minutosViaje ?? 0
+            t.area = c.area ?? ""
+            t.tituloCorto = c.tituloCorto ?? ""
+            t.repeticion = c.repeticion ?? ""
+            t.importante = c.importante ?? false
+            t.medioViaje = c.medioViaje ?? "transit"
+            t.personaUid = c.personaUid ?? ""
+            t.medio = c.medio ?? ""
             ctx.insert(t)
             for p in c.pasos {
                 let paso = Paso(texto: p.texto, orden: p.orden, hecho: p.hecho)
@@ -273,6 +298,31 @@ enum CopiaSeguridad {
             nueva.creada = c.creada
             nueva.archivada = c.archivada
             ctx.insert(nueva)
+            func restaurar(_ lista: [CopiaRenglon], padre: Renglon?) {
+                for cr in lista {
+                    let r = Renglon(texto: cr.texto, orden: cr.orden, origen: cr.origen)
+                    r.hecho = cr.hecho
+                    ctx.insert(r)
+                    if let padre { r.padre = padre } else { r.captura = nueva }
+                    restaurar(cr.hijos ?? [], padre: r)
+                }
+            }
+            restaurar(c.renglones ?? [], padre: nil)
+        }
+        let personasExistentes = Set(try ctx.fetch(FetchDescriptor<Persona>()).map(\.uid))
+        for cp in copia.personas ?? [] where !personasExistentes.contains(cp.uid) {
+            let p = Persona(nombre: cp.nombre, cadaDias: cp.cadaDias, color: cp.color)
+            p.uid = cp.uid
+            p.ultimaVez = cp.ultimaVez
+            ctx.insert(p)
+            for n in cp.notas {
+                let nota = NotaPersona(texto: n.texto, fecha: n.fecha)
+                ctx.insert(nota)
+                nota.persona = p
+            }
+        }
+        if let perfil = copia.perfil, UserDefaults.standard.data(forKey: Perfil.clave) == nil {
+            UserDefaults.standard.set(perfil, forKey: Perfil.clave)
         }
         try ctx.save()
         Registro.anotar("Copia restaurada: \(agregadas) tareas agregadas.")
@@ -354,6 +404,31 @@ enum Acciones {
         t.estado = .archivada
         Avisos.cancelarTodo(t)
         guardar(t, ctx: ctx)
+        crearSiguiente(t, ctx: ctx)
+    }
+
+    /// Si la tarea se repite, crea la próxima vez (con sus pasos sin tachar).
+    static func crearSiguiente(_ t: Tarea, ctx: ModelContext) {
+        guard var r = Regla.leer(t.repeticion) else { return }
+        r.hechas += 1
+        t.repeticion = ""
+        guard let proxima = r.siguiente(despuesDe: max(.now, t.inicio)) else { guardar(ctx); return }
+        let n = Tarea(titulo: t.titulo, inicio: proxima, duracionMinutos: t.duracionMinutos)
+        n.lugar = t.lugar; n.direccion = t.direccion; n.notas = t.notas
+        n.esCita = t.esCita; n.minutosViaje = t.minutosViaje; n.medioViaje = t.medioViaje
+        n.apertura = t.apertura; n.cierre = t.cierre; n.soloDiasHabiles = t.soloDiasHabiles
+        n.area = t.area; n.tituloCorto = t.tituloCorto; n.personaUid = t.personaUid; n.medio = t.medio
+        n.repeticion = r.json
+        ctx.insert(n)
+        for p in t.pasosOrdenados {
+            let copia = Paso(texto: p.texto, orden: p.orden, origen: p.origen)
+            ctx.insert(copia)
+            copia.tarea = n
+        }
+        guardar(ctx)
+        Avisos.programarInicio(n)
+        Calendario.sincronizar(n)
+        guardar(ctx)
     }
 
     /// Devuelve los minutos de foco de este slot.
@@ -363,6 +438,7 @@ enum Acciones {
         t.estado = .terminada
         Avisos.cancelarTodo(t)
         guardar(t, ctx: ctx)
+        crearSiguiente(t, ctx: ctx)
         return minutos
     }
 
@@ -372,6 +448,7 @@ enum Acciones {
         t.duracionMinutos = max(5, Int(Date.now.timeIntervalSince(t.inicio) / 60))
         Avisos.cancelarTodo(t)
         guardar(t, ctx: ctx)
+        crearSiguiente(t, ctx: ctx)
     }
 
     /// Una tarea archivada vuelve sin hora: la app pregunta "¿Cuándo, entonces?".

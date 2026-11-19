@@ -20,6 +20,14 @@ struct LoQueViene: Codable, Equatable {
         var proyecto: String?
         var proyectoInicio: Date?
         var proyectoFin: Date?
+        /// Un título corto para que entre en un renglón.
+        var tituloCorto: String?
+        /// Los próximos pasos sin tachar.
+        var pasos: [String]?
+        /// La importante del día (borde dorado).
+        var importante: Bool?
+
+        var tituloVisible: String { (tituloCorto?.isEmpty == false ? tituloCorto : nil) ?? titulo }
     }
 
     var items: [Item]
@@ -157,6 +165,16 @@ enum GrupoApp {
                   from: Data(String(texto[desde.lowerBound..<hasta.upperBound]).utf8), format: nil) as? [String: Any],
               let permisos = dic["Entitlements"] as? [String: Any] else { return [] }
         return permisos["com.apple.security.application-groups"] as? [String] ?? []
+    }
+}
+
+/// En qué cosa está el carrusel del widget "Lo que viene" (las flechitas lo mueven sin abrir la app).
+enum CarruselWidget {
+    static let clave = "indiceLoQueViene"
+    static var defaults: UserDefaults? { UserDefaults(suiteName: GrupoApp.identificador) }
+    static var indice: Int {
+        get { defaults?.integer(forKey: clave) ?? 0 }
+        set { defaults?.set(newValue, forKey: clave) }
     }
 }
 

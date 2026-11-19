@@ -76,6 +76,7 @@ struct PropuestaIA: Codable, Equatable {
     var direccion: String
     var notas: String
     var pasos: [PasoIA]
+    var renglones: [String]
     var tema: String
     var horario_apertura: Int
     var horario_cierre: Int
@@ -143,7 +144,9 @@ enum ClienteClaude {
       orden y con sus palabras. Si no, proponé de 3 a 6 etapas concretas que correspondan a lo que dijo y al título (nada
       genérico), cada una con cuántos días dura (puede ser una fracción). Solo las tareas de la primera etapa
       (las demás se desglosan cuando se llegue a esa etapa).
-    - Para ideas: un título corto y un tema de una palabra (diseño, casa, deporte, viajes, trabajo…).
+    - Para ideas: un título corto y un tema de una palabra (diseño, casa, deporte, viajes, trabajo…). En renglones, las
+      cosas que el usuario dijo sobre la idea (qué quiere, por qué, dudas), en frases cortas y con sus palabras; nada inventado.
+      Para lo demás, renglones = [].
     - titulo: corto, en infinitivo para tareas ("Llamar al banco"). texto_original: el fragmento del dictado de ese ítem.
     - Los campos que no apliquen van vacíos: "", [], 0, -1 o false según el tipo.
     """
@@ -180,6 +183,7 @@ enum ClienteClaude {
                         "direccion": ["type": "string"],
                         "notas": ["type": "string"],
                         "pasos": ["type": "array", "items": esquemaPaso],
+                        "renglones": ["type": "array", "items": ["type": "string"]],
                         "tema": ["type": "string"],
                         "horario_apertura": ["type": "integer"],
                         "horario_cierre": ["type": "integer"],
@@ -203,7 +207,7 @@ enum ClienteClaude {
                         ]
                     ],
                     "required": ["tipo", "alternativa", "titulo", "titulo_corto", "area", "texto_original", "fecha_hora", "duracion_min", "lugar",
-                                 "direccion", "notas", "pasos", "tema", "horario_apertura", "horario_cierre",
+                                 "direccion", "notas", "pasos", "renglones", "tema", "horario_apertura", "horario_cierre",
                                  "solo_dias_habiles", "deadline", "etapas", "tareas_primera_etapa"],
                     "additionalProperties": false
                 ]

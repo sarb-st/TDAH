@@ -5,6 +5,7 @@ import WidgetKit
 struct WidgetsAppTDAH: WidgetBundle {
     var body: some Widget {
         CapturaWidget()
+        EscribirWidget()
         LoQueVieneWidget()
     }
 }
@@ -24,10 +25,24 @@ struct ProveedorCaptura: TimelineProvider {
 struct CapturaWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "Captura", provider: ProveedorCaptura()) { _ in VistaCapturaFamilia() }
-            .configurationDisplayName("Captura")
-            .description("Un toque para dictar o escribir lo que tenés en la cabeza.")
-            .supportedFamilies([.systemSmall, .systemMedium, .accessoryCircular])
+            .configurationDisplayName("Hablar")
+            .description("Un toque y dictás lo que tenés en la cabeza.")
+            .supportedFamilies([.systemSmall, .accessoryCircular])
     }
+}
+
+struct EscribirWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "Escribir", provider: ProveedorCaptura()) { _ in VistaEscribirFamilia() }
+            .configurationDisplayName("Escribir")
+            .description("Un renglón: tocás y se abre la app con el teclado listo.")
+            .supportedFamilies([.systemMedium, .accessoryRectangular])
+    }
+}
+
+private struct VistaEscribirFamilia: View {
+    @Environment(\.widgetFamily) private var familia
+    var body: some View { VistaEscribirWidget(familia: familia) }
 }
 
 private struct VistaCapturaFamilia: View {
@@ -67,8 +82,9 @@ struct LoQueVieneWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "LoQueViene", provider: ProveedorLoQueViene()) { e in VistaLoQueVieneFamilia(entrada: e) }
             .configurationDisplayName("Lo que viene")
-            .description("La próxima cosa con su cuenta regresiva.")
-            .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryInline])
+            .description("La próxima cosa con su cuenta regresiva. Las flechitas pasan a lo siguiente.")
+            .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular, .accessoryInline])
+            .contentMarginsDisabled()
     }
 }
 
@@ -84,7 +100,8 @@ enum Muestra {
         let ahora = Date.now
         return LoQueViene(items: [
             .init(titulo: "Llamar al banco", categoria: "tarea", inicio: ahora.addingTimeInterval(272),
-                  fin: ahora.addingTimeInterval(272 + 45 * 60), lugar: "Banco", notas: "Tener a mano el número de cliente."),
+                  fin: ahora.addingTimeInterval(272 + 45 * 60), lugar: "Banco", notas: "Tener a mano el número de cliente.",
+                  pasos: ["Buscar el número de cliente", "Llamar y pedir la tarjeta"]),
             .init(titulo: "Preparar el menú semanal", categoria: "tarea", inicio: ahora.addingTimeInterval(3872),
                   fin: ahora.addingTimeInterval(3872 + 30 * 60)),
         ])

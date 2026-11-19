@@ -9,6 +9,7 @@ struct NuevaTareaView: View {
     var proyectoInicial: Proyecto? = nil
     var etapaInicial: Etapa? = nil
     var tituloInicial: String = ""
+    var pasosIniciales: [String] = []
     var esCitaInicial = false
     var alGuardar: (() -> Void)? = nil
 
@@ -32,6 +33,8 @@ struct NuevaTareaView: View {
     @State private var direccion = ""
     @State private var notas = ""
     @State private var choque: (con: Tarea, sugerida: Date?)?
+    @State private var regla: Regla?
+    @State private var eligiendoRepeticion = false
     @FocusState private var foco: Bool
 
     private let duraciones = [10, 15, 20, 30, 45, 60, 90, 120]
@@ -73,6 +76,17 @@ struct NuevaTareaView: View {
                         Text("Salida")
                     } footer: {
                         Text(minutosViaje > 0 ? "Salís a las \(Formato.hora(inicio.addingTimeInterval(-Double(minutosViaje + 10) * 60))): viaje + 10 min de margen." : "Con el tiempo de viaje te aviso cuándo salir.")
+                    }
+                }
+                if !esCita {
+                    Section {
+                        Button { eligiendoRepeticion = true } label: {
+                            HStack {
+                                Label("Se repite", systemImage: "arrow.triangle.2.circlepath")
+                                Spacer()
+                                Text(regla?.resumen ?? "No").foregroundStyle(.secondary).lineLimit(1)
+                            }
+                        }
                     }
                 }
                 if !proyectos.filter({ !$0.archivado }).isEmpty || proyecto != nil {
@@ -124,17 +138,36 @@ struct NuevaTareaView: View {
             }
             .alert(textoChoque, isPresented: Binding(get: { choque != nil }, set: { if !$0 { choque = nil } })) {
                 if let sugerida = choque?.sugerida {
-                    Button("Ponerla a las \(Formato.hora(sugerida))") { inicio = sugerida; guardar() }
+                    Button(choque?.con.importante == true ? "Usar \(Formato.hora(sugerida))" : "Ponerla a las \(Formato.hora(sugerida))") { inicio = sugerida; guardar() }
                 }
-                Button("Guardar igual") { guardar() }
+                if let imp = choque?.con, imp.importante {
+                    // Si la querés ahí igual, te deja: la importante se corre a cuando termina esta.
+                    Button("Ponerla igual") {
+                        let fin = MotorSlots.redondearArriba(inicio.addingTimeInterval(Double(duracion) * 60), minutos: 5)
+                        guardar()
+                        Acciones.correr(imp, a: fin, ctx: ctx)
+                    }
+                } else {
+                    Button("Guardar igual") { guardar() }
+                }
                 Button("Cambiar la hora", role: .cancel) {}
             }
             .onAppear(perform: cargar)
+            .sheet(isPresented: $eligiendoRepeticion) {
+                RepetirView(regla: $regla, titulo: titulo, duracion: duracion)
+            }
+            .onChange(of: regla) { _, nueva in
+                // La tarea toma la hora de la regla: la primera vez que toca.
+                if let r = nueva, let primera = r.ocurrencias(desde: .now.addingTimeInterval(-60), limite: 1).first { inicio = primera }
+            }
         }
     }
 
     private var textoChoque: String {
         guard let c = choque?.con else { return "" }
+        if c.importante {
+            return "Ese horario es de la importante." + (choque?.sugerida.map { " Te propongo las \(Formato.hora($0)), apenas termina." } ?? "")
+        }
         return "Se pisa con “\(c.titulo)” de las \(Formato.hora(c.inicio))."
     }
 
@@ -153,6 +186,7 @@ struct NuevaTareaView: View {
         proyecto = proyectoInicial
         etapa = etapaInicial
         if tarea == nil && !tituloInicial.isEmpty { titulo = tituloInicial }
+        if tarea == nil && !pasosIniciales.isEmpty { pasos = pasosIniciales }
         if tarea == nil { esCita = esCitaInicial }
         guard let t = tarea else { return }
         esCita = t.esCita
@@ -167,6 +201,7 @@ struct NuevaTareaView: View {
         lugar = t.lugar
         direccion = t.direccion
         notas = t.notas
+        regla = Regla.leer(t.repeticion)
     }
 
     /// Antes de guardar, revisa que no se pise con otra tarea; si se pisa, ofrece el próximo hueco libre.
@@ -174,9 +209,17 @@ struct NuevaTareaView: View {
         let otras = todas.filter { $0.uid != tarea?.uid && $0.ocupaAgenda }
         let propuesta = DateInterval(start: inicio, duration: Double(duracion) * 60)
         if let con = otras.first(where: { MotorSlots.solapa(propuesta, con: [$0.intervalo]) }) {
-            let sugerida = MotorSlots.sugerencias(duracion: duracion, ocupados: otras.map(\.intervalo),
+            let sugerida: Date?
+            if con.importante {
+                // Apenas termina la importante, si ahí está libre.
+                let fin = MotorSlots.redondearArriba(con.intervalo.end, minutos: 5)
+                let libre = !otras.contains { $0.uid != con.uid && MotorSlots.solapa(DateInterval(start: fin, duration: Double(duracion) * 60), con: [$0.intervalo]) }
+                sugerida = libre ? fin : MotorSlots.sugerencias(duracion: duracion, ocupados: otras.map(\.intervalo), desde: fin, apertura: 0, cierre: 23, cantidad: 1).first?.inicio
+            } else {
+                sugerida = MotorSlots.sugerencias(duracion: duracion, ocupados: otras.map(\.intervalo),
                                                   desde: inicio.addingTimeInterval(-10 * 60), apertura: 0, cierre: 23,
                                                   cantidad: 1).first?.inicio
+            }
             choque = (con, sugerida)
         } else {
             guardar()
@@ -193,6 +236,7 @@ struct NuevaTareaView: View {
         t.direccion = direccion.trimmingCharacters(in: .whitespacesAndNewlines)
         t.notas = notas.trimmingCharacters(in: .whitespacesAndNewlines)
         t.esCita = esCita
+        t.repeticion = esCita ? "" : (regla?.json ?? "")
         t.minutosViaje = esCita ? minutosViaje : 0
         t.medioViaje = medioViaje
         t.proyecto = proyecto
@@ -286,6 +330,7 @@ struct AjustesView: View {
     @AppStorage("alarmas") private var alarmas = true
     @AppStorage("calendario") private var calendario = true
     @AppStorage("sonidoAlarma") private var sonidoAlarma = "campanita"
+    @AppStorage("vibraciones") private var vibraciones = true
     @AppStorage("ciudad") private var ciudad = ""
     @AppStorage("casa") private var casa = ""
     @State private var clave = ""
@@ -300,12 +345,6 @@ struct AjustesView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    LabeledContent("Minutos de foco", value: Formato.minutos(minutosDeFoco))
-                } footer: {
-                    Text("Todo el tiempo que trabajaste en tus slots desde que usás la app.")
-                }
-
                 Section {
                     if hayClave {
                         LabeledContent("Clave de Claude", value: "Guardada en el iPhone")
@@ -353,10 +392,11 @@ struct AjustesView: View {
                         Text("Campanita suave").tag("campanita")
                         Text("El de iOS").tag("sistema")
                     }
+                    Toggle("Vibraciones", isOn: $vibraciones)
                 } header: {
                     Text("Avisos")
                 } footer: {
-                    Text("Al comienzo y al fin de cada slot llega una notificación con este sonido. Si la descartás, vuelve a los 3 y a los 6 minutos. Con el iPhone en silencio, vibra.")
+                    Text("Al comienzo y al fin de cada slot llega una notificación con este sonido. Si la descartás, vuelve a los 3 y a los 6 minutos. Con el iPhone en silencio, vibra. Las vibraciones son las de Empiezo, Ahora no, Terminé, tachar un paso, el halo en una pastilla y el dictado.")
                 }
 
 

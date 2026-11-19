@@ -9,9 +9,10 @@ struct DemoWidgetsView: View {
 
     private var tarea: LoQueViene {
         LoQueViene(items: [
-            .init(titulo: "Llamar al banco", categoria: "tarea", inicio: ahora.addingTimeInterval(272),
+            .init(titulo: "Llamar al banco por la tarjeta nueva y el cambio de dirección", categoria: "tarea", inicio: ahora.addingTimeInterval(272),
                   fin: ahora.addingTimeInterval(272 + 45 * 60), lugar: "Banco",
-                  notas: "Tener a mano el número de cliente. Preguntar por la tarjeta nueva."),
+                  notas: "Tener a mano el número de cliente. Preguntar por la tarjeta nueva.",
+                  tituloCorto: "Banco: tarjeta y dirección", pasos: ["Buscar el número de cliente", "Llamar y pedir la tarjeta", "Avisar el cambio de dirección"]),
             .init(titulo: "Preparar el menú semanal", categoria: "tarea", inicio: ahora.addingTimeInterval(3872),
                   fin: ahora.addingTimeInterval(3872 + 30 * 60)),
         ])
@@ -37,28 +38,32 @@ struct DemoWidgetsView: View {
 
     var body: some View {
         let c = ColoresWidget.para(esquema)
-        VStack(spacing: 14) {
-            HStack(spacing: 14) {
-                marco(VistaCapturaWidget(familia: .systemSmall), ancho: 158, c: c)
-                marco(VistaLoQueVieneWidget(datos: tarea, fecha: ahora, familia: .systemSmall), ancho: 158, c: c)
+        ScrollView {
+            VStack(spacing: 14) {
+                HStack(spacing: 14) {
+                    marco(VistaCapturaWidget(familia: .systemSmall), ancho: 158, alto: 158, c: c)
+                    marco(VistaLoQueVieneWidget(datos: cita, fecha: ahora, familia: .systemSmall, indice: 0), ancho: 158, alto: 158, c: c, margen: false)
+                }
+                marco(VistaEscribirWidget(familia: .systemMedium), ancho: 330, alto: 158, c: c)
+                marco(VistaLoQueVieneWidget(datos: tarea, fecha: ahora, familia: .systemMedium, indice: 0), ancho: 330, alto: 158, c: c, margen: false)
+                marco(VistaLoQueVieneWidget(datos: proyecto, fecha: ahora, familia: .systemLarge, indice: 0), ancho: 330, alto: 330, c: c, margen: false)
+                HStack(spacing: 12) {
+                    bloqueo(VistaLoQueVieneWidget(datos: cita, fecha: ahora, familia: .accessoryRectangular), ancho: 170, alto: 72)
+                    bloqueo(VistaCapturaWidget(familia: .accessoryCircular), ancho: 72, alto: 72)
+                }
+                .padding(14)
+                .background(Color.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 22))
             }
-            marco(VistaLoQueVieneWidget(datos: proyecto, fecha: ahora, familia: .systemMedium), ancho: 330, c: c)
-            marco(VistaCapturaWidget(familia: .systemMedium), ancho: 330, c: c)
-            HStack(spacing: 12) {
-                bloqueo(VistaLoQueVieneWidget(datos: cita, fecha: ahora, familia: .accessoryRectangular), ancho: 170, alto: 72)
-                bloqueo(VistaCapturaWidget(familia: .accessoryCircular), ancho: 72, alto: 72)
-            }
-            .padding(14)
-            .background(Color.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 22))
+            .padding(.top, 50)
+            .frame(maxWidth: .infinity)
         }
-        .padding(.top, 50)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
-    private func marco(_ v: some View, ancho: CGFloat, c: ColoresWidget) -> some View {
-        v.padding(16)
-            .frame(width: ancho, height: 158)
+    private func marco(_ v: some View, ancho: CGFloat, alto: CGFloat, c: ColoresWidget, margen: Bool = true) -> some View {
+        v.padding(margen ? 16 : 0)
+            .frame(width: ancho, height: alto)
             .background(c.fondo, in: RoundedRectangle(cornerRadius: 22))
+            .clipShape(RoundedRectangle(cornerRadius: 22))
             .overlay(RoundedRectangle(cornerRadius: 22).stroke(c.linea))
     }
 
