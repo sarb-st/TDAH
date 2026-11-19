@@ -5,6 +5,7 @@ import EventKit
 import MapKit
 import CoreLocation
 import Observation
+import UIKit
 
 /// Dictado con el reconocimiento de voz del iPhone (gratis; en el dispositivo cuando se puede).
 /// El mismo audio se reconoce a la vez en español y en alemán: el español da el sentido y el alemán escribe bien
@@ -20,6 +21,20 @@ final class Dictado {
     var nivel: Double = 0
     /// La última vez que se oyó voz o cambió el texto: sirve para darse cuenta de que terminaste de hablar.
     @ObservationIgnored var ultimaVoz = Date.now
+    /// Se cortó apenas empezó y está volviendo a intentar solo.
+    var reintentando = false
+    /// El archivo de audio del último dictado (en Documentos/audios), para ideas e inbox.
+    @ObservationIgnored var ultimoAudio = ""
+    @ObservationIgnored private var archivo: AVAudioFile?
+    @ObservationIgnored private var nombreArchivo = ""
+    @ObservationIgnored private var inicioSesion = Date.distantPast
+    @ObservationIgnored private var reintentos = 0
+
+    static var carpetaAudios: URL {
+        let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("audios")
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
 
     @ObservationIgnored private let reconocedor = SFSpeechRecognizer(locale: Locale(identifier: "es-AR")) ?? SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
     @ObservationIgnored private let motor = AVAudioEngine()
@@ -36,13 +51,21 @@ final class Dictado {
     }
 
     @MainActor
-    func empezar() async {
+    func empezar(esReintento: Bool = false) async {
         error = nil
+        if !esReintento { reintentos = 0 }
+        // Desde un widget, la app puede estar abriéndose todavía: si empieza a escuchar antes, el reconocimiento
+        // falla al instante. Espera (hasta 2 s) a que esté activa del todo.
+        var espera = 0
+        while UIApplication.shared.applicationState != .active && espera < 20 {
+            try? await Task.sleep(for: .milliseconds(100))
+            espera += 1
+        }
         let voz = await withCheckedContinuation { c in SFSpeechRecognizer.requestAuthorization { c.resume(returning: $0) } }
-        guard voz == .authorized else { error = "Falta el permiso de reconocimiento de voz (Ajustes del iPhone → AppTDAH)."; return }
+        guard voz == .authorized else { error = "Falta el permiso de reconocimiento de voz (Ajustes del iPhone → AppTDAH)."; reintentando = false; return }
         let micro = await AVAudioApplication.requestRecordPermission()
-        guard micro else { error = "Falta el permiso del micrófono (Ajustes del iPhone → AppTDAH)."; return }
-        guard let reconocedor, reconocedor.isAvailable else { error = "El reconocimiento de voz no está disponible ahora."; return }
+        guard micro else { error = "Falta el permiso del micrófono (Ajustes del iPhone → AppTDAH)."; reintentando = false; return }
+        guard let reconocedor, reconocedor.isAvailable else { error = "El reconocimiento de voz no está disponible ahora."; reintentando = false; return }
 
         do {
             let sesion = AVAudioSession.sharedInstance()
@@ -64,9 +87,18 @@ final class Dictado {
             textoPrevioAleman = textoAleman.isEmpty ? "" : textoAleman + " "
             let entrada = motor.inputNode
             entrada.removeTap(onBus: 0)
-            entrada.installTap(onBus: 0, bufferSize: 1024, format: entrada.outputFormat(forBus: 0)) { [weak self] buffer, _ in
+            let formato = entrada.outputFormat(forBus: 0)
+            guard formato.sampleRate > 0 else { throw NSError(domain: "Dictado", code: 1, userInfo: [NSLocalizedDescriptionKey: "el micrófono todavía no está listo"]) }
+            // El audio se guarda también en un archivo, para escucharlo después en la ficha de una idea o un inbox.
+            if !esReintento || archivo == nil {
+                nombreArchivo = "\(UUID().uuidString).caf"
+                archivo = try? AVAudioFile(forWriting: Dictado.carpetaAudios.appendingPathComponent(nombreArchivo), settings: formato.settings)
+            }
+            let grabar = archivo
+            entrada.installTap(onBus: 0, bufferSize: 1024, format: formato) { [weak self] buffer, _ in
                 pedido.append(buffer)
                 aleman?.append(buffer)
+                try? grabar?.write(from: buffer)
                 let n = Dictado.volumen(buffer)
                 DispatchQueue.main.async {
                     guard let self else { return }
@@ -77,7 +109,9 @@ final class Dictado {
             motor.prepare()
             try motor.start()
             ultimaVoz = .now
+            inicioSesion = .now
             escuchando = true
+            reintentando = false
             tarea = reconocedor.recognitionTask(with: pedido) { [weak self] resultado, error in
                 DispatchQueue.main.async {
                     guard let self else { return }
@@ -86,7 +120,20 @@ final class Dictado {
                         if nuevo != self.texto { self.ultimaVoz = .now }
                         self.texto = nuevo
                     }
-                    if error != nil || resultado?.isFinal == true { self.detener() }
+                    if let error {
+                        // Si se cortó apenas empezó y sin texto, reintenta solo (hasta dos veces) en vez de rendirse.
+                        let vacio = self.texto.trimmingCharacters(in: .whitespaces).isEmpty
+                        if self.escuchando && vacio && Date.now.timeIntervalSince(self.inicioSesion) < 2.5 && self.reintentos < 2 {
+                            self.reintentos += 1
+                            Registro.anotar("Dictado: se cortó al empezar (\((error as NSError).domain) \((error as NSError).code)); reintento \(self.reintentos).")
+                            self.reintentar()
+                        } else {
+                            if vacio { Registro.anotar("Dictado: terminó con error (\((error as NSError).domain) \((error as NSError).code)).") }
+                            self.detener()
+                        }
+                    } else if resultado?.isFinal == true {
+                        self.detener()
+                    }
                 }
             }
             if let de = reconocedorAleman, let aleman {
@@ -99,17 +146,34 @@ final class Dictado {
                 }
             }
         } catch {
-            self.error = "No se pudo usar el micrófono."
             Registro.anotar("Dictado: \(error.localizedDescription)")
-            detener()
+            if reintentos < 2 {
+                reintentos += 1
+                reintentar()
+            } else {
+                self.error = "No te pude escuchar. Tocá de nuevo para hablar."
+                detener()
+            }
         }
     }
 
-    func detener() {
+    /// Para el motor sin perder lo escuchado y vuelve a empezar en un ratito.
+    private func reintentar() {
+        reintentando = true
+        pararMotor()
+        escuchando = false
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(450))
+            guard reintentando else { return }
+            await empezar(esReintento: true)
+        }
+    }
+
+    private func pararMotor() {
         if motor.isRunning {
             motor.stop()
-            motor.inputNode.removeTap(onBus: 0)
         }
+        motor.inputNode.removeTap(onBus: 0)
         pedido?.endAudio()
         tarea?.cancel()
         pedido = nil
@@ -118,8 +182,20 @@ final class Dictado {
         tareaAleman?.cancel()
         pedidoAleman = nil
         tareaAleman = nil
+    }
+
+    func detener() {
+        pararMotor()
+        reintentando = false
         escuchando = false
         nivel = 0
+        // Cierra el archivo de audio: si quedó algo grabado, queda como el último audio.
+        if archivo != nil {
+            archivo = nil
+            let url = Dictado.carpetaAudios.appendingPathComponent(nombreArchivo)
+            let tamano = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0
+            if tamano > 8_000 { ultimoAudio = nombreArchivo } else { try? FileManager.default.removeItem(at: url); ultimoAudio = "" }
+        }
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
@@ -214,7 +290,7 @@ final class Viaje: NSObject, CLLocationManagerDelegate {
     /// Minutos de viaje en transporte público desde donde estás ahora. Sin permiso de ubicación, desde tu casa
     /// (Ajustes → Lugares). Devuelve nil si no se puede calcular.
     @MainActor
-    func minutos(hasta direccion: String) async -> Int? {
+    func minutos(hasta direccion: String, medio: String = "transit") async -> Int? {
         await pedirPermiso()
         let origen: MKMapItem
         if autorizada {
@@ -225,11 +301,12 @@ final class Viaje: NSObject, CLLocationManagerDelegate {
             origen = item
         }
         guard let destino = await buscar(direccion) else { return nil }
-        for medio in [MKDirectionsTransportType.transit, .walking, .automobile] {
+        let medios: [MKDirectionsTransportType] = medio == "auto" ? [.automobile, .transit] : [.transit, .walking, .automobile]
+        for tipo in medios {
             let pedido = MKDirections.Request()
             pedido.source = origen
             pedido.destination = destino
-            pedido.transportType = medio
+            pedido.transportType = tipo
             if let eta = try? await MKDirections(request: pedido).calculateETA() {
                 return Int((eta.expectedTravelTime / 60).rounded(.up))
             }
@@ -274,6 +351,11 @@ enum Calendario {
         guard mostrar else {
             if let e = existente { try? almacen.remove(e, span: .thisEvent, commit: true) }
             t.eventoCalendario = ""
+            for id in [t.eventoIda, t.eventoVuelta] where !id.isEmpty {
+                if let e = almacen.event(withIdentifier: id) { try? almacen.remove(e, span: .thisEvent, commit: true) }
+            }
+            t.eventoIda = ""
+            t.eventoVuelta = ""
             return
         }
         guard let calendario = calendarioApp() else { return }
@@ -290,11 +372,39 @@ enum Calendario {
         } catch {
             Registro.anotar("Calendario: no se pudo guardar un evento (\(error.localizedDescription)).")
         }
+        sincronizarViaje(t, calendario: calendario)
+    }
+
+    /// En una cita con viaje, bloquea en el calendario el trayecto de ida (antes) y de vuelta (después).
+    @MainActor
+    private static func sincronizarViaje(_ t: Tarea, calendario: EKCalendar) {
+        let conViaje = t.esCita && t.minutosViaje > 0 && t.estado == .programada
+        let viaje = Double(t.minutosViaje) * 60
+        let fin = t.inicio.addingTimeInterval(Double(t.duracionMinutos) * 60)
+        let medio = t.medioViaje == "auto" ? "en auto" : "en transporte"
+        func bloque(_ id: String, desde: Date, hasta: Date, titulo: String) -> String {
+            let existente = id.isEmpty ? nil : almacen.event(withIdentifier: id)
+            guard conViaje else {
+                if let e = existente { try? almacen.remove(e, span: .thisEvent, commit: true) }
+                return ""
+            }
+            let e = existente ?? EKEvent(eventStore: almacen)
+            e.calendar = calendario
+            e.title = titulo
+            e.startDate = desde
+            e.endDate = hasta
+            do { try almacen.save(e, span: .thisEvent, commit: true); return e.eventIdentifier ?? "" }
+            catch { Registro.anotar("Calendario: no se pudo guardar un viaje (\(error.localizedDescription))."); return id }
+        }
+        t.eventoIda = bloque(t.eventoIda, desde: t.inicio.addingTimeInterval(-viaje), hasta: t.inicio, titulo: "Viaje \(medio) · \(t.titulo)")
+        t.eventoVuelta = bloque(t.eventoVuelta, desde: fin, hasta: fin.addingTimeInterval(viaje), titulo: "Vuelta \(medio) · \(t.titulo)")
     }
 
     static func borrar(_ t: Tarea) {
-        guard autorizado, !t.eventoCalendario.isEmpty, let e = almacen.event(withIdentifier: t.eventoCalendario) else { return }
-        try? almacen.remove(e, span: .thisEvent, commit: true)
+        guard autorizado else { return }
+        for id in [t.eventoCalendario, t.eventoIda, t.eventoVuelta] where !id.isEmpty {
+            if let e = almacen.event(withIdentifier: id) { try? almacen.remove(e, span: .thisEvent, commit: true) }
+        }
     }
 
     /// Lo ocupado en los otros calendarios (no el de la app), para no proponer horas que se pisan.

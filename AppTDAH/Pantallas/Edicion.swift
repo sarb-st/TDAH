@@ -18,6 +18,7 @@ struct NuevaTareaView: View {
     @Query(sort: \Proyecto.deadline) private var proyectos: [Proyecto]
     @State private var esCita = false
     @State private var minutosViaje = 0
+    @State private var medioViaje = "transit"
     @State private var calculandoViaje = false
     @State private var avisoViaje: String?
     @State private var proyecto: Proyecto?
@@ -54,11 +55,17 @@ struct NuevaTareaView: View {
                 }
                 if esCita {
                     Section {
+                        Picker("Cómo vas", selection: $medioViaje) {
+                            Text("Transporte público").tag("transit")
+                            Text("Auto").tag("auto")
+                        }
+                        .pickerStyle(.segmented)
+                        .onChange(of: medioViaje) { _, _ in if !(direccion.isEmpty && lugar.isEmpty) { Task { await calcularViaje() } } }
                         Stepper("Viaje: \(minutosViaje) min", value: $minutosViaje, in: 0...240, step: 5)
                         Button {
                             Task { await calcularViaje() }
                         } label: {
-                            if calculandoViaje { ProgressView() } else { Label("Calcular con Mapas (transporte público)", systemImage: "tram") }
+                            if calculandoViaje { ProgressView() } else { Label(medioViaje == "auto" ? "Calcular con Mapas (en auto)" : "Calcular con Mapas (transporte público)", systemImage: medioViaje == "auto" ? "car" : "tram") }
                         }
                         .disabled(direccion.isEmpty && lugar.isEmpty)
                         if let avisoViaje { Text(avisoViaje).font(.footnote).foregroundStyle(.secondary) }
@@ -134,7 +141,7 @@ struct NuevaTareaView: View {
     private func calcularViaje() async {
         calculandoViaje = true
         defer { calculandoViaje = false }
-        if let m = await Viaje.shared.minutos(hasta: direccion.isEmpty ? lugar : direccion) {
+        if let m = await Viaje.shared.minutos(hasta: direccion.isEmpty ? lugar : direccion, medio: medioViaje) {
             minutosViaje = m
             avisoViaje = Viaje.shared.autorizada ? "Unos \(m) min desde donde estás ahora. Lo recalculo cuando abrís la app." : "Unos \(m) min desde tu casa."
         } else {
@@ -150,6 +157,7 @@ struct NuevaTareaView: View {
         guard let t = tarea else { return }
         esCita = t.esCita
         minutosViaje = t.minutosViaje
+        medioViaje = t.medioViaje
         proyecto = t.proyecto
         etapa = t.etapa
         titulo = t.titulo
@@ -186,13 +194,15 @@ struct NuevaTareaView: View {
         t.notas = notas.trimmingCharacters(in: .whitespacesAndNewlines)
         t.esCita = esCita
         t.minutosViaje = esCita ? minutosViaje : 0
+        t.medioViaje = medioViaje
         t.proyecto = proyecto
         t.etapa = proyecto == nil ? nil : etapa
         if t.estado != .enCurso { t.estado = .programada }
         let hechos = Set(t.pasos.filter(\.hecho).map(\.texto))
+        let origenes = Dictionary(t.pasos.map { ($0.texto, $0.origen) }, uniquingKeysWith: { a, _ in a })
         for p in t.pasos { ctx.delete(p) }
         for (i, texto) in pasos.map({ $0.trimmingCharacters(in: .whitespaces) }).filter({ !$0.isEmpty }).enumerated() {
-            let paso = Paso(texto: texto, orden: i, hecho: hechos.contains(texto))
+            let paso = Paso(texto: texto, orden: i, hecho: hechos.contains(texto), origen: origenes[texto] ?? "")
             ctx.insert(paso)
             paso.tarea = t
         }

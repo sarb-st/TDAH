@@ -70,7 +70,7 @@ enum Avisos {
             if alarmas {
                 Alarmas.programar(id: Alarmas.id(t.uid, UInt8(i)), fecha: fecha, titulo: textos[i].0)
             } else {
-                agregar(id: ids(t, "inicio", textos.count)[i], fecha: fecha, titulo: textos[i].0, cuerpo: textos[i].1)
+                agregar(id: ids(t, "inicio", textos.count)[i], fecha: fecha, titulo: textos[i].0, cuerpo: textos[i].1, urgente: true)
             }
         }
     }
@@ -97,7 +97,8 @@ enum Avisos {
                 titulo = "Ahora: \(t.titulo)"
                 cuerpo = t.lugar.isEmpty ? "Es la hora de tu cita." : t.lugar
             }
-            agregar(id: "\(t.uid.uuidString)-cita-\(i)", fecha: a.fecha, titulo: titulo, cuerpo: cuerpo)
+            let urgente: Bool = { if case .salir = a.tipo { return true }; if case .ahora = a.tipo { return true }; return false }()
+            agregar(id: "\(t.uid.uuidString)-cita-\(i)", fecha: a.fecha, titulo: titulo, cuerpo: cuerpo, urgente: urgente)
         }
     }
 
@@ -144,11 +145,13 @@ enum Avisos {
     }
     static func cancelarTodo(_ t: Tarea) { cancelarInicio(t); cancelarFin(t) }
 
-    static func agregar(id: String, fecha: Date, titulo: String, cuerpo: String) {
+    /// Urgente: pasa los modos de concentración y enciende la pantalla (si iOS lo permite para esta app).
+    static func agregar(id: String, fecha: Date, titulo: String, cuerpo: String, urgente: Bool = false) {
         guard activos else { return }
         let contenido = UNMutableNotificationContent()
         contenido.title = titulo
         contenido.body = cuerpo
+        if urgente { contenido.interruptionLevel = .timeSensitive }
         contenido.sound = Alarmas.sonido == "campanita" ? UNNotificationSound(named: UNNotificationSoundName(Alarmas.archivoCampanita)) : .default
         let partes = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: fecha)
         let pedido = UNNotificationRequest(identifier: id, content: contenido,
@@ -361,6 +364,14 @@ enum Acciones {
         Avisos.cancelarTodo(t)
         guardar(t, ctx: ctx)
         return minutos
+    }
+
+    /// Una cita que terminó antes: se cierra y el fichero pasa a lo siguiente.
+    static func cerrarCita(_ t: Tarea, ctx: ModelContext) {
+        t.estado = .terminada
+        t.duracionMinutos = max(5, Int(Date.now.timeIntervalSince(t.inicio) / 60))
+        Avisos.cancelarTodo(t)
+        guardar(t, ctx: ctx)
     }
 
     /// Una tarea archivada vuelve sin hora: la app pregunta "¿Cuándo, entonces?".

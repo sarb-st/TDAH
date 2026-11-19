@@ -61,17 +61,21 @@ enum ErrorIA: LocalizedError {
 struct PropuestaIA: Codable, Equatable {
     struct EtapaIA: Codable, Equatable { var titulo: String; var fecha: String }
     struct TareaIA: Codable, Equatable { var titulo: String; var duracion_min: Int }
+    /// Un paso: si lo dijo el usuario (dicho) o lo sugiere la IA, y si es grande (conviene partirlo).
+    struct PasoIA: Codable, Equatable { var texto: String; var dicho: Bool; var grande: Bool }
 
     var tipo: String
     var alternativa: String
     var titulo: String
+    var titulo_corto: String
+    var area: String
     var texto_original: String
     var fecha_hora: String
     var duracion_min: Int
     var lugar: String
     var direccion: String
     var notas: String
-    var pasos: [String]
+    var pasos: [PasoIA]
     var tema: String
     var horario_apertura: Int
     var horario_cierre: Int
@@ -119,7 +123,16 @@ enum ClienteClaude {
     - Si dudás entre dos tipos, poné el más probable en "tipo" y el segundo en "alternativa"; si no dudás, "ninguna".
     - fecha_hora: fecha y hora local en formato AAAA-MM-DDTHH:MM, calculada desde la fecha actual que te paso. Si no dijo cuándo, "".
     - duracion_min: la que dijo o una estimación razonable. Para ideas e inbox, 0.
-    - pasos: solo para tareas que se beneficien de pasos concretos (como máximo 6, cortos, en infinitivo). Si no, [].
+    - pasos: si el usuario dijo los pasos ("primero X, después Y", "antes tengo que…", "armá una lista con…"), usá
+      exactamente esos, con sus palabras (cortos, en infinitivo), marcados dicho = true. Ordenalos según el procedimiento
+      lógico aunque los haya dicho desordenados. En ese caso podés sumar como mucho dos pasos sugeridos, solo si son
+      muy relacionados y faltan (dicho = false). Si no dijo ningún paso, proponé pasos solo para tareas que se beneficien
+      (como máximo 6, cortos, en infinitivo), todos con dicho = false. grande = true si un paso es claramente grande y
+      conviene partirlo en pasos más chicos. Si no hay pasos, [].
+    - titulo_corto: si el título tiene más de 26 caracteres, una versión corta que se entienda en un renglón
+      ("Banco: tarjeta y dirección"). Si el título ya es corto, "".
+    - area: para tareas, citas y proyectos, a cuál de los objetivos o áreas que te paso pertenece (escribilo igual que en la
+      lista). Si no encaja en ninguno, "". Para ideas e inbox, "".
     - Si una tarea depende de que un lugar esté abierto (banco, oficina, comercio), estimá su horario de atención típico
       en horario_apertura y horario_cierre (horas enteras) y si atiende solo días hábiles. Si no aplica, -1, -1 y false.
     - notas: solo lo que el usuario pidió explícitamente recordar o llevar ("llevar la orden", "preguntar por la tarjeta").
@@ -141,6 +154,12 @@ enum ClienteClaude {
         "required": ["titulo", "fecha"], "additionalProperties": false
     ]
 
+    private static let esquemaPaso: [String: Any] = [
+        "type": "object",
+        "properties": ["texto": ["type": "string"], "dicho": ["type": "boolean"], "grande": ["type": "boolean"]],
+        "required": ["texto", "dicho", "grande"], "additionalProperties": false
+    ]
+
     private static let esquemaClasificacion: [String: Any] = [
         "type": "object",
         "properties": [
@@ -152,13 +171,15 @@ enum ClienteClaude {
                         "tipo": ["type": "string", "enum": ["tarea", "cita", "proyecto", "idea", "inbox"]],
                         "alternativa": ["type": "string", "enum": ["ninguna", "tarea", "cita", "proyecto", "idea"]],
                         "titulo": ["type": "string"],
+                        "titulo_corto": ["type": "string"],
+                        "area": ["type": "string"],
                         "texto_original": ["type": "string"],
                         "fecha_hora": ["type": "string"],
                         "duracion_min": ["type": "integer"],
                         "lugar": ["type": "string"],
                         "direccion": ["type": "string"],
                         "notas": ["type": "string"],
-                        "pasos": ["type": "array", "items": ["type": "string"]],
+                        "pasos": ["type": "array", "items": esquemaPaso],
                         "tema": ["type": "string"],
                         "horario_apertura": ["type": "integer"],
                         "horario_cierre": ["type": "integer"],
@@ -181,7 +202,7 @@ enum ClienteClaude {
                             ]
                         ]
                     ],
-                    "required": ["tipo", "alternativa", "titulo", "texto_original", "fecha_hora", "duracion_min", "lugar",
+                    "required": ["tipo", "alternativa", "titulo", "titulo_corto", "area", "texto_original", "fecha_hora", "duracion_min", "lugar",
                                  "direccion", "notas", "pasos", "tema", "horario_apertura", "horario_cierre",
                                  "solo_dias_habiles", "deadline", "etapas", "tareas_primera_etapa"],
                     "additionalProperties": false
@@ -227,12 +248,144 @@ enum ClienteClaude {
         return "Fecha y hora actual: \(f.string(from: ahora)) (zona horaria \(TimeZone.current.identifier))."
     }
 
+    /// Los objetivos y áreas del usuario, con lo que ya corrigió, para que la IA ordene cada cosa.
+    static func contextoAreas(_ perfil: Perfil = .actual) -> String {
+        let objetivos = perfil.objetivos.filter { !$0.isEmpty }
+        var t = "Objetivos del usuario: \(objetivos.isEmpty ? "(ninguno)" : objetivos.joined(separator: "; ")).\n"
+        t += "Áreas: \(Perfil.areas.joined(separator: "; "))."
+        let ejemplos = perfil.correcciones.suffix(20)
+        if !ejemplos.isEmpty {
+            t += "\nCorrecciones del usuario (lo parecido va al mismo lugar): "
+            t += ejemplos.map { "\"\($0.titulo)\" → \($0.area)" }.joined(separator: "; ")
+        }
+        return t
+    }
+
     static func clasificar(_ dictado: String, aleman: String = "", ahora: Date = .now) async throws -> [PropuestaIA] {
         let deAleman = aleman.trimmingCharacters(in: .whitespacesAndNewlines)
         let extra = deAleman.isEmpty ? "" : "\n\nEl mismo audio reconocido en alemán (solo para nombres y términos alemanes):\n\(deAleman)"
-        let pedido = "\(contextoFecha(ahora))\n\nDictado:\n\(dictado)\(extra)"
+        let pedido = "\(contextoFecha(ahora))\n\(contextoAreas())\n\nDictado:\n\(dictado)\(extra)"
         let r: ClasificacionIA = try await pedir(sistema: instrucciones, usuario: pedido, esquema: esquemaClasificacion)
         return r.items
+    }
+
+    // MARK: Pedidos chicos
+
+    private static let sistemaCorto = "Ayudás a una persona con TDAH en español rioplatense. Respuestas cortas, concretas, sin inventar cosas que no se deduzcan de lo que te pasan."
+
+    private static func esquema(_ propiedades: [String: Any]) -> [String: Any] {
+        ["type": "object", "properties": propiedades, "required": Array(propiedades.keys), "additionalProperties": false]
+    }
+    private static let listaTextos: [String: Any] = ["type": "array", "items": ["type": "string"]]
+
+    private struct ListaDeTextos: Codable { var textos: [String] }
+
+    /// Parte un paso grande en dos a cuatro pasos más chicos.
+    static func partirPaso(tarea: String, paso: String, pasos: [String]) async throws -> [String] {
+        let pedido = "Tarea: \(tarea)\nPasos: \(pasos.joined(separator: " · "))\n\nEl paso \"\(paso)\" es grande. Partilo en 2 a 4 pasos más chicos, en orden, cortos y en infinitivo."
+        let r: ListaDeTextos = try await pedir(sistema: sistemaCorto, usuario: pedido, esquema: esquema(["textos": listaTextos]))
+        return r.textos
+    }
+
+    private struct OtroPaso: Codable { var texto: String; var despues_de: Int }
+
+    /// Un paso más, bien relacionado con la tarea, y dónde va en el procedimiento.
+    static func otroPaso(tarea: String, pasos: [String]) async throws -> (texto: String, despuesDe: Int) {
+        let lista = pasos.enumerated().map { "\($0.offset + 1). \($0.element)" }.joined(separator: "\n")
+        let pedido = "Tarea: \(tarea)\nPasos actuales:\n\(lista.isEmpty ? "(ninguno)" : lista)\n\nSugerí UN paso más que falte y sea muy relacionado (corto, en infinitivo). En despues_de poné el número del paso después del que va (0 si va primero). Si no falta nada con sentido, texto vacío."
+        let r: OtroPaso = try await pedir(sistema: sistemaCorto, usuario: pedido,
+                                          esquema: esquema(["texto": ["type": "string"], "despues_de": ["type": "integer"]]))
+        return (r.texto, r.despues_de)
+    }
+
+    struct Adivinanza: Codable, Equatable { var tipo: String; var titulo: String }
+    private struct Adivinanzas: Codable { var opciones: [Adivinanza] }
+
+    /// Para un inbox que no se entendió: dos o tres opciones de qué puede ser.
+    static func adivinarInbox(_ texto: String) async throws -> [Adivinanza] {
+        let pedido = "\(contextoFecha())\nEl usuario dictó esto y no quedó claro qué es: \"\(texto)\".\nProponé 2 o 3 interpretaciones posibles, cada una con tipo (tarea, cita, idea o lista) y un título corto en infinitivo para tareas. No inventes nombres ni datos que no estén."
+        let opcion: [String: Any] = esquema(["tipo": ["type": "string", "enum": ["tarea", "cita", "idea", "lista"]], "titulo": ["type": "string"]])
+        let r: Adivinanzas = try await pedir(sistema: sistemaCorto, usuario: pedido, esquema: esquema(["opciones": ["type": "array", "items": opcion]]))
+        return r.opciones
+    }
+
+    /// Cosas más chicas dentro de un renglón de una idea (generales, no pasos concretos).
+    static func abrirRenglon(idea: String, renglon: String) async throws -> [String] {
+        let pedido = "Idea: \(idea)\nRenglón: \(renglon)\n\nProponé 2 o 3 cosas un poco más chicas para pensar dentro de ese renglón. Es una idea, no un plan: nada de pasos concretos todavía."
+        let r: ListaDeTextos = try await pedir(sistema: sistemaCorto, usuario: pedido, esquema: esquema(["textos": listaTextos]))
+        return r.textos
+    }
+
+    /// Primeros pasos para una idea, a pedido.
+    static func pasosIdea(idea: String, renglones: [String]) async throws -> [String] {
+        let pedido = "Idea: \(idea)\nLo que la mueve: \(renglones.joined(separator: " · "))\n\nProponé 3 primeros pasos concretos y chicos para empezar a llevarla adelante, cortos y en infinitivo."
+        let r: ListaDeTextos = try await pedir(sistema: sistemaCorto, usuario: pedido, esquema: esquema(["textos": listaTextos]))
+        return r.textos
+    }
+
+    /// Temas para hablar con alguien, siguiendo el hilo de lo que se anotó.
+    static func temasPersona(nombre: String, hilo: [String]) async throws -> [String] {
+        let pedido = "Persona: \(nombre)\nLo último anotado de esa persona:\n\(hilo.prefix(6).map { "- \($0)" }.joined(separator: "\n"))\n\nProponé 2 o 3 temas cortos para preguntarle o retomar la próxima vez (por ejemplo \"¿Cómo quedó la cocina?\"). Solo de lo anotado; nada de trabajo, tareas ni proyectos."
+        let r: ListaDeTextos = try await pedir(sistema: sistemaCorto, usuario: pedido, esquema: esquema(["textos": listaTextos]))
+        return r.textos
+    }
+
+    struct SugerenciaObjetivo: Codable { var comentario: String; var sugerencias: [PropuestaIA.TareaIA] }
+
+    /// El empujoncito: un comentario cálido sobre lo último que hizo y dos tareas chicas para seguir.
+    static func empujon(objetivo: String, recientes: [String]) async throws -> SugerenciaObjetivo {
+        let pedido = "Objetivo: \(objetivo)\nLo último que hizo para ese objetivo: \(recientes.isEmpty ? "(nada todavía)" : recientes.joined(separator: "; ")).\n\nEscribí un comentario cálido de una o dos frases que recuerde lo último que hizo y lo invite a seguir (sin culpa, sin \"hace tantos días\"). Y proponé dos tareas chicas y concretas para seguir, con su duración en minutos."
+        let tarea: [String: Any] = esquema(["titulo": ["type": "string"], "duracion_min": ["type": "integer"]])
+        return try await pedir(sistema: sistemaCorto, usuario: pedido,
+                               esquema: esquema(["comentario": ["type": "string"], "sugerencias": ["type": "array", "items": tarea]]))
+    }
+
+    struct ReglaIA: Codable, Equatable {
+        var modo: String
+        var dias: [Bool]
+        var cada: Int
+        var unidad: String
+        var dia_mes: Int
+        var hora: String
+        var hasta: String
+        var meses: Int
+        var fecha: String
+        var veces: Int
+    }
+
+    /// "los martes y viernes a las siete de la tarde, por dos meses" → la regla.
+    static func interpretarRepeticion(_ texto: String) async throws -> ReglaIA {
+        let pedido = """
+        \(contextoFecha())
+        El usuario dice cómo se repite una tarea: "\(texto)".
+        modo: dia (todos los días), dias (algunos días de la semana), cada (cada N días o semanas) o mes (una vez por mes).
+        dias: siete booleanos de lunes a domingo (para modo dias). cada y unidad ("dias" o "semanas") para modo cada.
+        dia_mes: el día del mes para modo mes. hora: "HH:MM" o "" si no la dijo.
+        hasta: siempre, meses (con meses), fecha (con fecha AAAA-MM-DD) o veces (con veces). Lo que no aplique: 0, "" o false.
+        """
+        return try await pedir(sistema: sistemaCorto, usuario: pedido, esquema: esquema([
+            "modo": ["type": "string", "enum": ["dia", "dias", "cada", "mes"]],
+            "dias": ["type": "array", "items": ["type": "boolean"]],
+            "cada": ["type": "integer"], "unidad": ["type": "string", "enum": ["dias", "semanas"]],
+            "dia_mes": ["type": "integer"], "hora": ["type": "string"],
+            "hasta": ["type": "string", "enum": ["siempre", "meses", "fecha", "veces"]],
+            "meses": ["type": "integer"], "fecha": ["type": "string"], "veces": ["type": "integer"]
+        ]))
+    }
+
+    struct SemanaIA: Codable { struct Dia: Codable { var tipo: String; var entra: String; var sale: String }; var turno: String; var dias: [Dia] }
+
+    /// "de lunes a miércoles de tarde, jueves y viernes de mañana" → la semana.
+    static func interpretarSemana(_ texto: String, manana: String, tarde: String) async throws -> SemanaIA {
+        let pedido = """
+        El usuario cuenta cómo trabaja esta semana: "\(texto)".
+        Turno mañana: \(manana). Turno tarde: \(tarde).
+        Devolvé turno (el que más se repite: "m" o "t") y siete días de lunes a domingo, cada uno con tipo "m", "t" o "l" (libre),
+        y entra/sale "HH:MM" solo si dijo un horario distinto ese día (si no, "").
+        """
+        let dia: [String: Any] = esquema(["tipo": ["type": "string", "enum": ["m", "t", "l"]], "entra": ["type": "string"], "sale": ["type": "string"]])
+        return try await pedir(sistema: sistemaCorto, usuario: pedido,
+                               esquema: esquema(["turno": ["type": "string", "enum": ["m", "t"]], "dias": ["type": "array", "items": dia]]))
     }
 
     /// Propone las etapas de un proyecto nuevo entre la fecha de inicio y la final.

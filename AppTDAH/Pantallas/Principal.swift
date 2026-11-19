@@ -77,6 +77,7 @@ struct InicioView: View {
     let navegacion: Navegacion
     let captura: CapturaInicio
     var onAbrir: (Tarea) -> Void = { _ in }
+    var onTermine: (Tarea) -> Void = { _ in }
 
     @Environment(\.paleta) private var paleta
     @Environment(\.modelContext) private var ctx
@@ -130,7 +131,7 @@ struct InicioView: View {
                             .foregroundStyle(paleta.secundario.color)
                             .padding(.bottom, 24)
                     } else {
-                        Fichero(tareas: tareas, ahora: ahora, onVerTodo: navegacion.lista, onAbrir: onAbrir)
+                        Fichero(tareas: tareas, ahora: ahora, onVerTodo: navegacion.lista, onAbrir: onAbrir, onTermine: onTermine)
                             .padding(.horizontal, 14)
                             .padding(.bottom, 10)
                     }
@@ -181,6 +182,7 @@ struct Fichero: View {
     let ahora: Date
     var onVerTodo: () -> Void
     var onAbrir: (Tarea) -> Void = { _ in }
+    var onTermine: (Tarea) -> Void = { _ in }
 
     @Environment(\.paleta) private var paleta
     @State private var abierto = false
@@ -189,7 +191,7 @@ struct Fichero: View {
         let lista = Array(tareas.prefix(3))
         VStack(spacing: abierto ? 8 : 0) {
             ForEach(Array(lista.enumerated()), id: \.element.uid) { i, t in
-                FichaInicio(tarea: t, ahora: ahora, primera: i == 0)
+                FichaInicio(tarea: t, ahora: ahora, primera: i == 0, onTermine: i == 0 ? { onTermine(t) } : nil)
                     .frame(height: i == 0 || abierto ? nil : 8, alignment: .bottom)
                     .clipped()
                     .scaleEffect(x: abierto ? 1 : 1 - 0.03 * CGFloat(i), y: 1, anchor: .top)
@@ -244,6 +246,8 @@ struct FichaInicio: View {
     let tarea: Tarea
     let ahora: Date
     var primera = false
+    /// Terminar antes: "Terminé" en una tarea en curso, "Ya terminó" en una cita que empezó.
+    var onTermine: (() -> Void)? = nil
     @Environment(\.paleta) private var paleta
 
     /// Lo que está pasando ahora se abre directo al tocarlo: una tarea en curso o una cita que ya empezó.
@@ -283,7 +287,19 @@ struct FichaInicio: View {
                     }
                     .foregroundStyle(paleta.primario.color)
                 }
-                Text(detalle).font(.caption).foregroundStyle(paleta.secundario.color).lineLimit(1)
+                HStack(alignment: .center, spacing: 8) {
+                    Text(detalle).font(.caption).foregroundStyle(paleta.secundario.color).lineLimit(1)
+                    if let terminar = onTermine, enCurso || empezo {
+                        Spacer(minLength: 4)
+                        Button(enCurso ? "Terminé" : "Ya terminó", action: terminar)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(paleta.primario.color)
+                            .padding(.horizontal, 14).padding(.vertical, 6)
+                            .background(paleta.superficie.color, in: Capsule())
+                            .overlay(Capsule().stroke(paleta.primario.color.opacity(0.45)))
+                            .buttonStyle(.plain)
+                    }
+                }
                 if primera {
                     if let p = t.proyecto { BarraProyecto(proyecto: p, ahora: ahora, mostrarNombre: false).padding(.top, 6) }
                     NotasTarea(tarea: t)
@@ -563,12 +579,15 @@ struct CuandoView: View {
     private static let otra = 99
 
     private var sugerencias: [Sugerencia] {
-        let ocupados = otras.filter { $0.uid != tarea.uid && $0.ocupaAgenda }.map(\.intervalo) + Calendario.ocupados(desde: ahora)
+        let perfil = Perfil.actual
+        let ocupados = otras.filter { $0.uid != tarea.uid && $0.ocupaAgenda }.flatMap(\.intervalosOcupados)
+            + Calendario.ocupados(desde: ahora) + perfil.ocupados(desde: ahora)
         if tarea.apertura >= 0 && tarea.cierre > tarea.apertura {
             return MotorSlots.sugerencias(duracion: tarea.duracionMinutos, ocupados: ocupados, desde: ahora,
                                           apertura: tarea.apertura, cierre: tarea.cierre, soloDiasHabiles: tarea.soloDiasHabiles)
         }
-        return MotorSlots.sugerencias(duracion: tarea.duracionMinutos, ocupados: ocupados, desde: ahora)
+        return MotorSlots.sugerencias(duracion: tarea.duracionMinutos, ocupados: ocupados, desde: ahora,
+                                      apertura: perfil.apertura, cierre: perfil.cierre)
     }
 
     var body: some View {

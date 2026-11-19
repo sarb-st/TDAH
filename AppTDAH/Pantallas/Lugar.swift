@@ -114,10 +114,11 @@ enum Salidas {
         guard !citas.isEmpty else { return }
         Task { @MainActor in
             for t in citas {
-                guard let m = await Viaje.shared.minutos(hasta: t.direccion.isEmpty ? t.lugar : t.direccion) else { continue }
+                guard let m = await Viaje.shared.minutos(hasta: t.direccion.isEmpty ? t.lugar : t.direccion, medio: t.medioViaje) else { continue }
                 if abs(m - t.minutosViaje) >= 3 {
                     t.minutosViaje = m
                     Avisos.programarCita(t)
+                    Calendario.sincronizar(t)
                     Registro.anotar("Salida recalculada para una cita (\(m) min de viaje).")
                 }
             }

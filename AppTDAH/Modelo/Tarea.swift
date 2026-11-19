@@ -40,6 +40,24 @@ final class Tarea {
     var soloDiasHabiles: Bool = false
     /// Identificador del evento espejo en el calendario del iPhone.
     var eventoCalendario: String = ""
+    /// Cómo se viaja a una cita: "transit" (transporte público, por defecto) o "auto".
+    var medioViaje: String = "transit"
+    /// Los bloques de viaje (ida y vuelta) de una cita en el calendario del iPhone.
+    var eventoIda: String = ""
+    var eventoVuelta: String = ""
+    /// La importante del día (se elige en Preparar mañana).
+    var importante: Bool = false
+    /// Un título corto para el widget y el fichero, si el título es largo.
+    var tituloCorto: String = ""
+    /// El objetivo o el área a la que pertenece (se ordena solo y se puede corregir).
+    var area: String = ""
+    /// Regla de repetición en JSON (vacío si no se repite).
+    var repeticion: String = ""
+    /// Para algo con una persona de "Los tuyos": su identificador y cómo (llamada, audio, mensaje, en persona).
+    var personaUid: String = ""
+    var medio: String = ""
+    /// Preparar mañana: lo que hay que dejar listo ("listo", "manana" o "").
+    var preparado: String = ""
     var proyecto: Proyecto?
     var etapa: Etapa?
     @Relationship(deleteRule: .cascade, inverse: \Paso.tarea) var pasos: [Paso] = []
@@ -56,6 +74,9 @@ final class Tarea {
     }
 
     var pasosOrdenados: [Paso] { pasos.sorted { $0.orden < $1.orden } }
+
+    /// Lo que se muestra cuando no hay lugar: el título corto si hay, si no el título.
+    var tituloVisible: String { tituloCorto.isEmpty ? titulo : tituloCorto }
 }
 
 @Model
@@ -64,12 +85,15 @@ final class Paso {
     var texto: String = ""
     var hecho: Bool = false
     var orden: Int = 0
+    /// De dónde salió: "voz" (lo dictaste), "ia" (sugerido) o "" (escrito a mano).
+    var origen: String = ""
     var tarea: Tarea?
 
-    init(texto: String, orden: Int, hecho: Bool = false) {
+    init(texto: String, orden: Int, hecho: Bool = false, origen: String = "") {
         self.texto = texto
         self.orden = orden
         self.hecho = hecho
+        self.origen = origen
     }
 }
 
@@ -166,6 +190,9 @@ final class Captura {
     var tema: String = ""
     var creada: Date = Date()
     var archivada: Bool = false
+    /// El audio del dictado (nombre del archivo en Documentos/audios), si hay.
+    var audio: String = ""
+    @Relationship(deleteRule: .cascade, inverse: \Renglon.captura) var renglones: [Renglon] = []
 
     init(tipo: String, texto: String, titulo: String = "", tema: String = "") {
         self.tipo = tipo
@@ -175,6 +202,83 @@ final class Captura {
     }
 
     var tituloVisible: String { titulo.isEmpty ? texto : titulo }
+
+    /// Los renglones de primer nivel, en orden.
+    var principales: [Renglon] { renglones.filter { $0.padre == nil }.sorted { $0.orden < $1.orden } }
+}
+
+/// Un renglón de una lista o de una idea. Puede tener renglones adentro (un nivel).
+@Model
+final class Renglon {
+    var uid: UUID = UUID()
+    var texto: String = ""
+    var orden: Int = 0
+    var hecho: Bool = false
+    /// "voz" (lo dictaste), "ia" (sugerido) o "" (escrito a mano).
+    var origen: String = ""
+    /// Una sugerencia que todavía no se sumó.
+    var sugerido: Bool = false
+    var captura: Captura?
+    var padre: Renglon?
+    @Relationship(deleteRule: .cascade, inverse: \Renglon.padre) var hijos: [Renglon] = []
+
+    init(texto: String, orden: Int, origen: String = "", sugerido: Bool = false) {
+        self.texto = texto
+        self.orden = orden
+        self.origen = origen
+        self.sugerido = sugerido
+    }
+
+    var hijosOrdenados: [Renglon] { hijos.sorted { $0.orden < $1.orden } }
+}
+
+/// Alguien de "Los tuyos": con quién querés estar presente y cada cuánto.
+@Model
+final class Persona {
+    var uid: UUID = UUID()
+    var nombre: String = ""
+    /// Cada cuántos días te gustaría hablar.
+    var cadaDias: Int = 7
+    var ultimaVez: Date?
+    @Attribute(.externalStorage) var foto: Data?
+    /// Índice del color de la paleta.
+    var color: Int = 0
+    var creada: Date = Date()
+    @Relationship(deleteRule: .cascade, inverse: \NotaPersona.persona) var notas: [NotaPersona] = []
+
+    init(nombre: String, cadaDias: Int = 7, color: Int = 0) {
+        self.nombre = nombre
+        self.cadaDias = cadaDias
+        self.color = color
+    }
+
+    var inicial: String { String(nombre.trimmingCharacters(in: .whitespaces).prefix(1)).uppercased() }
+    var hilo: [NotaPersona] { notas.sorted { $0.fecha > $1.fecha } }
+
+    func dias(ahora: Date = .now) -> Int? {
+        ultimaVez.map { max(0, Calendar.current.dateComponents([.day], from: $0, to: ahora).day ?? 0) }
+    }
+
+    /// El aro: 1 recién hablaron, 0 ya toca.
+    func aro(ahora: Date = .now) -> Double {
+        guard let d = dias(ahora: ahora) else { return 0 }
+        return max(0, 1 - Double(d) / Double(max(1, cadaDias)))
+    }
+
+    func yaToca(ahora: Date = .now) -> Bool { aro(ahora: ahora) <= 0 }
+}
+
+/// Lo que te contó alguien o en qué quedaron: el hilo de esa persona.
+@Model
+final class NotaPersona {
+    var texto: String = ""
+    var fecha: Date = Date()
+    var persona: Persona?
+
+    init(texto: String, fecha: Date = .now) {
+        self.texto = texto
+        self.fecha = fecha
+    }
 }
 
 /// Rastro de cada slot: cuándo se planeó, qué pasó y cuánto duró de verdad.
@@ -202,6 +306,14 @@ final class SlotRegistro {
 extension Tarea: DatosSlot {
     var intervalo: DateInterval {
         DateInterval(start: inicioReal ?? inicio, duration: Double(max(1, duracionMinutos + minutosExtra)) * 60)
+    }
+
+    /// Lo que ocupa, con el viaje de ida y vuelta de una cita.
+    var intervalosOcupados: [DateInterval] {
+        guard esCita, minutosViaje > 0 else { return [intervalo] }
+        let viaje = Double(minutosViaje) * 60
+        let i = intervalo
+        return [DateInterval(start: i.start.addingTimeInterval(-viaje), end: i.end.addingTimeInterval(viaje))]
     }
 
     /// Ocupa lugar en la agenda: lo que todavía va a pasar o está pasando.

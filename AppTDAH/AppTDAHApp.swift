@@ -10,11 +10,11 @@ struct AppTDAHApp: App {
     let contenedor: ModelContainer = {
         let enMemoria = DatosDemo.pantalla != nil
         do {
-            return try ModelContainer(for: Tarea.self, Paso.self, SlotRegistro.self, Proyecto.self, Etapa.self, Captura.self,
+            return try ModelContainer(for: Tarea.self, Paso.self, SlotRegistro.self, Proyecto.self, Etapa.self, Captura.self, Renglon.self, Persona.self, NotaPersona.self,
                                       configurations: ModelConfiguration(isStoredInMemoryOnly: enMemoria))
         } catch {
             Registro.anotar("No se pudo abrir la base de datos: \(error.localizedDescription)")
-            return try! ModelContainer(for: Tarea.self, Paso.self, SlotRegistro.self, Proyecto.self, Etapa.self, Captura.self,
+            return try! ModelContainer(for: Tarea.self, Paso.self, SlotRegistro.self, Proyecto.self, Etapa.self, Captura.self, Renglon.self, Persona.self, NotaPersona.self,
                                        configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         }
     }()
@@ -90,7 +90,7 @@ struct RaizView: View {
         .sheet(item: $cargarAMano) { c in CargarAMano(categoria: c).environment(\.paleta, paleta) }
         .sheet(isPresented: $captura.escribiendo) { CapturaView(paleta: paleta) { cargarAMano = $0 } }
         .sheet(isPresented: $captura.revisando) {
-            RevisionView(propuestas: $captura.propuestas, paleta: paleta) { captura.revisando = false }
+            RevisionView(propuestas: $captura.propuestas, paleta: paleta, dicho: captura.dicho, audio: captura.audio) { captura.revisando = false }
                 .presentationDetents([.fraction(0.82), .large])
                 .presentationDragIndicator(.visible)
         }
@@ -200,22 +200,28 @@ struct RaizView: View {
     }
 
     private func terminar(_ t: Tarea) {
+        Haptica.termine()
         let minutos = Acciones.terminar(t, ctx: ctx)
         celebrar(t, minutos: minutos)
+    }
+
+    /// "Terminé" o "Ya terminó" en la tarjeta del fichero.
+    private func terminarDesdeFichero(_ t: Tarea) {
+        if t.esCita { Acciones.cerrarCita(t, ctx: ctx) } else { terminar(t) }
     }
 
     @ViewBuilder
     private func pantalla(ahora: Date) -> some View {
         switch MotorSlots.pantalla(tareas, ahora: ahora) {
         case .vacio:
-            InicioView(tareas: [], ahora: ahora, navegacion: navegacion, captura: captura) { abierta = $0 }
+            InicioView(tareas: [], ahora: ahora, navegacion: navegacion, captura: captura, onAbrir: { abierta = $0 }, onTermine: terminarDesdeFichero)
         case .espera(let lista):
-            InicioView(tareas: lista, ahora: ahora, navegacion: navegacion, captura: captura) { abierta = $0 }
+            InicioView(tareas: lista, ahora: ahora, navegacion: navegacion, captura: captura, onAbrir: { abierta = $0 }, onTermine: terminarDesdeFichero)
         case .enCurso(let t):
             // Con algo en curso, la pantalla principal sigue siendo Inicio (se puede capturar);
             // la tarea es la primera tarjeta y al tocarla se ven la cuenta y los pasos.
             InicioView(tareas: [t] + MotorSlots.proximas(tareas, ahora: ahora, cantidad: 2), ahora: ahora,
-                       navegacion: navegacion, captura: captura) { abierta = $0 }
+                       navegacion: navegacion, captura: captura, onAbrir: { abierta = $0 }, onTermine: terminarDesdeFichero)
         case .decidir(let t):
             DecidirView(tarea: t,
                         onEmpiezo: { Acciones.empezar(t, ctx: ctx) },
