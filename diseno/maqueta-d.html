@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maqueta D · Inicio y widget</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,400&display=swap" rel="stylesheet">
+<style>
+/* VOICE: calma, Respiro. IDEA: el iPhone de Tato con la app adentro. PICTURE: el teléfono, que se usa.
+   COLOUR y TYPE: los de la app (crema, salvia, Fraunces + SF). LAYOUT: teléfono a la izquierda, variantes a la derecha. */
+:root { --bg:#F5F2EB; --surface:#FFFFFF; --ink:#2C2A25; --muted:#6F6A60; --line:#E2DBCF; --accent:#4E6B55;
+  --serif:"Fraunces", ui-serif, Georgia, serif; --sans:-apple-system,"SF Pro Text",system-ui,"Segoe UI",sans-serif; color-scheme:light; }
+:root[data-theme="dark"] { --bg:#161917; --surface:#1F2420; --ink:#E9EBE4; --muted:#A2A99F; --line:#333B35; --accent:#9DBBA4; color-scheme:dark; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#161917; --surface:#1F2420; --ink:#E9EBE4; --muted:#A2A99F; --line:#333B35; --accent:#9DBBA4; color-scheme:dark; } }
+* { box-sizing:border-box; min-width:0; }
+html,body { margin:0; }
+body { background:var(--bg); color:var(--ink); font:16px/1.5 var(--sans); overflow-x:clip; }
+.wrap { max-width:1080px; margin:0 auto; padding:28px 16px 64px; display:grid; gap:24px; }
+h1 { font-family:var(--serif); font-weight:400; font-size:clamp(30px,6vw,40px); line-height:1.1; margin:0 0 8px; }
+.intro p { margin:0; color:var(--muted); max-width:66ch; }
+.layout { display:grid; grid-template-columns:minmax(300px,360px) 1fr; gap:36px; align-items:start; }
+.left { position:sticky; top:16px; display:grid; gap:12px; justify-items:center; }
+@media (max-width:760px) { .layout { grid-template-columns:1fr; } .left { position:static; } }
+.tabs { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; }
+.tabs button, .chip { font:inherit; font-size:14px; padding:8px 13px; min-height:40px; border-radius:999px; border:1px solid var(--line); background:var(--surface); color:var(--ink); cursor:pointer; }
+.tabs button[aria-pressed="true"], .chip[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:var(--bg); }
+.note { font-size:14px; color:var(--muted); text-align:center; max-width:38ch; min-height:42px; }
+button:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+.side { display:grid; gap:22px; }
+.grupo { border-bottom:1px solid var(--line); padding-bottom:20px; display:grid; gap:10px; }
+.grupo h2 { font-family:var(--serif); font-weight:400; font-size:21px; margin:0; }
+.grupo p { font-size:14px; color:var(--muted); margin:0; }
+.chips { display:flex; flex-wrap:wrap; gap:8px; }
+.save { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:18px; display:grid; gap:12px; }
+.save h2 { font-family:var(--serif); font-weight:400; font-size:22px; margin:0; }
+.save textarea { font:inherit; font-size:16px; width:100%; min-height:100px; border-radius:10px; border:1px solid var(--line); background:var(--bg); color:var(--ink); padding:10px; }
+.primary { font:inherit; font-weight:600; padding:14px; border-radius:12px; border:0; background:var(--accent); color:var(--bg); cursor:pointer; min-height:48px; }
+.summary { font-size:13px; color:var(--muted); white-space:pre-wrap; background:var(--bg); border-radius:10px; padding:10px; margin:0; }
+
+/* ---------- Teléfono ---------- */
+.phone { width:min(340px,100%); aspect-ratio:9/19.3; border-radius:48px; padding:10px; background:#111; box-shadow:0 20px 44px rgba(30,30,20,.22); }
+.screen { --s-bg:#F1F0E9; --s-surface:#FBF8F1; --s-ink:#35302A; --s-muted:#7B746A; --s-primary:#4E6B55; --s-line:#DAD1C2; --s-halo:#ABC3A6;
+  height:100%; border-radius:39px; overflow:hidden; position:relative; background:var(--s-bg); color:var(--s-ink); touch-action:none; user-select:none; -webkit-user-select:none; }
+.sbar { position:absolute; top:14px; left:32px; right:30px; display:flex; justify-content:space-between; font:600 14px var(--sans); z-index:20; }
+.view { position:absolute; inset:0; padding:50px 16px 16px; transition:transform .35s ease, opacity .35s ease; }
+.view.oculta { pointer-events:none; opacity:0; }
+.serif { font-family:var(--serif); font-weight:400; }
+.ic { width:40px; height:40px; display:grid; place-items:center; color:var(--s-primary); cursor:pointer; border:0; background:none; padding:0; }
+.top { display:flex; justify-content:flex-end; }
+
+/* Inicio */
+.circulo { position:absolute; left:50%; top:44%; width:150px; height:150px; margin:-75px 0 0 -75px; border-radius:50%; display:grid; place-items:center; z-index:5; cursor:grab;
+  background:radial-gradient(circle, var(--s-bg) 0 58%, var(--s-halo) 60%, rgba(171,195,166,.5) 72%, rgba(171,195,166,0) 100%); }
+.circulo .respira { position:absolute; inset:0; border-radius:50%; animation:respira 6s ease-in-out infinite; background:radial-gradient(circle, transparent 0 56%, rgba(171,195,166,.35) 62%, rgba(171,195,166,0) 78%); transform:scale(1.5); }
+@keyframes respira { 0%,100% { transform:scale(1.35); } 50% { transform:scale(1.6); } }
+.circulo.escucha .respira { animation-duration:1.4s; }
+.circulo svg { position:relative; color:var(--s-primary); }
+.pista { position:absolute; left:0; right:0; top:calc(44% + 98px); text-align:center; font-size:14px; color:var(--s-muted); z-index:4; }
+.pista small { display:block; font-size:12.5px; color:var(--s-primary); margin-top:2px; }
+/* Marcas de los costados */
+.marca { position:absolute; display:grid; place-items:center; gap:3px; color:var(--s-primary); font-size:11px; z-index:3; transition:opacity .25s, transform .25s, background .25s; border:0; background:none; cursor:pointer; padding:0; font-family:var(--sans); }
+.marca .pastilla { width:34px; height:74px; border-radius:17px; display:grid; place-items:center; background:color-mix(in srgb, var(--s-primary) 9%, transparent); border:1px solid color-mix(in srgb, var(--s-primary) 18%, transparent); transition:inherit; }
+.marca.hor .pastilla { width:74px; height:34px; }
+.marca.izq { left:6px; top:calc(44% - 37px); }
+.marca.der { right:6px; top:calc(44% - 37px); }
+.marca.arr { left:50%; top:96px; transform:translateX(-50%); }
+.marca.aba { left:50%; bottom:150px; transform:translateX(-50%); }
+.marca.encendida .pastilla { background:var(--s-primary); color:var(--s-bg); transform:scale(1.12); }
+.screen[data-marcas="arrastrar"] .marca { opacity:0; pointer-events:none; }
+.screen[data-marcas="arrastrar"].arrastrando .marca { opacity:1; }
+.screen[data-dir="dos"] .marca.arr, .screen[data-dir="dos"] .marca.aba { display:none; }
+.screen[data-dir="cuatro"] .ic.cajon { display:none; }
+.aviso { position:absolute; left:20px; right:20px; top:calc(44% - 128px); text-align:center; font-family:var(--serif); font-size:17px; color:var(--s-primary); opacity:0; transition:opacity .2s; z-index:6; }
+.arrastrando .aviso.on { opacity:1; }
+/* Fichero */
+.fichero { position:absolute; left:14px; right:14px; bottom:22px; height:98px; z-index:2; }
+.ficha { position:absolute; left:0; right:0; bottom:0; background:var(--s-surface); border:1px solid var(--s-line); border-radius:16px; padding:11px 13px 11px 18px; overflow:hidden; }
+.ficha::before { content:""; position:absolute; left:0; top:0; bottom:0; width:6px; background:var(--cat); }
+.ficha:nth-child(1) { z-index:3; transform:translateY(-16px); }
+.ficha:nth-child(2) { z-index:2; transform:translateY(-8px) scale(.97); }
+.ficha:nth-child(3) { z-index:1; transform:scale(.94); }
+.ficha .row { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.ficha b { font-family:var(--serif); font-weight:400; font-size:17px; }
+.ficha small { color:var(--s-muted); font-size:12.5px; }
+.ficha .cat { font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:color-mix(in srgb, var(--cat) 70%, #2C2A25); }
+/* Pantallas de destino */
+.destino { background:var(--s-bg); z-index:10; overflow-y:auto; scrollbar-width:none; }
+.destino.oculta.desde-izq { transform:translateX(-100%); opacity:1; }
+.destino.oculta.desde-der { transform:translateX(100%); opacity:1; }
+.destino.oculta.desde-arr { transform:translateY(-100%); opacity:1; }
+.destino.oculta.desde-aba { transform:translateY(100%); opacity:1; }
+.cab { display:flex; align-items:center; gap:4px; margin-bottom:8px; }
+.cab h3 { font-family:var(--serif); font-weight:400; font-size:24px; margin:0; flex:1; }
+.lst { display:grid; gap:8px; }
+.lst .ficha { position:relative; transform:none; }
+.bloque { border-radius:10px; padding:6px 10px 6px 12px; font-size:13px; position:relative; background:color-mix(in srgb, var(--cat) 30%, var(--s-surface)); margin-bottom:6px; }
+.bloque b { display:block; font-weight:600; }
+.bloque small { color:var(--s-muted); }
+.hora-l { font-size:11px; color:var(--s-muted); margin:8px 0 4px; }
+.hoja { position:absolute; left:0; right:0; bottom:0; background:var(--s-surface); border-radius:22px 22px 0 0; padding:18px; z-index:15; box-shadow:0 -10px 30px rgba(0,0,0,.12); transition:transform .3s ease; }
+.hoja.oculta { transform:translateY(110%); }
+.campo { border:1px solid var(--s-line); border-radius:12px; padding:12px; min-height:90px; color:var(--s-muted); font-size:15px; margin:10px 0; background:var(--s-bg); }
+
+/* ---------- Widgets ---------- */
+.fondo-inicio { position:absolute; inset:0; background:linear-gradient(160deg,#9DB09A 0%,#6F8A78 45%,#3F5547 100%); padding:52px 14px 14px; display:grid; gap:14px; align-content:start; overflow-y:auto; scrollbar-width:none; }
+.wd { display:flex; flex-direction:column; --w-bg:#F1F1EA; --w-ink:#35302A; --w-muted:#7B746A; --w-line:#DAD1C2; background:var(--w-bg); color:var(--w-ink); border-radius:22px; padding:14px 15px; position:relative; box-shadow:0 6px 18px rgba(0,0,0,.18); }
+.screen[data-noche="si"] .wd { --w-bg:#141A16; --w-ink:#E6E9E1; --w-muted:#99A49A; --w-line:#2F3B33; }
+.wd.chico { width:150px; height:150px; }
+.wd.mediano { height:158px; }
+.wd.grande { height:322px; }
+.wd .linea1 { display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700; letter-spacing:.05em; color:var(--cat); text-transform:uppercase; }
+.wd .linea1 .grow { flex:1; }
+.wd .puntos { display:flex; gap:4px; }
+.wd .puntos i { width:5px; height:5px; border-radius:50%; background:var(--w-line); }
+.wd .puntos i.on { background:var(--w-ink); }
+.wd .sig { width:28px; height:28px; border-radius:50%; border:1px solid var(--w-line); background:none; color:var(--w-ink); display:grid; place-items:center; cursor:pointer; padding:0; }
+.wd .tit { flex-shrink:0; font-family:var(--serif); font-size:20px; line-height:1.15; margin:6px 0 0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.wd.chico .tit { font-size:18px; -webkit-line-clamp:2; }
+.wd .abajo { margin-top:auto; padding-top:8px; display:grid; grid-template-columns:auto 1fr; gap:16px; align-items:end; }
+.wd .cuenta small { display:block; font-size:11.5px; color:var(--w-muted); }
+.wd .cuenta span { font-family:var(--serif); font-weight:300; font-size:30px; line-height:1; font-variant-numeric:tabular-nums; }
+.wd.chico .abajo { grid-template-columns:1fr; }
+.wd .pasos { list-style:none; margin:0; padding:0; display:grid; gap:3px; font-size:12.5px; }
+.wd .pasos li { display:flex; gap:6px; align-items:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.wd .pasos li::before { content:""; width:11px; height:11px; border-radius:50%; border:1.5px solid var(--w-muted); flex:none; }
+.wd .pasos li.hecho { color:var(--w-muted); text-decoration:line-through; }
+.wd .pasos li.hecho::before { background:var(--w-muted); }
+.wd .nota { font-size:12.5px; color:var(--w-muted); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.wd .despues { border-top:1px solid var(--w-line); margin-top:12px; padding-top:10px; display:grid; gap:9px; }
+.wd .despues div { display:flex; gap:10px; align-items:center; font-size:14px; }
+.wd .despues div::before { content:""; width:4px; align-self:stretch; border-radius:2px; background:var(--cat); }
+.wd .despues b { font-weight:500; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.wd .despues span { color:var(--w-muted); font-variant-numeric:tabular-nums; }
+.wd.grande .abajo { margin-top:14px; }
+.wd .mas { font-size:11.5px; color:var(--w-muted); padding-left:17px; }
+.wd .barra { height:5px; border-radius:3px; background:var(--w-line); overflow:hidden; margin-top:4px; }
+.wd .barra i { display:block; height:100%; background:#8EA3B8; }
+.par { display:flex; gap:14px; }
+@media (prefers-reduced-motion: reduce) { .circulo .respira { animation:none; } .view { transition:none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="intro">
+    <h1>Maqueta D · Inicio con gestos y el nuevo widget</h1>
+    <p>Probalo en el iPhone. En <b>Inicio</b>, arrastrá el círculo hacia un costado y soltalo para entrar; tocalo para hablar y mantenelo apretado para escribir. En <b>Widgets</b>, tocá la flechita para pasar a lo que viene después. A la derecha elegís variantes; abajo dejás tus comentarios. Los datos son de muestra.</p>
+  </header>
+  <div class="layout">
+    <div class="left">
+      <div class="tabs" role="group" aria-label="Pantalla">
+        <button data-tab="inicio" aria-pressed="true">Inicio</button>
+        <button data-tab="widgets" aria-pressed="false">Widgets</button>
+      </div>
+      <div class="phone">
+        <div class="screen" id="screen" data-dir="dos" data-marcas="siempre" data-noche="no">
+          <div class="sbar"><span>9:41</span><span>●●● 100%</span></div>
+
+          <!-- INICIO -->
+          <section class="view" id="v-inicio">
+            <div class="top">
+              <button class="ic cajon" data-abrir="cajon" aria-label="Cajón"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 13h5l1.5 2.5h5L16 13h5"/><path d="M5 5h14l2 8v6H3v-6z"/></svg></button>
+              <button class="ic" aria-label="Ajustes"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+            </div>
+            <button class="marca izq" data-abrir="calendario" aria-label="Calendario"><span class="pastilla"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span>Calendario</button>
+            <button class="marca der" data-abrir="listado" aria-label="Listado"><span class="pastilla"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg></span>Listado</button>
+            <button class="marca arr hor" data-abrir="cajon" aria-label="Cajón"><span class="pastilla"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 13h5l1.5 2.5h5L16 13h5"/><path d="M5 5h14l2 8v6H3v-6z"/></svg></span>Cajón</button>
+            <button class="marca aba hor" data-abrir="fichero" aria-label="Todo lo que viene"><span class="pastilla"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9l6 6 6-6"/></svg></span></button>
+            <div class="aviso" id="aviso"></div>
+            <div class="circulo" id="circulo" role="button" aria-label="Tocá para hablar, arrastrá para entrar">
+              <span class="respira"></span>
+              <svg id="icono" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+            </div>
+            <div class="pista" id="pista">Tocá para hablar<small>Arrastrá el círculo para entrar</small></div>
+            <div class="fichero" id="fichero">
+              <div class="ficha" style="--cat:#7FA383"><div class="row"><span class="cat">Tarea</span><small>comienza en 4:32</small></div><b>Llamar al banco</b></div>
+              <div class="ficha" style="--cat:#C9A35E"></div>
+              <div class="ficha" style="--cat:#8EA3B8"></div>
+            </div>
+          </section>
+
+          <!-- DESTINOS -->
+          <section class="view destino oculta desde-izq" id="d-calendario">
+            <div class="cab"><h3>Jueves 19</h3><button class="ic" data-volver aria-label="Volver">✕</button></div>
+            <div class="hora-l">09:00</div>
+            <div class="bloque" style="--cat:#7FA383"><b>Llamar al banco</b><small>09:45 · 45 min</small></div>
+            <div class="hora-l">11:00</div>
+            <div class="bloque" style="--cat:#C9A35E"><b>Dentista</b><small>11:30 · salí 10:52</small></div>
+            <div class="hora-l">15:00</div>
+            <div class="bloque" style="--cat:#8EA3B8"><b>Embalar los libros</b><small>15:00 · Mudanza</small></div>
+            <p class="hint" style="color:var(--s-muted);font-size:13px;margin-top:20px">Entraste deslizando hacia la izquierda.</p>
+          </section>
+          <section class="view destino oculta desde-der" id="d-listado">
+            <div class="cab"><h3>Hoy</h3><button class="ic" data-volver aria-label="Volver">✕</button></div>
+            <div class="lst">
+              <div class="ficha" style="--cat:#7FA383"><div class="row"><span class="cat">Tarea</span><small>09:45</small></div><b>Llamar al banco</b></div>
+              <div class="ficha" style="--cat:#C9A35E"><div class="row"><span class="cat">Cita</span><small>11:30</small></div><b>Dentista</b></div>
+              <div class="ficha" style="--cat:#8EA3B8"><div class="row"><span class="cat">Proyecto</span><small>15:00</small></div><b>Embalar los libros</b></div>
+            </div>
+          </section>
+          <section class="view destino oculta desde-arr" id="d-cajon">
+            <div class="cab"><h3>Cajón</h3><button class="ic" data-volver aria-label="Volver">✕</button></div>
+            <div class="lst">
+              <div class="ficha" style="--cat:#C2B49C"><span class="cat">Inbox</span><b>Lo de Martín</b></div>
+              <div class="ficha" style="--cat:#9C92B4"><span class="cat">Idea</span><b>Lámpara con papel reciclado</b></div>
+            </div>
+          </section>
+          <section class="view destino oculta desde-aba" id="d-fichero">
+            <div class="cab"><h3>Lo que viene</h3><button class="ic" data-volver aria-label="Volver">✕</button></div>
+            <div class="lst">
+              <div class="ficha" style="--cat:#7FA383"><div class="row"><span class="cat">Tarea</span><small>en 4:32</small></div><b>Llamar al banco</b><small>Banco · Tener a mano el número de cliente.</small></div>
+              <div class="ficha" style="--cat:#C9A35E"><div class="row"><span class="cat">Cita</span><small>11:30</small></div><b>Dentista</b></div>
+              <div class="ficha" style="--cat:#8EA3B8"><div class="row"><span class="cat">Proyecto</span><small>15:00</small></div><b>Embalar los libros</b></div>
+            </div>
+          </section>
+          <div class="hoja oculta" id="hoja">
+            <div class="cab"><h3 style="font-size:20px">Escribilo</h3><button class="ic" id="cerrarHoja" aria-label="Cerrar">✕</button></div>
+            <div class="campo">Lo que tengas en la cabeza…</div>
+          </div>
+
+          <!-- WIDGETS -->
+          <section class="view oculta" id="v-widgets" style="padding:0">
+            <div class="fondo-inicio" id="widgets"></div>
+          </section>
+        </div>
+      </div>
+      <p class="note" id="nota">Arrastrá el círculo hacia la izquierda (calendario) o la derecha (listado).</p>
+    </div>
+
+    <div class="side">
+      <div class="grupo">
+        <h2>¿Hacia dónde se puede arrastrar?</h2>
+        <p>Con dos, el cajón queda como ícono arriba. Con cuatro, arriba abre el cajón y abajo despliega todo lo que viene.</p>
+        <div class="chips" data-opt="dir">
+          <button class="chip" data-v="dos" aria-pressed="true">Izquierda y derecha</button>
+          <button class="chip" data-v="cuatro" aria-pressed="false">Las cuatro direcciones</button>
+        </div>
+      </div>
+      <div class="grupo">
+        <h2>Las marcas de los costados</h2>
+        <p>Siempre visibles (suaves, contra el borde) o solo mientras arrastrás. También se pueden tocar.</p>
+        <div class="chips" data-opt="marcas">
+          <button class="chip" data-v="siempre" aria-pressed="true">Siempre visibles</button>
+          <button class="chip" data-v="arrastrar" aria-pressed="false">Solo al arrastrar</button>
+        </div>
+      </div>
+      <div class="grupo">
+        <h2>Widget: lo que viene después</h2>
+        <p>Un widget no se puede deslizar con el dedo; la flechita pasa a lo siguiente sin abrir la app.</p>
+        <div class="chips" data-opt="carrusel">
+          <button class="chip" data-v="flecha" aria-pressed="true">Mediano con flechita</button>
+          <button class="chip" data-v="grande" aria-pressed="false">Grande con las siguientes debajo</button>
+          <button class="chip" data-v="ambos" aria-pressed="false">Los dos</button>
+        </div>
+      </div>
+      <div class="grupo">
+        <h2>Widget: qué va al lado de la cuenta</h2>
+        <div class="chips" data-opt="detalle">
+          <button class="chip" data-v="pasos" aria-pressed="true">Los pasos</button>
+          <button class="chip" data-v="notas" aria-pressed="false">Las notas</button>
+          <button class="chip" data-v="auto" aria-pressed="false">Pasos si hay; si no, notas</button>
+        </div>
+      </div>
+      <div class="grupo">
+        <h2>Ver de noche</h2>
+        <div class="chips" data-opt="noche">
+          <button class="chip" data-v="no" aria-pressed="true">Día</button>
+          <button class="chip" data-v="si" aria-pressed="false">Noche</button>
+        </div>
+      </div>
+      <form class="save" id="form">
+        <h2>Tus comentarios</h2>
+        <label for="coment" style="font-size:14px;color:var(--muted)">Qué te gustó, qué cambiarías</label>
+        <textarea id="coment"></textarea>
+        <button class="primary" type="submit">Copiar resumen para Claude</button>
+        <pre class="summary" id="resumen" aria-live="polite"></pre>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+{
+  const scr = document.getElementById('screen');
+  const opts = { dir:'dos', marcas:'siempre', carrusel:'flecha', detalle:'pasos', noche:'no' };
+  const nombres = { calendario:'el calendario', listado:'el listado', cajon:'el cajón', fichero:'todo lo que viene' };
+  const nota = document.getElementById('nota');
+
+  // Pestañas
+  document.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('[data-tab]').forEach(x => x.setAttribute('aria-pressed', x === b));
+    const w = b.dataset.tab === 'widgets';
+    document.getElementById('v-inicio').classList.toggle('oculta', w);
+    document.getElementById('v-widgets').classList.toggle('oculta', !w);
+    cerrarTodo();
+    nota.textContent = w ? 'Tocá la flechita › para pasar a lo que viene después.' : 'Arrastrá el círculo hacia un costado para entrar.';
+  }));
+
+  // Variantes
+  document.querySelectorAll('[data-opt]').forEach(g => g.addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    g.querySelectorAll('.chip').forEach(x => x.setAttribute('aria-pressed', x === b));
+    opts[g.dataset.opt] = b.dataset.v;
+    scr.dataset.dir = opts.dir; scr.dataset.marcas = opts.marcas; scr.dataset.noche = opts.noche;
+    pintarWidgets();
+  }));
+
+  // Destinos
+  function abrir(nombre) {
+    cerrarTodo();
+    document.getElementById('d-' + nombre).classList.remove('oculta');
+    nota.textContent = 'Abriste ' + nombres[nombre] + '. Tocá ✕ para volver.';
+  }
+  function cerrarTodo() {
+    document.querySelectorAll('.destino').forEach(d => d.classList.add('oculta'));
+    document.getElementById('hoja').classList.add('oculta');
+  }
+  document.querySelectorAll('[data-abrir]').forEach(b => b.addEventListener('click', () => abrir(b.dataset.abrir)));
+  document.querySelectorAll('[data-volver]').forEach(b => b.addEventListener('click', cerrarTodo));
+  document.getElementById('cerrarHoja').addEventListener('click', cerrarTodo);
+
+  // Círculo: tocar = hablar, mantener = escribir, arrastrar = entrar
+  const c = document.getElementById('circulo'), aviso = document.getElementById('aviso'), pista = document.getElementById('pista'), icono = document.getElementById('icono');
+  const marcas = { izq:'calendario', der:'listado', arr:'cajon', aba:'fichero' };
+  let ini = null, dirAct = null, largo = null, movio = false, escuchando = false;
+  const UMBRAL = 70;
+  function direccion(dx, dy) {
+    const ax = Math.abs(dx), ay = Math.abs(dy);
+    if (Math.max(ax, ay) < 18) return null;
+    if (ax >= ay) return dx < 0 ? 'izq' : 'der';
+    if (opts.dir !== 'cuatro') return null;
+    return dy < 0 ? 'arr' : 'aba';
+  }
+  c.addEventListener('pointerdown', e => {
+    ini = { x:e.clientX, y:e.clientY }; movio = false; c.setPointerCapture(e.pointerId);
+    c.style.transition = 'none';
+    largo = setTimeout(() => { if (!movio) { ini = null; document.getElementById('hoja').classList.remove('oculta'); nota.textContent = 'Mantener apretado abre escribir.'; } }, 600);
+  });
+  c.addEventListener('pointermove', e => {
+    if (!ini) return;
+    let dx = e.clientX - ini.x, dy = e.clientY - ini.y;
+    if (Math.hypot(dx, dy) > 8) { movio = true; clearTimeout(largo); scr.classList.add('arrastrando'); }
+    if (!movio) return;
+    if (opts.dir !== 'cuatro') dy *= 0.25;
+    const lim = 110; dx = Math.max(-lim, Math.min(lim, dx)); dy = Math.max(-lim, Math.min(lim, dy));
+    c.style.transform = `translate(${dx}px, ${dy}px)`;
+    dirAct = direccion(dx, dy);
+    const lista = Math.max(Math.abs(dx), Math.abs(dy)) >= UMBRAL;
+    document.querySelectorAll('.marca').forEach(m => m.classList.toggle('encendida', dirAct && m.classList.contains(dirAct) && lista));
+    aviso.classList.toggle('on', !!dirAct);
+    aviso.textContent = dirAct ? (lista ? 'Soltá para abrir ' : 'Seguí hacia ') + nombres[marcas[dirAct]] : '';
+  });
+  function soltar(e) {
+    clearTimeout(largo);
+    if (!ini) return;
+    const dx = e.clientX - ini.x, dy = e.clientY - ini.y;
+    ini = null;
+    c.style.transition = 'transform .35s cubic-bezier(.3,1.4,.5,1)'; c.style.transform = '';
+    scr.classList.remove('arrastrando');
+    document.querySelectorAll('.marca').forEach(m => m.classList.remove('encendida'));
+    aviso.classList.remove('on');
+    if (!movio) { hablar(); return; }
+    const d = direccion(dx, opts.dir === 'cuatro' ? dy : dy * .25);
+    if (d && Math.max(Math.abs(dx), Math.abs(opts.dir === 'cuatro' ? dy : 0)) >= UMBRAL) abrir(marcas[d]);
+  }
+  c.addEventListener('pointerup', soltar);
+  c.addEventListener('pointercancel', soltar);
+  const MIC = '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>';
+  const OREJA = '<path d="M7 10a5 5 0 1 1 10 0c0 3-3 4-3 7a3 3 0 0 1-6 0"/><path d="M10 10a2 2 0 1 1 4 0"/>';
+  const CEREBRO = '<path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V5a2 2 0 0 0-3-1z"/><path d="M15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1"/>';
+  function hablar() {
+    if (escuchando) return;
+    escuchando = true; c.classList.add('escucha'); icono.innerHTML = OREJA;
+    pista.innerHTML = 'Te escucho…<small>Callate 3 segundos y se ordena solo</small>';
+    setTimeout(() => { icono.innerHTML = CEREBRO; pista.innerHTML = 'Ordenando…'; }, 2600);
+    setTimeout(() => { escuchando = false; c.classList.remove('escucha'); icono.innerHTML = MIC; pista.innerHTML = 'Tocá para hablar<small>Arrastrá el círculo para entrar</small>'; }, 4200);
+  }
+
+  // Widgets
+  const items = [
+    { cat:'Tarea', color:'#7FA383', hora:'09:45', tit:'Llamar al banco por la tarjeta nueva y el cambio de dirección', estado:'comienza en', fin:Date.now() + 272000,
+      pasos:[['Buscar el número de cliente', true], ['Llamar y pedir la tarjeta', false], ['Avisar el cambio de dirección', false]], nota:'Tener a mano el DNI y el número de cliente.' },
+    { cat:'Cita', color:'#C9A35E', hora:'11:30', tit:'Dentista', estado:'salí en', fin:Date.now() + 38 * 60000, pasos:[], nota:'Consultorio · Llevar la orden y la credencial.' },
+    { cat:'Proyecto', color:'#8EA3B8', hora:'15:00', tit:'Embalar los libros', estado:'comienza en', fin:Date.now() + 5 * 3600000, pasos:[['Comprar cinta', true], ['Estante del living', false], ['Rotular las cajas', false]], nota:'', proyecto:'Mudanza', avance:.4, dias:9 },
+  ];
+  let actual = 0;
+  const fmt = ms => { const s = Math.max(0, Math.round(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60;
+    return h ? `${h}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}` : `${m}:${String(ss).padStart(2,'0')}`; };
+  const flecha = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 6l6 6-6 6"/></svg>';
+  function detalle(it, max) {
+    const usarPasos = opts.detalle === 'pasos' || (opts.detalle === 'auto' && it.pasos.length);
+    if (it.proyecto && !usarPasos) return `<div><div class="nota">${it.proyecto} · faltan ${it.dias} días</div><div class="barra"><i style="width:${it.avance*100}%"></i></div></div>`;
+    if (usarPasos && it.pasos.length) {
+      // En el mediano, solo los dos próximos pasos sin hacer (para que respire).
+      const pend = it.pasos.filter(p => !p[1]);
+      const ver = max ? pend.slice(0, max) : it.pasos;
+      const resto = max ? pend.length - ver.length : 0;
+      return `<div><ul class="pasos">${ver.map(([t,h]) => `<li class="${h?'hecho':''}">${t}</li>`).join('')}</ul>${resto > 0 ? `<div class="mas">y ${resto} más</div>` : ''}</div>`;
+    }
+    return `<div class="nota">${it.nota || (it.proyecto ? it.proyecto + ' · faltan ' + it.dias + ' días' : '')}</div>`;
+  }
+  function cab(it, conFlecha) {
+    return `<div class="linea1" style="--cat:${it.color}"><span>${it.cat} · ${it.hora}</span><span class="grow"></span>
+      ${conFlecha ? `<span class="puntos">${items.map((_, i) => `<i class="${i===actual?'on':''}"></i>`).join('')}</span><button class="sig" type="button" aria-label="Lo siguiente">${flecha}</button>` : ''}</div>`;
+  }
+  function cuenta(it) { return `<div class="cuenta"><small>${it.estado}</small><span data-fin="${it.fin}">${fmt(it.fin - Date.now())}</span></div>`; }
+  function pintarWidgets() {
+    const it = items[actual];
+    const medio = `<div class="wd mediano">${cab(it, true)}<div class="tit">${it.tit}</div><div class="abajo">${cuenta(it)}${detalle(it, 2)}</div></div>`;
+    const sigs = items.filter((_, i) => i !== actual);
+    const grande = `<div class="wd grande">${cab(it, opts.carrusel === 'ambos')}<div class="tit">${it.tit}</div><div class="abajo">${cuenta(it)}${detalle(it)}</div>
+      <div class="despues">${sigs.map(s => `<div style="--cat:${s.color}"><b>${s.tit}</b><span>${s.hora}</span></div>`).join('')}</div></div>`;
+    const chico = `<div class="wd chico">${cab(it, false)}<div class="tit">${it.tit}</div><div class="abajo">${cuenta(it)}</div></div>`;
+    const capt = `<div class="wd chico" style="display:grid;place-items:center;align-content:center;gap:8px"><div style="width:70px;height:70px;border-radius:50%;background:#B7CBB3;display:grid;place-items:center;color:#4E6B55;box-shadow:0 0 0 10px rgba(169,194,165,.35)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${MIC}</svg></div><span class="serif" style="font-size:18px">Hablá</span></div>`;
+    let html = `<div class="par">${capt}${chico}</div>`;
+    if (opts.carrusel !== 'grande') html += medio;
+    if (opts.carrusel !== 'flecha') html += grande;
+    document.getElementById('widgets').innerHTML = html;
+    document.querySelectorAll('#widgets .sig').forEach(b => b.addEventListener('click', () => { actual = (actual + 1) % items.length; pintarWidgets(); }));
+  }
+  pintarWidgets();
+  setInterval(() => document.querySelectorAll('[data-fin]').forEach(s => s.textContent = fmt(+s.dataset.fin - Date.now())), 1000);
+
+  // Resumen
+  document.getElementById('form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const t = `Maqueta D\n- Arrastrar: ${opts.dir === 'dos' ? 'izquierda y derecha' : 'cuatro direcciones'}\n- Marcas: ${opts.marcas === 'siempre' ? 'siempre visibles' : 'solo al arrastrar'}\n- Widget: ${({flecha:'mediano con flechita', grande:'grande con las siguientes', ambos:'los dos'})[opts.carrusel]}\n- Al lado de la cuenta: ${({pasos:'pasos', notas:'notas', auto:'pasos si hay, si no notas'})[opts.detalle]}\n- Comentarios: ${document.getElementById('coment').value || '(sin comentarios)'}`;
+    const r = document.getElementById('resumen'); r.textContent = t;
+    try { await navigator.clipboard.writeText(t); r.textContent = t + '\n\nCopiado. Pegalo en Claude Code.'; } catch { r.textContent = t + '\n\nNo se pudo copiar solo: seleccioná el texto y copialo.'; }
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maqueta F · Cajón y listas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,400&display=swap" rel="stylesheet">
+<style>
+/* VOICE: práctica y tranquila. IDEA: un anotador de bolsillo que después se pasa en limpio. PICTURE: el teléfono.
+   COLOUR y TYPE: Respiro de día, colores por categoría, Fraunces + SF. LAYOUT: teléfono a la izquierda, variantes a la derecha. */
+:root { --bg:#F5F2EB; --surface:#FFFFFF; --ink:#2C2A25; --muted:#6F6A60; --line:#E2DBCF; --accent:#4E6B55;
+  --serif:"Fraunces", ui-serif, Georgia, serif; --sans:-apple-system,"SF Pro Text",system-ui,"Segoe UI",sans-serif; color-scheme:light; }
+:root[data-theme="dark"] { --bg:#161917; --surface:#1F2420; --ink:#E9EBE4; --muted:#A2A99F; --line:#333B35; --accent:#9DBBA4; color-scheme:dark; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#161917; --surface:#1F2420; --ink:#E9EBE4; --muted:#A2A99F; --line:#333B35; --accent:#9DBBA4; color-scheme:dark; } }
+* { box-sizing:border-box; min-width:0; }
+html,body { margin:0; }
+body { background:var(--bg); color:var(--ink); font:16px/1.5 var(--sans); overflow-x:clip; }
+.wrap { max-width:1080px; margin:0 auto; padding:28px 16px 64px; display:grid; gap:24px; }
+h1 { font-family:var(--serif); font-weight:400; font-size:clamp(30px,6vw,40px); line-height:1.1; margin:0 0 8px; }
+.intro p { margin:0; color:var(--muted); max-width:66ch; }
+.layout { display:grid; grid-template-columns:minmax(300px,360px) 1fr; gap:36px; align-items:start; }
+.left { position:sticky; top:16px; display:grid; gap:12px; justify-items:center; }
+@media (max-width:760px) { .layout { grid-template-columns:1fr; } .left { position:static; } }
+.tabs { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; }
+.tabs button, .chip { font:inherit; font-size:14px; padding:8px 13px; min-height:40px; border-radius:999px; border:1px solid var(--line); background:var(--surface); color:var(--ink); cursor:pointer; }
+.tabs button[aria-pressed="true"], .chip[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:var(--bg); }
+.note { font-size:14px; color:var(--muted); text-align:center; max-width:38ch; min-height:42px; }
+button:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+.side { display:grid; gap:22px; }
+.grupo { border-bottom:1px solid var(--line); padding-bottom:20px; display:grid; gap:10px; }
+.grupo h2 { font-family:var(--serif); font-weight:400; font-size:21px; margin:0; }
+.grupo p, .grupo li { font-size:15px; color:var(--muted); margin:0; }
+.grupo ul { margin:0; padding-left:20px; display:grid; gap:4px; }
+.chips { display:flex; flex-wrap:wrap; gap:8px; }
+.sw { display:inline-block; width:12px; height:12px; border-radius:50%; vertical-align:-1px; margin-right:6px; }
+.save { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:18px; display:grid; gap:12px; }
+.save h2 { font-family:var(--serif); font-weight:400; font-size:22px; margin:0; }
+.save textarea { font:inherit; font-size:16px; width:100%; min-height:100px; border-radius:10px; border:1px solid var(--line); background:var(--bg); color:var(--ink); padding:10px; }
+.primary { font:inherit; font-weight:600; padding:14px; border-radius:12px; border:0; background:var(--accent); color:var(--bg); cursor:pointer; min-height:48px; }
+.summary { font-size:13px; color:var(--muted); white-space:pre-wrap; background:var(--bg); border-radius:10px; padding:10px; margin:0; }
+
+/* ---------- Teléfono ---------- */
+.phone { width:min(340px,100%); aspect-ratio:9/19.3; border-radius:48px; padding:10px; background:#111; box-shadow:0 20px 44px rgba(30,30,20,.22); }
+.screen { --s-bg:#F1F0E9; --s-surface:#FBF8F1; --s-ink:#35302A; --s-muted:#7B746A; --s-primary:#4E6B55; --s-line:#DAD1C2; --s-halo:#ABC3A6; --lista:#9DB5AC;
+  height:100%; border-radius:39px; overflow:hidden; position:relative; background:var(--s-bg); color:var(--s-ink); }
+.sbar { position:absolute; top:14px; left:32px; right:30px; display:flex; justify-content:space-between; font:600 14px var(--sans); z-index:20; }
+.view { position:absolute; inset:0; padding:50px 16px 16px; display:none; overflow-y:auto; scrollbar-width:none; }
+.view::-webkit-scrollbar { display:none; }
+.view.on { display:block; }
+.cab { display:flex; align-items:center; gap:4px; margin-bottom:6px; }
+.cab h3 { font-family:var(--serif); font-weight:400; font-size:25px; margin:0; flex:1; }
+.ic { min-width:40px; height:40px; display:grid; place-items:center; color:var(--s-primary); cursor:pointer; border:0; background:none; padding:0 4px; font:inherit; font-size:15px; }
+.secc { font-family:var(--serif); font-size:19px; color:var(--s-primary); margin:14px 0 6px; display:flex; justify-content:space-between; align-items:baseline; }
+.secc small { font-family:var(--sans); font-size:12.5px; color:var(--s-muted); }
+.ficha { display:block; width:100%; text-align:left; font:inherit; color:inherit; background:var(--s-surface); border:1px solid var(--s-line); border-radius:14px; padding:10px 12px 10px 17px; position:relative; overflow:hidden; margin-bottom:7px; cursor:pointer; }
+.ficha::before { content:""; position:absolute; left:0; top:0; bottom:0; width:6px; background:var(--cat); }
+.ficha .cat { font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:color-mix(in srgb, var(--cat) 65%, #2C2A25); }
+.ficha b { font-family:var(--serif); font-weight:400; font-size:17px; display:block; }
+.ficha small { color:var(--s-muted); font-size:12.5px; }
+.barrita { height:4px; border-radius:2px; background:var(--s-line); margin-top:6px; overflow:hidden; }
+.barrita i { display:block; height:100%; background:var(--lista); }
+/* Ficha editable */
+.edit-t { font-family:var(--serif); font-size:24px; line-height:1.15; outline:none; margin:4px 0 4px; }
+.edit-x { font-size:15px; color:var(--s-ink); outline:none; background:var(--s-surface); border:1px solid var(--s-line); border-radius:12px; padding:10px 12px; min-height:56px; }
+.edit-t:focus, .edit-x:focus { box-shadow:0 0 0 2px color-mix(in srgb, var(--s-primary) 40%, transparent); border-radius:8px; }
+.meta { font-size:12.5px; color:var(--s-muted); margin-bottom:10px; }
+.reng { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--s-line); font-size:15px; }
+.reng .box { width:22px; height:22px; border-radius:50%; border:1.5px solid var(--s-muted); flex:none; cursor:pointer; display:grid; place-items:center; color:transparent; font-size:12px; background:none; padding:0; }
+.reng.ok .box { background:var(--s-primary); border-color:var(--s-primary); color:var(--s-bg); }
+.reng.ok .tx { color:var(--s-muted); text-decoration:line-through; }
+.reng .tx { flex:1; outline:none; }
+.reng .x { color:var(--s-muted); background:none; border:0; font-size:18px; cursor:pointer; padding:0 4px; }
+.reng.nuevo { animation:entra .5s ease; }
+@keyframes entra { from { background:color-mix(in srgb, var(--s-primary) 18%, transparent); } }
+.tuyo { font-size:10.5px; font-weight:700; color:var(--s-primary); text-transform:uppercase; letter-spacing:.03em; }
+.sug { font-size:10.5px; font-weight:700; color:var(--s-muted); text-transform:uppercase; letter-spacing:.03em; }
+.reng.sugerido .tx { color:var(--s-muted); font-style:italic; }
+.reng .acepta { font:inherit; font-size:12.5px; color:var(--s-primary); background:none; border:1px solid var(--s-line); border-radius:999px; padding:2px 9px; cursor:pointer; }
+.agregar { display:flex; gap:8px; margin:10px 0; }
+.agregar input { flex:1; font:inherit; font-size:16px; border:1px solid var(--s-line); border-radius:12px; padding:9px 12px; background:var(--s-surface); color:var(--s-ink); }
+.mic { width:44px; height:44px; border-radius:50%; border:0; background:color-mix(in srgb, var(--s-primary) 14%, transparent); color:var(--s-primary); display:grid; place-items:center; cursor:pointer; flex:none; }
+.mic.on { background:var(--s-primary); color:var(--s-bg); animation:late 1s ease-in-out infinite; }
+@keyframes late { 50% { box-shadow:0 0 0 8px color-mix(in srgb, var(--s-primary) 20%, transparent); } }
+.btn { font:inherit; font-weight:600; font-size:16px; width:100%; min-height:50px; border-radius:14px; border:0; background:var(--s-primary); color:var(--s-bg); cursor:pointer; margin-top:14px; }
+.btn.sec { background:transparent; color:var(--s-primary); border:1px solid var(--s-line); font-weight:500; margin-top:8px; }
+/* Hoja de convertir */
+.velo { position:absolute; inset:0; background:rgba(20,20,15,.28); z-index:14; display:none; }
+.velo.on { display:block; }
+.hoja { position:absolute; left:0; right:0; bottom:0; background:var(--s-surface); border-radius:22px 22px 0 0; padding:18px 16px 20px; z-index:15; transform:translateY(110%); transition:transform .3s ease; }
+.hoja.on { transform:none; }
+.hoja h4 { font-family:var(--serif); font-weight:400; font-size:21px; margin:0 0 4px; }
+.hoja p { font-size:13.5px; color:var(--s-muted); margin:0 0 10px; }
+.opcion { display:flex; gap:12px; align-items:center; width:100%; text-align:left; font:inherit; color:inherit; background:var(--s-bg); border:1px solid var(--s-line); border-radius:14px; padding:11px 12px; margin-bottom:7px; cursor:pointer; }
+.opcion i { width:12px; height:12px; border-radius:50%; background:var(--cat); flex:none; }
+.opcion b { font-weight:500; display:block; font-size:15px; }
+.opcion small { color:var(--s-muted); font-size:12.5px; }
+.opcion.ia { border-color:var(--s-primary); }
+.toast { position:absolute; left:14px; right:14px; bottom:18px; background:var(--s-ink); color:var(--s-bg); border-radius:14px; padding:12px 14px; font-size:14px; z-index:16; opacity:0; transform:translateY(10px); transition:all .3s; pointer-events:none; }
+.toast.on { opacity:1; transform:none; }
+/* Revisión del dictado */
+.dicho { font-family:var(--serif); font-style:italic; font-size:15.5px; color:var(--s-muted); background:var(--s-surface); border-radius:12px; padding:10px 12px; margin-bottom:12px; }
+.prop { background:var(--s-surface); border:1px solid var(--s-line); border-radius:16px; padding:12px 14px 6px 18px; position:relative; overflow:hidden; }
+.prop::before { content:""; position:absolute; left:0; top:0; bottom:0; width:6px; background:#7FA383; }
+.prop .cat { font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#4F6B53; }
+.prop b { font-family:var(--serif); font-weight:400; font-size:19px; display:block; }
+.prop small { color:var(--s-muted); font-size:12.5px; }
+.pasos-t { font-size:12px; font-weight:600; color:var(--s-muted); margin:10px 0 0; text-transform:uppercase; letter-spacing:.04em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="intro">
+    <h1>Maqueta F · Cajón editable, listas y tus propios pasos</h1>
+    <p>Tocá cualquier cosa del <b>Cajón</b> para abrir su ficha: se edita tocando el texto, se le agregan renglones escribiendo o con el micrófono, y abajo está <b>Convertir</b>. <b>Dictar pasos</b> muestra la revisión cuando decís vos los pasos. Datos de muestra.</p>
+  </header>
+  <div class="layout">
+    <div class="left">
+      <div class="tabs" role="group" aria-label="Pantalla">
+        <button data-tab="cajon" aria-pressed="true">Cajón</button>
+        <button data-tab="idea" aria-pressed="false">Ficha de idea</button>
+        <button data-tab="lista" aria-pressed="false">Lista</button>
+        <button data-tab="dictar" aria-pressed="false">Dictar pasos</button>
+      </div>
+      <div class="phone">
+        <div class="screen" id="screen">
+          <div class="sbar"><span>9:41</span><span>●●● 100%</span></div>
+
+          <section class="view on" id="v-cajon">
+            <div class="cab"><h3>Cajón</h3><button class="ic" aria-label="Cerrar">✕</button></div>
+            <div class="secc">Listas <small>borradores para ordenarte</small></div>
+            <button class="ficha" style="--cat:var(--lista)" data-ir="lista"><span class="cat">Lista</span><b>Para la mudanza</b><small>2 de 6 · tocada hoy</small><div class="barrita"><i style="width:33%"></i></div></button>
+            <button class="ficha" style="--cat:var(--lista)" data-ir="lista"><span class="cat">Lista</span><b>Regalos de Navidad</b><small>0 de 4</small><div class="barrita"><i style="width:0"></i></div></button>
+            <div class="secc">Inbox <small>lo que falta aclarar</small></div>
+            <button class="ficha" style="--cat:#C2B49C" data-ir="idea" data-tipo="inbox"><span class="cat">Inbox</span><b>Lo de Martín</b><small>hace 2 días</small></button>
+            <button class="ficha" style="--cat:#C2B49C" data-ir="idea" data-tipo="inbox"><span class="cat">Inbox</span><b>Sacar turno</b><small>ayer</small></button>
+            <div class="secc">Ideas</div>
+            <button class="ficha" style="--cat:#9C92B4" data-ir="idea" data-tipo="idea"><span class="cat">Idea · diseño</span><b>Lámpara con papel reciclado</b><small>3 renglones</small></button>
+          </section>
+
+          <section class="view" id="v-idea">
+            <div class="cab"><button class="ic" data-ir="cajon" aria-label="Volver">‹ Cajón</button><span style="flex:1"></span></div>
+            <span class="ficha" style="--cat:#9C92B4;border:0;background:none;padding:0 0 0 0;margin:0;cursor:default"><span class="cat" id="ideaCat" style="padding-left:0">Idea · diseño</span></span>
+            <div class="edit-t" contenteditable="true" id="ideaTit">Lámpara con papel reciclado</div>
+            <div class="meta">Dictada el lunes · tocá el título o el texto para cambiarlos</div>
+            <div class="edit-x" contenteditable="true">Una lámpara colgante hecha con capas de papel reciclado, que deje pasar la luz cálida.</div>
+            <div class="secc" style="font-size:16px">Renglones</div>
+            <div id="rIdea"></div>
+            <div class="agregar"><input id="inIdea" placeholder="Agregar un renglón" enterkeyhint="done"><button class="mic" id="micIdea" aria-label="Dictar un renglón"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button></div>
+            <button class="btn" data-convertir="idea">Convertir…</button>
+          </section>
+
+          <section class="view" id="v-lista">
+            <div class="cab"><button class="ic" data-ir="cajon" aria-label="Volver">‹ Cajón</button><span style="flex:1"></span></div>
+            <span class="ficha" style="--cat:var(--lista);border:0;background:none;padding:0;margin:0;cursor:default"><span class="cat">Lista</span></span>
+            <div class="edit-t" contenteditable="true">Para la mudanza</div>
+            <div class="meta"><span id="cuentaLista">2 de 6</span> · tachá, editá o agregá renglones</div>
+            <div id="rLista"></div>
+            <div class="agregar"><input id="inLista" placeholder="Agregar un renglón" enterkeyhint="done"><button class="mic" id="micLista" aria-label="Dictar un renglón"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button></div>
+            <button class="btn" data-convertir="lista">Convertir…</button>
+          </section>
+
+          <section class="view" id="v-dictar">
+            <div class="cab"><h3 style="font-size:21px">Revisá antes de guardar</h3></div>
+            <div class="dicho">"Mañana a las diez llamar al banco. Antes tengo que buscar el número de cliente y tener el DNI a mano."</div>
+            <div class="prop">
+              <span class="cat">Tarea</span><b>Llamar al banco</b><small>Mañana 10:00 · 30 min</small>
+              <div class="pasos-t">Pasos</div>
+              <div id="rDictar"></div>
+              <div class="agregar" style="margin:8px 0"><input id="inDictar" placeholder="Agregar un paso" enterkeyhint="done"><button class="mic" id="micDictar" aria-label="Dictar un paso"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button></div>
+            </div>
+            <button class="btn">Guardar</button>
+          </section>
+
+          <div class="velo" id="velo"></div>
+          <div class="hoja" id="hoja"></div>
+          <div class="toast" id="toast"></div>
+        </div>
+      </div>
+      <p class="note" id="nota">Tocá una lista, un inbox o una idea para abrir su ficha.</p>
+    </div>
+
+    <div class="side">
+      <div class="grupo">
+        <h2>Listas en el cajón</h2>
+        <p>Una sección nueva para puntear y ordenarte. Nunca salen al calendario y no piden hora; cuando estás listo, <b>Convertir</b> las pasa a acción.</p>
+        <ul><li><b>Una tarea con estos pasos</b>: los renglones pasan a la ruleta.</li><li><b>Un proyecto con estas etapas</b>: cada renglón, una etapa.</li><li><b>Una acción por renglón</b>: cada renglón se ordena por separado (tarea, cita…).</li></ul>
+        <p>Color provisorio de las listas:</p>
+        <div class="chips" data-opt="color">
+          <button class="chip" data-v="#9DB5AC" aria-pressed="true"><span class="sw" style="background:#9DB5AC"></span>Salvia agua</button>
+          <button class="chip" data-v="#B7A98F" aria-pressed="false"><span class="sw" style="background:#B7A98F"></span>Papel</button>
+          <button class="chip" data-v="#A7B48C" aria-pressed="false"><span class="sw" style="background:#A7B48C"></span>Oliva</button>
+        </div>
+      </div>
+      <div class="grupo">
+        <h2>"Ordenar" pasa a ser "Convertir"</h2>
+        <p>Hoy "Ordenar" le pide a la app que vuelva a leer un inbox y decida qué es. Queda como la primera opción de <b>Convertir</b> ("Que lo ordene la app"); debajo podés elegir vos la categoría.</p>
+      </div>
+      <div class="grupo">
+        <h2>Cuando dictás tus propios pasos</h2>
+        <p>Regla nueva: si decís los pasos, la app usa exactamente esos. ¿Puede sugerir alguno más?</p>
+        <div class="chips" data-opt="sug">
+          <button class="chip" data-v="no" aria-pressed="true">Solo los míos</button>
+          <button class="chip" data-v="si" aria-pressed="false">Los míos + sugerencias aparte</button>
+        </div>
+        <p>Con sugerencias, aparecen en gris y se suman solo si tocás "Sumar".</p>
+      </div>
+      <form class="save" id="form">
+        <h2>Tus comentarios</h2>
+        <label for="coment" style="font-size:14px;color:var(--muted)">Qué te gustó, qué cambiarías</label>
+        <textarea id="coment"></textarea>
+        <button class="primary" type="submit">Copiar resumen para Claude</button>
+        <pre class="summary" id="resumen" aria-live="polite"></pre>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+{
+  const scr = document.getElementById('screen'), nota = document.getElementById('nota');
+  let sug = 'no', color = '#9DB5AC';
+  const datos = {
+    idea: [['Probar con cartón corrugado', false], ['Ver cómo se pegan las capas', false], ['Buscar portalámparas colgante', true]],
+    lista: [['Pedir cajas en el súper', true], ['Comprar cinta', true], ['Avisar al dueño', false], ['Dar de baja el gas', false], ['Cambiar la dirección en el banco', false], ['Embalar los libros', false]],
+    dictar: [['Buscar el número de cliente', false, 'tuyo'], ['Tener el DNI a mano', false, 'tuyo']],
+  };
+  const sugeridos = [['Anotar lo que te digan', false, 'sug']];
+  const dictados = { idea:'Probar una versión chica primero', lista:'Desconectar la heladera el día antes', dictar:'Preguntar por la tarjeta nueva' };
+  const notas = { cajon:'Tocá una lista, un inbox o una idea para abrir su ficha.', idea:'Tocá el título o el texto para editarlos. Probá el micrófono para sumar un renglón.',
+    lista:'Tachá renglones, agregá con el teclado o el micrófono, y después Convertir.', dictar:'Los pasos que dijiste quedan tal cual, marcados como tuyos.' };
+
+  function ir(v, tipo) {
+    document.querySelectorAll('.view').forEach(x => x.classList.toggle('on', x.id === 'v-' + v));
+    document.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-pressed', b.dataset.tab === v));
+    nota.textContent = notas[v]; cerrarHoja();
+    if (v === 'idea') {
+      const inbox = tipo === 'inbox';
+      document.getElementById('ideaCat').textContent = inbox ? 'Inbox' : 'Idea · diseño';
+      document.getElementById('ideaCat').style.color = inbox ? '#7A6E58' : '';
+    }
+  }
+  document.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => ir(b.dataset.tab)));
+  document.querySelectorAll('[data-ir]').forEach(b => b.addEventListener('click', () => ir(b.dataset.ir, b.dataset.tipo)));
+
+  function pintar(cual, nuevo) {
+    const arr = cual === 'dictar' && sug === 'si' ? datos.dictar.concat(sugeridos) : datos[cual];
+    const el = document.getElementById({ idea:'rIdea', lista:'rLista', dictar:'rDictar' }[cual]);
+    el.innerHTML = arr.map(([t, ok, marca], i) => `<div class="reng ${ok ? 'ok' : ''} ${marca === 'sug' ? 'sugerido' : ''} ${nuevo === i ? 'nuevo' : ''}" data-i="${i}">
+      ${cual === 'dictar' ? '' : '<button class="box" aria-label="Tachar">✓</button>'}
+      <span class="tx" contenteditable="${marca === 'sug' ? 'false' : 'true'}">${t}</span>
+      ${marca === 'tuyo' ? '<span class="tuyo">dicho por vos</span>' : ''}
+      ${marca === 'sug' ? '<button class="acepta">Sumar</button>' : '<button class="x" aria-label="Quitar">×</button>'}</div>`).join('');
+    el.querySelectorAll('.box').forEach(b => b.addEventListener('click', () => { const i = +b.parentNode.dataset.i; datos[cual][i][1] = !datos[cual][i][1]; pintar(cual); }));
+    el.querySelectorAll('.x').forEach(b => b.addEventListener('click', () => { datos[cual].splice(+b.parentNode.dataset.i, 1); pintar(cual); }));
+    el.querySelectorAll('.acepta').forEach(b => b.addEventListener('click', () => { const s = sugeridos.shift(); datos.dictar.push([s[0], false, '']); pintar('dictar', datos.dictar.length - 1); }));
+    if (cual === 'lista') document.getElementById('cuentaLista').textContent = `${datos.lista.filter(r => r[1]).length} de ${datos.lista.length}`;
+  }
+  ['idea', 'lista', 'dictar'].forEach(c => pintar(c));
+
+  function agregar(cual, texto, marca) {
+    if (!texto.trim()) return;
+    datos[cual].push([texto.trim(), false, marca || '']); pintar(cual, datos[cual].length - 1);
+  }
+  [['idea', 'inIdea', 'micIdea'], ['lista', 'inLista', 'micLista'], ['dictar', 'inDictar', 'micDictar']].forEach(([c, inp, mic]) => {
+    const i = document.getElementById(inp);
+    i.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); agregar(c, i.value, c === 'dictar' ? 'tuyo' : ''); i.value = ''; } });
+    const m = document.getElementById(mic);
+    m.addEventListener('click', () => {
+      if (m.classList.contains('on')) return;
+      m.classList.add('on'); i.placeholder = 'Te escucho…';
+      setTimeout(() => { m.classList.remove('on'); i.placeholder = c === 'dictar' ? 'Agregar un paso' : 'Agregar un renglón'; agregar(c, dictados[c], c === 'dictar' ? 'tuyo' : ''); }, 1800);
+    });
+  });
+
+  // Convertir
+  const hoja = document.getElementById('hoja'), velo = document.getElementById('velo'), toast = document.getElementById('toast');
+  const op = (cat, b, s, ia) => `<button class="opcion ${ia ? 'ia' : ''}" data-res="${b}" style="--cat:${cat}"><i></i><span><b>${b}</b><small>${s}</small></span></button>`;
+  const hojas = {
+    idea: `<h4>Convertir</h4><p>¿En qué lo convertimos? Lo que escribiste viaja entero.</p>
+      ${op('#4E6B55', 'Que lo ordene la app', 'Lee el texto y los renglones y propone qué es', true)}
+      ${op('#7FA383', 'Tarea', 'Los renglones pasan a ser pasos')}${op('#C9A35E', 'Cita', 'Te pide día y hora')}
+      ${op('#8EA3B8', 'Proyecto', 'Los renglones pasan a ser etapas')}${op('#9C92B4', 'Idea', 'Queda en Ideas')}${op(color, 'Lista', 'Queda en Listas')}`,
+    lista: `<h4>Convertir la lista</h4><p>6 renglones. ¿Cómo la pasamos a acción?</p>
+      ${op('#7FA383', 'Una tarea con estos pasos', 'Los 4 sin tachar van a la ruleta')}
+      ${op('#8EA3B8', 'Un proyecto con estas etapas', 'Cada renglón, una etapa')}
+      ${op('#4E6B55', 'Una acción por renglón', 'Cada renglón se ordena por separado', true)}`,
+  };
+  const resultados = {
+    'Que lo ordene la app':'La app propone: Tarea "Probar la lámpara en cartón". Revisalo antes de guardar.',
+    'Tarea':'Ahora es una tarea con 3 pasos. Falta elegir la hora.', 'Cita':'Ahora es una cita. Elegí día y hora.',
+    'Proyecto':'Ahora es un proyecto con 3 etapas. Elegí las fechas.', 'Idea':'Queda en Ideas.', 'Lista':'Queda en Listas.',
+    'Una tarea con estos pasos':'Tarea "Para la mudanza" con 4 pasos. Falta elegir la hora.',
+    'Un proyecto con estas etapas':'Proyecto "Para la mudanza" con 6 etapas. Elegí las fechas.',
+    'Una acción por renglón':'Se ordenan los 4 renglones sin tachar: vas a revisar cada uno.',
+  };
+  function cerrarHoja() { hoja.classList.remove('on'); velo.classList.remove('on'); }
+  velo.addEventListener('click', cerrarHoja);
+  document.querySelectorAll('[data-convertir]').forEach(b => b.addEventListener('click', () => {
+    hoja.innerHTML = hojas[b.dataset.convertir]; hoja.classList.add('on'); velo.classList.add('on');
+    hoja.querySelectorAll('.opcion').forEach(o => o.addEventListener('click', () => {
+      cerrarHoja(); toast.textContent = resultados[o.dataset.res]; toast.classList.add('on');
+      setTimeout(() => toast.classList.remove('on'), 2800);
+    }));
+  }));
+
+  document.querySelectorAll('[data-opt]').forEach(g => g.addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    g.querySelectorAll('.chip').forEach(x => x.setAttribute('aria-pressed', x === b));
+    if (g.dataset.opt === 'sug') { sug = b.dataset.v; pintar('dictar'); ir('dictar'); }
+    if (g.dataset.opt === 'color') { color = b.dataset.v; scr.style.setProperty('--lista', color); }
+  }));
+
+  document.getElementById('form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const t = `Maqueta F\n- Color de listas: ${color}\n- Pasos dictados: ${sug === 'no' ? 'solo los míos' : 'los míos + sugerencias aparte'}\n- Comentarios: ${document.getElementById('coment').value || '(sin comentarios)'}`;
+    const r = document.getElementById('resumen'); r.textContent = t;
+    try { await navigator.clipboard.writeText(t); r.textContent = t + '\n\nCopiado. Pegalo en Claude Code.'; } catch { r.textContent = t + '\n\nNo se pudo copiar solo: seleccioná el texto y copialo.'; }
+  });
+}
+</script>
+</body>
+</html>
