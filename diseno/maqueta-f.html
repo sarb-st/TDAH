@@ -8,8 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,400&display=swap" rel="stylesheet">
 <style>
-/* VOICE: práctica y tranquila. IDEA: un anotador de bolsillo que después se pasa en limpio. PICTURE: el teléfono.
-   COLOUR y TYPE: Respiro de día, colores por categoría, Fraunces + SF. LAYOUT: teléfono a la izquierda, variantes a la derecha. */
+/* VOICE: práctica, cálida, con ganas. IDEA: un anotador de bolsillo lindo de usar. PICTURE: el teléfono.
+   COLOUR y TYPE: Respiro de día, colores por categoría (lila idea, salvia agua lista), Fraunces + SF. LAYOUT: teléfono a la izquierda, variantes a la derecha. */
 :root { --bg:#F5F2EB; --surface:#FFFFFF; --ink:#2C2A25; --muted:#6F6A60; --line:#E2DBCF; --accent:#4E6B55;
   --serif:"Fraunces", ui-serif, Georgia, serif; --sans:-apple-system,"SF Pro Text",system-ui,"Segoe UI",sans-serif; color-scheme:light; }
 :root[data-theme="dark"] { --bg:#161917; --surface:#1F2420; --ink:#E9EBE4; --muted:#A2A99F; --line:#333B35; --accent:#9DBBA4; color-scheme:dark; }
@@ -34,7 +34,6 @@ button:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
 .grupo p, .grupo li { font-size:15px; color:var(--muted); margin:0; }
 .grupo ul { margin:0; padding-left:20px; display:grid; gap:4px; }
 .chips { display:flex; flex-wrap:wrap; gap:8px; }
-.sw { display:inline-block; width:12px; height:12px; border-radius:50%; vertical-align:-1px; margin-right:6px; }
 .save { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:18px; display:grid; gap:12px; }
 .save h2 { font-family:var(--serif); font-weight:400; font-size:22px; margin:0; }
 .save textarea { font:inherit; font-size:16px; width:100%; min-height:100px; border-radius:10px; border:1px solid var(--line); background:var(--bg); color:var(--ink); padding:10px; }
@@ -43,48 +42,102 @@ button:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
 
 /* ---------- Teléfono ---------- */
 .phone { width:min(340px,100%); aspect-ratio:9/19.3; border-radius:48px; padding:10px; background:#111; box-shadow:0 20px 44px rgba(30,30,20,.22); }
-.screen { --s-bg:#F1F0E9; --s-surface:#FBF8F1; --s-ink:#35302A; --s-muted:#7B746A; --s-primary:#4E6B55; --s-line:#DAD1C2; --s-halo:#ABC3A6; --lista:#9DB5AC;
+.screen { --s-bg:#F1F0E9; --s-surface:#FBF8F1; --s-ink:#35302A; --s-muted:#7B746A; --s-primary:#4E6B55; --s-line:#DAD1C2; --lista:#9DB5AC; --idea:#9C92B4; --inbox:#C2B49C; --ia:#B08A3E; --iaF:#F5ECD9;
   height:100%; border-radius:39px; overflow:hidden; position:relative; background:var(--s-bg); color:var(--s-ink); }
-.sbar { position:absolute; top:14px; left:32px; right:30px; display:flex; justify-content:space-between; font:600 14px var(--sans); z-index:20; }
+.sbar { position:absolute; top:14px; left:32px; right:30px; display:flex; justify-content:space-between; font:600 14px var(--sans); z-index:20; pointer-events:none; }
 .view { position:absolute; inset:0; padding:50px 16px 16px; display:none; overflow-y:auto; scrollbar-width:none; }
 .view::-webkit-scrollbar { display:none; }
 .view.on { display:block; }
-.cab { display:flex; align-items:center; gap:4px; margin-bottom:6px; }
+.cab { display:flex; align-items:center; gap:4px; margin-bottom:6px; position:relative; z-index:1; }
 .cab h3 { font-family:var(--serif); font-weight:400; font-size:25px; margin:0; flex:1; }
 .ic { min-width:40px; height:40px; display:grid; place-items:center; color:var(--s-primary); cursor:pointer; border:0; background:none; padding:0 4px; font:inherit; font-size:15px; }
-.secc { font-family:var(--serif); font-size:19px; color:var(--s-primary); margin:14px 0 6px; display:flex; justify-content:space-between; align-items:baseline; }
-.secc small { font-family:var(--sans); font-size:12.5px; color:var(--s-muted); }
+.btn { font:inherit; font-weight:600; font-size:16px; width:100%; min-height:50px; border-radius:16px; border:0; background:var(--s-primary); color:var(--s-bg); cursor:pointer; margin-top:14px; }
+.toast { position:absolute; left:14px; right:14px; bottom:18px; background:var(--s-ink); color:var(--s-bg); border-radius:14px; padding:12px 14px; font-size:14px; z-index:16; opacity:0; transform:translateY(10px); transition:all .3s; pointer-events:none; }
+.toast.on { opacity:1; transform:none; }
+.ey { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--s-muted); }
+
+/* Cajón */
+.secc { margin:16px 0 7px; }
+.secc b { font-family:var(--serif); font-weight:400; font-size:20px; color:var(--s-ink); display:flex; align-items:center; gap:8px; }
+.secc b::before { content:""; width:10px; height:10px; border-radius:50%; background:var(--cat); }
+.secc small { display:block; font-size:13px; color:var(--s-muted); font-style:italic; font-family:var(--serif); margin-left:18px; }
 .ficha { display:block; width:100%; text-align:left; font:inherit; color:inherit; background:var(--s-surface); border:1px solid var(--s-line); border-radius:14px; padding:10px 12px 10px 17px; position:relative; overflow:hidden; margin-bottom:7px; cursor:pointer; }
 .ficha::before { content:""; position:absolute; left:0; top:0; bottom:0; width:6px; background:var(--cat); }
-.ficha .cat { font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:color-mix(in srgb, var(--cat) 65%, #2C2A25); }
+.ficha .cat { font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:color-mix(in srgb, var(--cat) 60%, #2C2A25); }
 .ficha b { font-family:var(--serif); font-weight:400; font-size:17px; display:block; }
 .ficha small { color:var(--s-muted); font-size:12.5px; }
 .barrita { height:4px; border-radius:2px; background:var(--s-line); margin-top:6px; overflow:hidden; }
 .barrita i { display:block; height:100%; background:var(--lista); }
-/* Ficha editable */
-.edit-t { font-family:var(--serif); font-size:24px; line-height:1.15; outline:none; margin:4px 0 4px; }
-.edit-x { font-size:15px; color:var(--s-ink); outline:none; background:var(--s-surface); border:1px solid var(--s-line); border-radius:12px; padding:10px 12px; min-height:56px; }
-.edit-t:focus, .edit-x:focus { box-shadow:0 0 0 2px color-mix(in srgb, var(--s-primary) 40%, transparent); border-radius:8px; }
-.meta { font-size:12.5px; color:var(--s-muted); margin-bottom:10px; }
-.reng { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--s-line); font-size:15px; }
-.reng .box { width:22px; height:22px; border-radius:50%; border:1.5px solid var(--s-muted); flex:none; cursor:pointer; display:grid; place-items:center; color:transparent; font-size:12px; background:none; padding:0; }
-.reng.ok .box { background:var(--s-primary); border-color:var(--s-primary); color:var(--s-bg); }
+
+/* Héroe de color arriba (idea y lista) */
+.heroe { margin:-50px -16px 0; padding:50px 18px 18px; position:relative; overflow:hidden; background:color-mix(in srgb, var(--cat) 30%, var(--s-bg)); border-radius:0 0 26px 26px; }
+@keyframes respira { 50% { transform:scale(1.12); } }
+.heroe .cab .ic { color:color-mix(in srgb, var(--cat) 55%, #2C2A25); }
+.tema { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:color-mix(in srgb, var(--cat) 55%, #2C2A25); background:rgba(255,255,255,.55); padding:3px 10px; border-radius:999px; position:relative; z-index:1; }
+.edit-t { font-family:var(--serif); font-size:28px; line-height:1.1; outline:none; margin:10px 0 4px; position:relative; z-index:1; }
+.meta { font-size:12.5px; color:var(--s-muted); position:relative; z-index:1; }
+.audio { display:flex; align-items:center; gap:10px; background:rgba(255,255,255,.6); border-radius:999px; padding:6px 12px 6px 6px; margin-top:12px; position:relative; z-index:1; width:max-content; max-width:100%; font-size:12.5px; color:var(--s-muted); cursor:pointer; border:0; font-family:inherit; }
+.audio .play { width:28px; height:28px; border-radius:50%; display:grid; place-items:center; background:color-mix(in srgb, var(--cat) 70%, #2C2A25); color:#fff; flex:none; }
+.audio .ondas { display:flex; align-items:center; gap:2px; height:20px; }
+.audio .ondas i { width:2.5px; border-radius:2px; background:color-mix(in srgb, var(--cat) 75%, #2C2A25); opacity:.7; }
+.audio.on .ondas i { animation:onda .9s ease-in-out infinite; }
+.cita { font-family:var(--serif); font-size:16px; line-height:1.4; outline:none; background:var(--s-surface); border-radius:18px; padding:14px 16px 14px 34px; margin:14px 0 4px; position:relative; box-shadow:0 2px 10px rgba(60,50,30,.05); }
+.cita::before { content:"“"; position:absolute; left:10px; top:2px; font-size:38px; color:var(--cat); line-height:1; }
+.titB { display:flex; align-items:baseline; justify-content:space-between; margin:18px 2px 8px; }
+.titB b { font-family:var(--serif); font-weight:400; font-size:19px; white-space:nowrap; }
+.titB small { font-size:12px; color:var(--s-muted); }
+
+/* Renglones como tarjetitas */
+.reng { display:flex; align-items:center; gap:8px; background:var(--s-surface); border-radius:14px; padding:9px 10px; margin-bottom:6px; font-size:15px; box-shadow:0 1px 0 rgba(60,50,30,.05); position:relative; transition:background .3s, opacity .3s; }
+.reng .dot { width:9px; height:9px; border-radius:50%; background:var(--cat); flex:none; margin:0 4px 0 2px; }
+.reng .tx { flex:1; outline:none; line-height:1.3; }
+.reng .x { color:var(--s-muted); background:none; border:0; font-size:20px; cursor:pointer; padding:0 3px; line-height:1; flex:none; }
+.reng .abrir { font:inherit; font-size:12px; font-weight:600; color:var(--ia); background:var(--iaF); border:0; border-radius:999px; padding:4px 9px; cursor:pointer; flex:none; display:flex; gap:3px; align-items:center; }
+.reng.sug { background:var(--iaF); box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--ia) 30%, transparent); }
+.reng.sug .tx { color:#6A5730; }
+.reng .sumar { font:inherit; font-size:12.5px; font-weight:600; color:#fff; background:var(--ia); border:0; border-radius:999px; padding:4px 11px; cursor:pointer; flex:none; }
+.reng.nuevo { animation:entra .6s cubic-bezier(.3,1.4,.5,1); }
+@keyframes entra { from { transform:scale(.92); opacity:0; } }
+.subs { margin:-2px 0 8px 22px; padding-left:12px; border-left:2px solid color-mix(in srgb, var(--cat) 40%, transparent); }
+.subs .reng { font-size:14px; padding:7px 9px; }
+.asa { color:var(--s-muted); cursor:grab; padding:2px; touch-action:none; flex:none; display:grid; place-items:center; opacity:.7; }
+.arrastrando { box-shadow:0 10px 26px rgba(40,30,10,.18) !important; position:relative; z-index:5; transition:none !important; }
+.ia-i { color:var(--ia); font-size:14px; flex:none; width:18px; text-align:center; }
+.pasosBtn { display:flex; align-items:center; gap:8px; width:100%; font:inherit; font-size:15px; font-weight:600; color:#6A5730; background:var(--iaF); border:0; border-radius:16px; padding:13px 14px; cursor:pointer; margin-top:10px; text-align:left; }
+.pasosBtn .bri { width:30px; height:30px; border-radius:50%; background:var(--s-surface); color:var(--ia); display:grid; place-items:center; flex:none; }
+.pasosBtn small { display:block; font-weight:400; font-size:12px; color:var(--s-muted); }
+.agregar { display:flex; gap:8px; margin:8px 0; }
+.agregar input { flex:1; font:inherit; font-size:16px; border:1px dashed color-mix(in srgb, var(--cat) 60%, var(--s-line)); border-radius:14px; padding:9px 12px; background:transparent; color:var(--s-ink); }
+.agregar input::placeholder { color:var(--s-muted); }
+.mic { width:44px; height:44px; border-radius:50%; border:0; background:color-mix(in srgb, var(--cat) 25%, transparent); color:color-mix(in srgb, var(--cat) 55%, #2C2A25); display:grid; place-items:center; cursor:pointer; flex:none; }
+.mic.on { background:color-mix(in srgb, var(--cat) 70%, #2C2A25); color:#fff; animation:late 1s ease-in-out infinite; }
+@keyframes late { 50% { box-shadow:0 0 0 8px color-mix(in srgb, var(--cat) 25%, transparent); } }
+.btnC { font:inherit; font-weight:600; font-size:16px; width:100%; min-height:50px; border-radius:16px; border:0; cursor:pointer; margin-top:12px; color:#fff; background:color-mix(in srgb, var(--cat) 70%, #2C2A25); }
+
+/* Lista */
+.progreso { display:flex; align-items:center; gap:14px; margin-top:12px; position:relative; z-index:1; }
+.anillo { width:62px; height:62px; position:relative; flex:none; }
+.anillo svg { position:absolute; inset:0; transform:rotate(-90deg); }
+.anillo circle { transition:stroke-dasharray .5s cubic-bezier(.3,1.2,.5,1); }
+.anillo span { position:absolute; inset:0; display:grid; place-items:center; font-family:var(--serif); font-size:17px; }
+.progreso p { margin:0; font-size:13.5px; color:var(--s-muted); line-height:1.35; }
+.progreso p b { color:var(--s-ink); font-weight:600; }
+.grp { margin-bottom:6px; }
+.grp > .reng { margin-bottom:0; }
+.grp .hijos { margin:4px 0 0 26px; padding-left:10px; border-left:2px solid color-mix(in srgb, var(--cat) 50%, transparent); display:grid; gap:4px; }
+.grp .hijos:empty { display:none; }
+.hijos .reng { margin:0; font-size:14.5px; padding:7px 9px; }
+.box { width:24px; height:24px; border-radius:50%; border:1.8px solid color-mix(in srgb, var(--cat) 80%, #2C2A25); flex:none; cursor:pointer; display:grid; place-items:center; color:transparent; font-size:13px; background:none; padding:0; transition:background .2s, transform .2s; }
+.hijos .box { width:20px; height:20px; }
+.reng.ok .box { background:color-mix(in srgb, var(--cat) 85%, #2C2A25); border-color:transparent; color:#fff; }
 .reng.ok .tx { color:var(--s-muted); text-decoration:line-through; }
-.reng .tx { flex:1; outline:none; }
-.reng .x { color:var(--s-muted); background:none; border:0; font-size:18px; cursor:pointer; padding:0 4px; }
-.reng.nuevo { animation:entra .5s ease; }
-@keyframes entra { from { background:color-mix(in srgb, var(--s-primary) 18%, transparent); } }
-.tuyo { font-size:10.5px; font-weight:700; color:var(--s-primary); text-transform:uppercase; letter-spacing:.03em; }
-.sug { font-size:10.5px; font-weight:700; color:var(--s-muted); text-transform:uppercase; letter-spacing:.03em; }
-.reng.sugerido .tx { color:var(--s-muted); font-style:italic; }
-.reng .acepta { font:inherit; font-size:12.5px; color:var(--s-primary); background:none; border:1px solid var(--s-line); border-radius:999px; padding:2px 9px; cursor:pointer; }
-.agregar { display:flex; gap:8px; margin:10px 0; }
-.agregar input { flex:1; font:inherit; font-size:16px; border:1px solid var(--s-line); border-radius:12px; padding:9px 12px; background:var(--s-surface); color:var(--s-ink); }
-.mic { width:44px; height:44px; border-radius:50%; border:0; background:color-mix(in srgb, var(--s-primary) 14%, transparent); color:var(--s-primary); display:grid; place-items:center; cursor:pointer; flex:none; }
-.mic.on { background:var(--s-primary); color:var(--s-bg); animation:late 1s ease-in-out infinite; }
-@keyframes late { 50% { box-shadow:0 0 0 8px color-mix(in srgb, var(--s-primary) 20%, transparent); } }
-.btn { font:inherit; font-weight:600; font-size:16px; width:100%; min-height:50px; border-radius:14px; border:0; background:var(--s-primary); color:var(--s-bg); cursor:pointer; margin-top:14px; }
-.btn.sec { background:transparent; color:var(--s-primary); border:1px solid var(--s-line); font-weight:500; margin-top:8px; }
+.reng.ok { background:color-mix(in srgb, var(--s-surface) 60%, transparent); }
+.reng.pum .box { animation:pum .45s cubic-bezier(.3,1.8,.5,1); }
+@keyframes pum { 40% { transform:scale(1.35); } }
+.reng .mas { width:28px; height:28px; border-radius:50%; border:0; background:color-mix(in srgb, var(--cat) 22%, transparent); color:color-mix(in srgb, var(--cat) 55%, #2C2A25); font-size:18px; line-height:1; cursor:pointer; flex:none; display:grid; place-items:center; }
+.inHijo { flex:1; font:inherit; font-size:15px; border:0; background:none; outline:none; color:var(--s-ink); }
+.reng.escribiendo { box-shadow:inset 0 0 0 1.5px color-mix(in srgb, var(--cat) 70%, transparent); }
+
 /* Hoja de convertir */
 .velo { position:absolute; inset:0; background:rgba(20,20,15,.28); z-index:14; display:none; }
 .velo.on { display:block; }
@@ -97,78 +150,214 @@ button:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
 .opcion b { font-weight:500; display:block; font-size:15px; }
 .opcion small { color:var(--s-muted); font-size:12.5px; }
 .opcion.ia { border-color:var(--s-primary); }
-.toast { position:absolute; left:14px; right:14px; bottom:18px; background:var(--s-ink); color:var(--s-bg); border-radius:14px; padding:12px 14px; font-size:14px; z-index:16; opacity:0; transform:translateY(10px); transition:all .3s; pointer-events:none; }
-.toast.on { opacity:1; transform:none; }
-/* Revisión del dictado */
-.dicho { font-family:var(--serif); font-style:italic; font-size:15.5px; color:var(--s-muted); background:var(--s-surface); border-radius:12px; padding:10px 12px; margin-bottom:12px; }
-.prop { background:var(--s-surface); border:1px solid var(--s-line); border-radius:16px; padding:12px 14px 6px 18px; position:relative; overflow:hidden; }
-.prop::before { content:""; position:absolute; left:0; top:0; bottom:0; width:6px; background:#7FA383; }
-.prop .cat { font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#4F6B53; }
-.prop b { font-family:var(--serif); font-weight:400; font-size:19px; display:block; }
-.prop small { color:var(--s-muted); font-size:12.5px; }
-.pasos-t { font-size:12px; font-weight:600; color:var(--s-muted); margin:10px 0 0; text-transform:uppercase; letter-spacing:.04em; }
+
+/* Dictar pasos */
+.dicho { display:flex; gap:10px; background:var(--s-surface); border-radius:18px; padding:11px 12px; margin:6px 0 12px; cursor:pointer; border:0; font:inherit; color:inherit; text-align:left; width:100%; }
+.dicho .ondas { width:32px; height:32px; border-radius:50%; flex:none; display:flex; align-items:center; justify-content:center; gap:2px; background:color-mix(in srgb, var(--s-primary) 14%, transparent); color:var(--s-primary); }
+.dicho .ondas i { width:2px; border-radius:1px; background:currentColor; animation:onda 1.1s ease-in-out infinite; }
+.dicho .ondas i:nth-child(1) { height:7px; animation-delay:-.2s; } .dicho .ondas i:nth-child(2) { height:13px; animation-delay:-.5s; } .dicho .ondas i:nth-child(3) { height:9px; animation-delay:-.8s; } .dicho .ondas i:nth-child(4) { height:5px; }
+@keyframes onda { 50% { transform:scaleY(.45); } }
+.dicho div { flex:1; }
+.dicho p { margin:0; font-family:var(--serif); font-style:italic; font-size:14.5px; color:var(--s-muted); line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.dicho.abierto p { -webkit-line-clamp:unset; display:block; }
+.dicho small { font-size:12px; color:var(--s-primary); font-weight:600; }
+.tareaC { border-radius:22px; overflow:hidden; background:var(--s-surface); box-shadow:0 4px 18px rgba(60,50,30,.07); }
+.tareaC .top { background:#7FA383; color:#fff; padding:12px 14px 12px; }
+.tareaC .top .ey { color:rgba(255,255,255,.85); }
+.tareaC .top b { font-family:var(--serif); font-weight:400; font-size:24px; display:block; line-height:1.1; margin-top:2px; outline:none; }
+.tareaC .datos { display:flex; gap:8px; padding:10px 12px; flex-wrap:wrap; }
+.tareaC .datos span { display:flex; align-items:center; gap:5px; font-size:13px; background:var(--s-bg); border-radius:999px; padding:4px 10px; }
+.tareaC .datos svg { color:var(--s-primary); }
+.pasosT { display:flex; align-items:center; justify-content:space-between; margin:16px 2px 8px; }
+.pasosT b { font-family:var(--serif); font-weight:400; font-size:19px; }
+.leyenda { display:flex; gap:10px; font-size:11.5px; color:var(--s-muted); }
+.leyenda span { display:flex; align-items:center; gap:4px; }
+.voz { width:18px; height:18px; flex:none; display:flex; align-items:center; justify-content:center; gap:1.2px; color:var(--s-primary); }
+.voz i { display:inline-block; width:2px; border-radius:1px; background:currentColor; }
+.voz i:nth-child(1) { height:6px; } .voz i:nth-child(2) { height:12px; } .voz i:nth-child(3) { height:8px; } .voz i:nth-child(4) { height:5px; }
+.paso { display:flex; align-items:center; gap:8px; background:var(--s-surface); border-radius:16px; padding:10px 10px 10px 8px; margin-bottom:6px; box-shadow:0 1px 0 rgba(60,50,30,.05); }
+.paso .n { width:22px; height:22px; border-radius:50%; flex:none; display:grid; place-items:center; font-size:12px; font-weight:700; color:var(--s-primary); background:color-mix(in srgb, var(--s-primary) 12%, transparent); }
+.paso .cuerpo { flex:1; display:grid; gap:4px; }
+.paso .tx { outline:none; font-size:15px; line-height:1.3; }
+.paso.sug { background:var(--iaF); box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--ia) 30%, transparent); }
+.paso.sug .tx { color:#6A5730; }
+.paso.sug .n { color:var(--ia); background:color-mix(in srgb, var(--ia) 15%, transparent); }
+.paso .x { color:var(--s-muted); background:none; border:0; font-size:20px; cursor:pointer; padding:0 3px; line-height:1; flex:none; }
+.paso .sumar { font:inherit; font-size:12.5px; font-weight:600; color:#fff; background:var(--ia); border:0; border-radius:999px; padding:4px 11px; cursor:pointer; flex:none; }
+.partir { justify-self:start; font:inherit; font-size:12px; color:var(--ia); background:none; border:1px dashed color-mix(in srgb, var(--ia) 55%, transparent); border-radius:999px; padding:2px 9px; cursor:pointer; display:flex; align-items:center; gap:4px; }
+.paso.nuevo { animation:entra .6s cubic-bezier(.3,1.4,.5,1); }
+.sumarB { border:1.5px dashed color-mix(in srgb, var(--s-primary) 35%, var(--s-line)); border-radius:20px; padding:12px; margin-top:14px; display:grid; gap:10px; }
+.sumarB .t { font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--s-muted); }
+.sugB { display:flex; align-items:center; gap:8px; width:100%; font:inherit; font-size:14.5px; font-weight:600; color:#6A5730; background:var(--iaF); border:0; border-radius:14px; padding:11px 12px; cursor:pointer; text-align:left; }
+.sumarB .agregar { margin:0; }
+.sumarB .agregar input { border-color:var(--s-line); background:var(--s-surface); border-style:solid; }
+.sumarB .mic { --cat:#7FA383; }
+
+.grp .subs { margin:4px 0 0 24px; }
+.reng .num { width:22px; height:22px; border-radius:50%; flex:none; display:grid; place-items:center; font-size:12px; font-weight:700; color:color-mix(in srgb, var(--cat) 60%, #2C2A25); background:color-mix(in srgb, var(--cat) 22%, transparent); }
+.sugBox { background:var(--iaF); border-radius:18px; padding:10px 10px 4px; margin-top:10px; }
+.sugBox .t { font-size:12px; font-weight:600; color:#6A5730; margin:0 2px 8px; display:flex; gap:6px; align-items:center; }
+.sugBox .reng { background:var(--s-surface); box-shadow:none; }
+.sugBox .reng .tx { color:#6A5730; }
+.reng.sube { animation:sube .55s cubic-bezier(.3,1.4,.5,1); }
+@keyframes sube { from { transform:translateY(30px); opacity:0; } }
+.agregar .sumarIn { display:none; font:inherit; font-size:14px; font-weight:600; color:#fff; background:color-mix(in srgb, var(--cat) 75%, #2C2A25); border:0; border-radius:12px; padding:0 14px; cursor:pointer; flex:none; }
+.agregar.escribe .sumarIn { display:block; }
+.agregar input { border-style:solid; }
+/* Lista completa */
+.completa { display:none; gap:8px; margin-top:12px; position:relative; z-index:1; flex-wrap:wrap; }
+.heroe.lleno .completa { display:flex; animation:entra .5s cubic-bezier(.3,1.4,.5,1); }
+.completa button { font:inherit; font-size:13.5px; font-weight:600; border-radius:999px; padding:7px 13px; cursor:pointer; border:0; background:var(--s-surface); color:var(--s-ink); }
+.completa button.pri { background:#5E8378; color:#fff; }
+.heroe.lleno .anillo { animation:pum .5s cubic-bezier(.3,1.8,.5,1); }
+/* Inbox */
+.pregunta { display:flex; gap:10px; align-items:flex-start; background:var(--s-surface); border-radius:18px; padding:12px 14px; margin:14px 0 8px; font-family:var(--serif); font-size:16.5px; line-height:1.3; box-shadow:0 2px 10px rgba(60,50,30,.05); }
+.pregunta .ia-i { margin-top:2px; }
+.adiv { display:flex; align-items:center; gap:10px; width:100%; text-align:left; font:inherit; color:inherit; background:var(--s-surface); border:1px solid var(--s-line); border-radius:16px; padding:11px 12px 11px 14px; margin-bottom:7px; cursor:pointer; position:relative; overflow:hidden; }
+.adiv::before { content:""; position:absolute; left:0; top:0; bottom:0; width:5px; background:var(--k); }
+.adiv span { flex:1; }
+.adiv small { display:block; font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:color-mix(in srgb, var(--k) 65%, #2C2A25); }
+.adiv b { font-weight:500; font-size:15px; }
+.adiv i { font-style:normal; color:var(--s-muted); }
+.acc2 { display:flex; gap:8px; margin-top:12px; }
+.acc2 button { flex:1; font:inherit; font-weight:600; font-size:15px; min-height:48px; border-radius:14px; cursor:pointer; border:1px solid var(--s-line); background:var(--s-surface); color:var(--s-ink); }
+.acc2 button.pri { border:0; color:#fff; background:color-mix(in srgb, var(--cat) 70%, #2C2A25); }
+.fluir { display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:13.5px; color:var(--muted); }
+.fluir span { background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:4px 10px; }
+.fluir span.aca { background:var(--accent); color:var(--bg); border-color:var(--accent); }
+
+/* Revisión: los datos, a mano */
+.datosG { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+.dato { text-align:left; font:inherit; color:inherit; background:var(--s-surface); border:1px solid var(--s-line); border-radius:16px; padding:10px 12px; cursor:pointer; display:grid; gap:1px; position:relative; }
+.dato small { font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--s-muted); display:flex; align-items:center; gap:5px; }
+.dato small svg { color:#5E8A63; }
+.dato b { font-family:var(--serif); font-weight:400; font-size:21px; line-height:1.15; }
+.dato em { font-style:normal; font-size:12px; color:var(--s-muted); }
+.dato::after { content:"›"; position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--s-muted); font-size:18px; }
+.dato.flash { animation:flashD .7s ease; }
+@keyframes flashD { 30% { background:color-mix(in srgb, #7FA383 22%, var(--s-surface)); } }
+.tareaT { display:flex; align-items:center; gap:10px; background:#7FA383; color:#fff; border-radius:18px; padding:12px 14px; }
+.tareaT .ey { color:rgba(255,255,255,.85); }
+.tareaT b { font-family:var(--serif); font-weight:400; font-size:23px; display:block; line-height:1.1; outline:none; }
+.pasosT { margin:16px 2px 6px; }
+.pasosT b { font-size:16px !important; }
+.paso { padding:6px 8px 6px 6px; margin-bottom:4px; border-radius:12px; gap:6px; }
+.paso .tx { font-size:14px; }
+.paso .n { width:19px; height:19px; font-size:11px; }
+.paso .sumar { padding:3px 9px; font-size:12px; }
+.sumarC { display:flex; gap:6px; margin-top:6px; }
+.sumarC button { flex:1; font:inherit; font-size:13.5px; font-weight:600; border-radius:12px; padding:8px; cursor:pointer; border:1px dashed var(--s-line); background:none; color:var(--s-primary); }
+.sumarC button.ia { border:0; background:var(--iaF); color:#6A5730; }
+#escribirPaso { display:none; margin-top:6px; }
+#escribirPaso.on { display:flex; }
+.stp { display:inline-flex; height:32px; border-radius:9px; background:rgba(118,118,128,.13); overflow:hidden; flex:none; }
+.stp button { width:46px; border:0; background:none; font:400 21px/1 var(--sans); color:var(--s-ink); cursor:pointer; padding:0; }
+.stp button + button { border-left:1px solid rgba(60,60,67,.2); }
+.filaH { display:flex; align-items:center; gap:10px; background:var(--s-bg); border:1px solid var(--s-line); border-radius:14px; padding:9px 10px 9px 14px; margin-top:8px; }
+.filaH span:first-child { flex:1; }
+.filaH b { font-family:var(--serif); font-weight:400; font-size:26px; }
+.chipsH { display:flex; flex-wrap:wrap; gap:7px; margin-top:6px; }
+.chipsH button { font:inherit; font-size:14.5px; border-radius:999px; border:1px solid var(--s-line); background:var(--s-bg); color:var(--s-ink); padding:8px 14px; cursor:pointer; }
+.chipsH button[aria-pressed="true"] { background:#5E8A63; border-color:#5E8A63; color:#fff; }
+.inH { width:100%; font:inherit; font-size:16px; border:1px solid var(--s-line); border-radius:12px; padding:10px 12px; background:var(--s-bg); color:var(--s-ink); margin-top:6px; }
+.btnH { font:inherit; font-weight:600; font-size:16px; width:100%; min-height:48px; border-radius:14px; border:0; background:var(--s-primary); color:var(--s-bg); cursor:pointer; margin-top:14px; }
+@media (prefers-reduced-motion: reduce) { .dicho .ondas i { animation:none; } }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="intro">
-    <h1>Maqueta F · Cajón editable, listas y tus propios pasos</h1>
-    <p>Tocá cualquier cosa del <b>Cajón</b> para abrir su ficha: se edita tocando el texto, se le agregan renglones escribiendo o con el micrófono, y abajo está <b>Convertir</b>. <b>Dictar pasos</b> muestra la revisión cuando decís vos los pasos. Datos de muestra.</p>
+    <h1>Maqueta F · Idea y revisión al dictar (v5)</h1>
+    <p>La revisión al dictar ya está aprobada. Queda solo la <b>Idea</b>: ahora se ve qué dijiste y qué propuso la app, y todo se puede abrir. Datos de muestra.</p>
   </header>
   <div class="layout">
     <div class="left">
       <div class="tabs" role="group" aria-label="Pantalla">
-        <button data-tab="cajon" aria-pressed="true">Cajón</button>
-        <button data-tab="idea" aria-pressed="false">Ficha de idea</button>
-        <button data-tab="lista" aria-pressed="false">Lista</button>
-        <button data-tab="dictar" aria-pressed="false">Dictar pasos</button>
+        <button data-tab="idea" aria-pressed="true">Ficha de idea</button>
       </div>
       <div class="phone">
         <div class="screen" id="screen">
           <div class="sbar"><span>9:41</span><span>●●● 100%</span></div>
 
-          <section class="view on" id="v-cajon">
+          <section class="view" id="v-cajon">
             <div class="cab"><h3>Cajón</h3><button class="ic" aria-label="Cerrar">✕</button></div>
-            <div class="secc">Listas <small>borradores para ordenarte</small></div>
-            <button class="ficha" style="--cat:var(--lista)" data-ir="lista"><span class="cat">Lista</span><b>Para la mudanza</b><small>2 de 6 · tocada hoy</small><div class="barrita"><i style="width:33%"></i></div></button>
-            <button class="ficha" style="--cat:var(--lista)" data-ir="lista"><span class="cat">Lista</span><b>Regalos de Navidad</b><small>0 de 4</small><div class="barrita"><i style="width:0"></i></div></button>
-            <div class="secc">Inbox <small>lo que falta aclarar</small></div>
-            <button class="ficha" style="--cat:#C2B49C" data-ir="idea" data-tipo="inbox"><span class="cat">Inbox</span><b>Lo de Martín</b><small>hace 2 días</small></button>
-            <button class="ficha" style="--cat:#C2B49C" data-ir="idea" data-tipo="inbox"><span class="cat">Inbox</span><b>Sacar turno</b><small>ayer</small></button>
-            <div class="secc">Ideas</div>
-            <button class="ficha" style="--cat:#9C92B4" data-ir="idea" data-tipo="idea"><span class="cat">Idea · diseño</span><b>Lámpara con papel reciclado</b><small>3 renglones</small></button>
+            <div class="secc" style="--cat:var(--lista)"><b>Listas</b><small>pongámoslo en papel</small></div>
+            <button class="ficha" style="--cat:var(--lista)" data-ir="lista"><b>Para la mudanza</b><small>2 de 6 · tocada hoy</small><div class="barrita"><i style="width:33%"></i></div></button>
+            <button class="ficha" style="--cat:var(--lista)" data-ir="lista"><b>Regalos de Navidad</b><small>0 de 4</small><div class="barrita"><i style="width:0"></i></div></button>
+            <div class="secc" style="--cat:var(--idea)"><b>Ideas</b><small>cosas para pelotear</small></div>
+            <button class="ficha" style="--cat:var(--idea)" data-ir="idea"><span class="cat">Diseño</span><b>Lámpara con papel reciclado</b><small>3 renglones</small></button>
+            <button class="ficha" style="--cat:var(--idea)" data-ir="idea"><span class="cat">Viajes</span><b>Ruta en bici por el Elba</b><small>dictada ayer</small></button>
+            <div class="secc" style="--cat:var(--inbox)"><b>Inbox</b><small>dame más data</small></div>
+            <button class="ficha" style="--cat:var(--inbox)" data-ir="inbox"><b>Lo de Martín</b><small>hace 2 días</small></button>
+            <button class="ficha" style="--cat:var(--inbox)" data-ir="inbox"><b>Sacar turno</b><small>ayer</small></button>
           </section>
 
-          <section class="view" id="v-idea">
-            <div class="cab"><button class="ic" data-ir="cajon" aria-label="Volver">‹ Cajón</button><span style="flex:1"></span></div>
-            <span class="ficha" style="--cat:#9C92B4;border:0;background:none;padding:0 0 0 0;margin:0;cursor:default"><span class="cat" id="ideaCat" style="padding-left:0">Idea · diseño</span></span>
-            <div class="edit-t" contenteditable="true" id="ideaTit">Lámpara con papel reciclado</div>
-            <div class="meta">Dictada el lunes · tocá el título o el texto para cambiarlos</div>
-            <div class="edit-x" contenteditable="true">Una lámpara colgante hecha con capas de papel reciclado, que deje pasar la luz cálida.</div>
-            <div class="secc" style="font-size:16px">Renglones</div>
+          <section class="view" id="v-inbox" style="--cat:var(--inbox)">
+            <div class="heroe">
+              <div class="cab"><button class="ic" data-ir="cajon" aria-label="Volver">‹ Cajón</button><span style="flex:1"></span></div>
+              <span class="tema">Inbox · dame más data</span>
+              <div class="edit-t" contenteditable="true">Lo de Martín</div>
+              <div class="meta">Dictado hace 2 días · si no lo tocás, se archiva solo en 12 días</div>
+              <button class="audio" id="audioI"><span class="play">▶</span><span class="ondas" id="ondasI"></span><span>Tu audio · 0:03</span></button>
+            </div>
+            <div class="pregunta"><span class="ia-i">✦</span><span>No me quedó claro. ¿Qué es lo de Martín?</span></div>
+            <div id="adivs">
+              <button class="adiv" style="--k:#7FA383"><span><small>Tarea</small><b>Devolverle el taladro a Martín</b></span><i>›</i></button>
+              <button class="adiv" style="--k:#7FA383"><span><small>Tarea</small><b>Llamar a Martín por el asado del sábado</b></span><i>›</i></button>
+              <button class="adiv" style="--k:#9C92B4"><span><small>Idea</small><b>Algo para pelotear con Martín</b></span><i>›</i></button>
+            </div>
+            <div class="agregar"><input id="inInbox" placeholder="O contame más con tus palabras" enterkeyhint="done"><button class="sumarIn" data-para="inInbox">Listo</button></div>
+            <div class="acc2"><button class="pri" data-convertir="idea">Convertir…</button><button id="archI">Archivar</button></div>
+          </section>
+
+          <section class="view on" id="v-idea" style="--cat:var(--idea)">
+            <div class="heroe">
+              <div class="cab"><button class="ic" data-ir="cajon" aria-label="Volver">‹ Cajón</button><span style="flex:1"></span></div>
+              <span class="tema">✎ Diseño</span>
+              <div class="edit-t" contenteditable="true">Lámpara con papel reciclado</div>
+              <div class="meta">Dictada el lunes · tocá cualquier texto para cambiarlo</div>
+              <button class="audio" id="audio"><span class="play">▶</span><span class="ondas" id="ondasA"></span><span>Tu audio · 0:14</span></button>
+            </div>
+            <div class="cita" contenteditable="true">Una lámpara colgante hecha con capas de papel reciclado, que deje pasar la luz cálida.</div>
+            <div class="titB"><b>Lo que la mueve</b><span class="leyenda"><span><span class="voz"><i></i><i></i><i></i><i></i></span>dijiste</span><span><span class="ia-i">✦</span>sugerido</span></span></div>
             <div id="rIdea"></div>
-            <div class="agregar"><input id="inIdea" placeholder="Agregar un renglón" enterkeyhint="done"><button class="mic" id="micIdea" aria-label="Dictar un renglón"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button></div>
-            <button class="btn" data-convertir="idea">Convertir…</button>
+            <div class="agregar"><input id="inIdea" placeholder="Sumar un renglón" enterkeyhint="done"><button class="sumarIn" data-para="inIdea">Sumar</button></div>
+            <div id="pasosIdea"></div>
+            <button class="pasosBtn" id="concretar"><span class="bri">✦</span><span><span id="concretarTxt">¿Vamos con algunos pasos?</span><small id="concretarSub">Te propongo unos primeros pasos; sumás los que quieras.</small></span></button>
+            <button class="btnC" data-convertir="idea">Convertir…</button>
           </section>
 
-          <section class="view" id="v-lista">
-            <div class="cab"><button class="ic" data-ir="cajon" aria-label="Volver">‹ Cajón</button><span style="flex:1"></span></div>
-            <span class="ficha" style="--cat:var(--lista);border:0;background:none;padding:0;margin:0;cursor:default"><span class="cat">Lista</span></span>
-            <div class="edit-t" contenteditable="true">Para la mudanza</div>
-            <div class="meta"><span id="cuentaLista">2 de 6</span> · tachá, editá o agregá renglones</div>
+          <section class="view" id="v-lista" style="--cat:var(--lista)">
+            <div class="heroe" id="heroeLista">
+              <div class="cab"><button class="ic" data-ir="cajon" aria-label="Volver">‹ Cajón</button><span style="flex:1"></span></div>
+              <span class="tema">☰ Lista</span>
+              <div class="edit-t" contenteditable="true">Para la mudanza</div>
+              <div class="progreso"><div class="anillo"><svg viewBox="0 0 62 62"><circle cx="31" cy="31" r="26" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="6"/><circle id="arco" cx="31" cy="31" r="26" fill="none" stroke="#5E8378" stroke-width="6" stroke-linecap="round" stroke-dasharray="0 200"/></svg><span id="cuentaLista">2/6</span></div>
+                <p id="animoLista"></p></div>
+              <div class="completa"><button class="pri" id="lArch">Archivarla</button><button id="lReusar">Usarla de nuevo</button><button id="lDejar">Dejarla así</button></div>
+            </div>
+            <div style="height:12px"></div>
             <div id="rLista"></div>
-            <div class="agregar"><input id="inLista" placeholder="Agregar un renglón" enterkeyhint="done"><button class="mic" id="micLista" aria-label="Dictar un renglón"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button></div>
-            <button class="btn" data-convertir="lista">Convertir…</button>
+            <div class="agregar"><input id="inLista" placeholder="Sumar un renglón" enterkeyhint="next"><button class="sumarIn" data-para="inLista">Sumar</button><button class="mic" id="micLista" aria-label="Dictar un renglón"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button></div>
+            <button class="btnC" data-convertir="lista">Convertir…</button>
           </section>
 
           <section class="view" id="v-dictar">
-            <div class="cab"><h3 style="font-size:21px">Revisá antes de guardar</h3></div>
-            <div class="dicho">"Mañana a las diez llamar al banco. Antes tengo que buscar el número de cliente y tener el DNI a mano."</div>
-            <div class="prop">
-              <span class="cat">Tarea</span><b>Llamar al banco</b><small>Mañana 10:00 · 30 min</small>
-              <div class="pasos-t">Pasos</div>
-              <div id="rDictar"></div>
-              <div class="agregar" style="margin:8px 0"><input id="inDictar" placeholder="Agregar un paso" enterkeyhint="done"><button class="mic" id="micDictar" aria-label="Dictar un paso"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button></div>
+            <div class="ey" style="margin-top:6px">Recién dictaste</div>
+            <div class="cab"><h3 style="font-size:23px">Revisá antes de guardar</h3></div>
+            <button class="dicho" id="dicho"><span class="ondas"><i></i><i></i><i></i><i></i></span><div><p>"Mañana a las diez llamar al banco por lo de la tarjeta. Tengo que preparar los papeles… ah, y antes buscar el número de cliente, que está en un mail viejo. Y anotar lo que me digan, que siempre me olvido, así no tengo que volver a llamar."</p><small id="dichoMas">Ver todo lo que dijiste</small></div></button>
+            <div class="tareaT"><div><span class="ey">Tarea</span><b contenteditable="true">Llamar al banco</b></div></div>
+            <div class="datosG">
+              <button class="dato" data-dato="dia"><small><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Cuándo</small><b id="vDia">Mañana</b><em id="eDia">viernes 20</em></button>
+              <button class="dato" data-dato="hora"><small><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Hora</small><b id="vHora">10:00</b><em>lo dijiste</em></button>
+              <button class="dato" data-dato="dura"><small><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 3h12M6 21h12M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9"/></svg>Dura</small><b id="vDura">30 min</b><em>estimado</em></button>
+              <button class="dato" data-dato="lugar"><small><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 21s7-6 7-12a7 7 0 0 0-14 0c0 6 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>Dónde</small><b id="vLugar">Banco</b><em id="eLugar">abre a las 9</em></button>
+            </div>
+            <div class="pasosT"><b>Pasos</b><span class="leyenda"><span><span class="voz"><i></i><i></i><i></i><i></i></span>dijiste</span><span><span class="ia-i">✦</span>sugerido</span></span></div>
+            <div id="rDictar"></div>
+            <div class="sumarC"><button id="abrirEsc">+ Escribir un paso</button><button class="ia" id="otraSug">✦ Sugerime uno</button></div>
+            <div id="escribirPaso">
+              <div class="agregar" style="flex:1;margin:0"><input id="inDictar" placeholder="Escribí un paso" enterkeyhint="done"><button class="sumarIn" data-para="inDictar">Sumar</button><button class="mic" id="micDictar" aria-label="Dictar un paso"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button></div>
             </div>
             <button class="btn">Guardar</button>
           </section>
@@ -178,33 +367,18 @@ button:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
           <div class="toast" id="toast"></div>
         </div>
       </div>
-      <p class="note" id="nota">Tocá una lista, un inbox o una idea para abrir su ficha.</p>
+      <p class="note" id="nota">Probá los pasos: los que sumás entran en la lista.</p>
     </div>
 
     <div class="side">
       <div class="grupo">
-        <h2>Listas en el cajón</h2>
-        <p>Una sección nueva para puntear y ordenarte. Nunca salen al calendario y no piden hora; cuando estás listo, <b>Convertir</b> las pasa a acción.</p>
-        <ul><li><b>Una tarea con estos pasos</b>: los renglones pasan a la ruleta.</li><li><b>Un proyecto con estas etapas</b>: cada renglón, una etapa.</li><li><b>Una acción por renglón</b>: cada renglón se ordena por separado (tarea, cita…).</li></ul>
-        <p>Color provisorio de las listas:</p>
-        <div class="chips" data-opt="color">
-          <button class="chip" data-v="#9DB5AC" aria-pressed="true"><span class="sw" style="background:#9DB5AC"></span>Salvia agua</button>
-          <button class="chip" data-v="#B7A98F" aria-pressed="false"><span class="sw" style="background:#B7A98F"></span>Papel</button>
-          <button class="chip" data-v="#A7B48C" aria-pressed="false"><span class="sw" style="background:#A7B48C"></span>Oliva</button>
-        </div>
-      </div>
-      <div class="grupo">
-        <h2>"Ordenar" pasa a ser "Convertir"</h2>
-        <p>Hoy "Ordenar" le pide a la app que vuelva a leer un inbox y decida qué es. Queda como la primera opción de <b>Convertir</b> ("Que lo ordene la app"); debajo podés elegir vos la categoría.</p>
-      </div>
-      <div class="grupo">
-        <h2>Cuando dictás tus propios pasos</h2>
-        <p>Regla nueva: si decís los pasos, la app usa exactamente esos. ¿Puede sugerir alguno más?</p>
-        <div class="chips" data-opt="sug">
-          <button class="chip" data-v="no" aria-pressed="true">Solo los míos</button>
-          <button class="chip" data-v="si" aria-pressed="false">Los míos + sugerencias aparte</button>
-        </div>
-        <p>Con sugerencias, aparecen en gris y se suman solo si tocás "Sumar".</p>
+        <h2>Idea: de dónde sale cada renglón</h2>
+        <ul>
+          <li>Sí: los tres primeros salen de tu dictado. Ahora llevan la <b>marca de voz</b> (las rayitas de onda) y los que propone la app llevan <b>✦</b>, igual que en la revisión al dictar.</li>
+          <li>Los pasos que sumás desde las sugerencias ahora <b>también se abren</b> con "✦ abrir".</li>
+          <li>Saqué la aclaración de las rayitas para mover.</li>
+        </ul>
+        <p>Probá: tocá "¿Vamos con algunos pasos?", sumá uno y abrilo.</p>
       </div>
       <form class="save" id="form">
         <h2>Tus comentarios</h2>
@@ -218,102 +392,274 @@ button:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
 </div>
 <script>
 {
-  const scr = document.getElementById('screen'), nota = document.getElementById('nota');
-  let sug = 'no', color = '#9DB5AC';
-  const datos = {
-    idea: [['Probar con cartón corrugado', false], ['Ver cómo se pegan las capas', false], ['Buscar portalámparas colgante', true]],
-    lista: [['Pedir cajas en el súper', true], ['Comprar cinta', true], ['Avisar al dueño', false], ['Dar de baja el gas', false], ['Cambiar la dirección en el banco', false], ['Embalar los libros', false]],
-    dictar: [['Buscar el número de cliente', false, 'tuyo'], ['Tener el DNI a mano', false, 'tuyo']],
-  };
-  const sugeridos = [['Anotar lo que te digan', false, 'sug']];
-  const dictados = { idea:'Probar una versión chica primero', lista:'Desconectar la heladera el día antes', dictar:'Preguntar por la tarjeta nueva' };
-  const notas = { cajon:'Tocá una lista, un inbox o una idea para abrir su ficha.', idea:'Tocá el título o el texto para editarlos. Probá el micrófono para sumar un renglón.',
-    lista:'Tachá renglones, agregá con el teclado o el micrófono, y después Convertir.', dictar:'Los pasos que dijiste quedan tal cual, marcados como tuyos.' };
-
-  function ir(v, tipo) {
+  const nota = document.getElementById('nota'), toastEl = document.getElementById('toast');
+  const ASA = c => `<span class="asa ${c}" aria-label="Arrastrar para mover"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9h14M5 15h14"/></svg></span>`;
+  const VOZ = '<span class="voz" title="Lo dijiste"><i></i><i></i><i></i><i></i></span>';
+  const notas = { cajon:'Tocá una lista, una idea o un inbox para abrir su ficha.', idea:'Mové los renglones con las rayitas. Probá los pasos: los que sumás suben.', inbox:'Tocá una de las opciones, o contale más.',
+    lista:'Tocá + para agregar adentro. Tachá todo lo de adentro y mirá el de arriba.', dictar:'La revisión que aparece después de dictar. Probá ✦ Partir.' };
+  function toast(t) { toastEl.textContent = t; toastEl.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => toastEl.classList.remove('on'), 2400); }
+  function ir(v) {
     document.querySelectorAll('.view').forEach(x => x.classList.toggle('on', x.id === 'v-' + v));
     document.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-pressed', b.dataset.tab === v));
     nota.textContent = notas[v]; cerrarHoja();
-    if (v === 'idea') {
-      const inbox = tipo === 'inbox';
-      document.getElementById('ideaCat').textContent = inbox ? 'Inbox' : 'Idea · diseño';
-      document.getElementById('ideaCat').style.color = inbox ? '#7A6E58' : '';
-    }
   }
   document.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => ir(b.dataset.tab)));
-  document.querySelectorAll('[data-ir]').forEach(b => b.addEventListener('click', () => ir(b.dataset.ir, b.dataset.tipo)));
+  document.querySelectorAll('[data-ir]').forEach(b => b.addEventListener('click', () => ir(b.dataset.ir)));
 
-  function pintar(cual, nuevo) {
-    const arr = cual === 'dictar' && sug === 'si' ? datos.dictar.concat(sugeridos) : datos[cual];
-    const el = document.getElementById({ idea:'rIdea', lista:'rLista', dictar:'rDictar' }[cual]);
-    el.innerHTML = arr.map(([t, ok, marca], i) => `<div class="reng ${ok ? 'ok' : ''} ${marca === 'sug' ? 'sugerido' : ''} ${nuevo === i ? 'nuevo' : ''}" data-i="${i}">
-      ${cual === 'dictar' ? '' : '<button class="box" aria-label="Tachar">✓</button>'}
-      <span class="tx" contenteditable="${marca === 'sug' ? 'false' : 'true'}">${t}</span>
-      ${marca === 'tuyo' ? '<span class="tuyo">dicho por vos</span>' : ''}
-      ${marca === 'sug' ? '<button class="acepta">Sumar</button>' : '<button class="x" aria-label="Quitar">×</button>'}</div>`).join('');
-    el.querySelectorAll('.box').forEach(b => b.addEventListener('click', () => { const i = +b.parentNode.dataset.i; datos[cual][i][1] = !datos[cual][i][1]; pintar(cual); }));
-    el.querySelectorAll('.x').forEach(b => b.addEventListener('click', () => { datos[cual].splice(+b.parentNode.dataset.i, 1); pintar(cual); }));
-    el.querySelectorAll('.acepta').forEach(b => b.addEventListener('click', () => { const s = sugeridos.shift(); datos.dictar.push([s[0], false, '']); pintar('dictar', datos.dictar.length - 1); }));
-    if (cual === 'lista') document.getElementById('cuentaLista').textContent = `${datos.lista.filter(r => r[1]).length} de ${datos.lista.length}`;
+  // Arrastrar para reordenar: mueve elementos hermanos dentro de un contenedor.
+  function ordenable(cont, itemSel, asaSel, alSoltar) {
+    let item = null, y0 = 0;
+    cont.addEventListener('pointerdown', e => {
+      const asa = e.target.closest(asaSel); if (!asa) return;
+      const it = asa.closest(itemSel); if (!it || it.parentNode !== cont) return;
+      e.preventDefault(); e.stopPropagation(); item = it; y0 = e.clientY;
+      item.classList.add('arrastrando'); cont.setPointerCapture(e.pointerId);
+    });
+    cont.addEventListener('pointermove', e => {
+      if (!item) return;
+      const hermanos = [...cont.children].filter(x => x.matches(itemSel));
+      const i = hermanos.indexOf(item), prev = hermanos[i - 1], next = hermanos[i + 1];
+      const mid = r => { const b = r.getBoundingClientRect(); return b.top + b.height / 2; };
+      if (next && e.clientY > mid(next)) { const h = next.getBoundingClientRect().height + 6; cont.insertBefore(next, item); y0 += h; }
+      else if (prev && e.clientY < mid(prev)) { const h = prev.getBoundingClientRect().height + 6; cont.insertBefore(item, prev); y0 -= h; }
+      item.style.transform = `translateY(${e.clientY - y0}px)`;
+    });
+    const fin = () => { if (!item) return; item.style.transform = ''; item.classList.remove('arrastrando'); const it = item; item = null; alSoltar(it); };
+    cont.addEventListener('pointerup', fin); cont.addEventListener('pointercancel', fin);
   }
-  ['idea', 'lista', 'dictar'].forEach(c => pintar(c));
 
-  function agregar(cual, texto, marca) {
+  // ---------- Idea ----------
+  document.getElementById('ondasA').innerHTML = [6,12,8,16,10,5,13,9,15,7,11,6,14,8,4].map((h, i) => `<i style="height:${h}px;animation-delay:${-i * .07}s"></i>`).join('');
+  document.getElementById('audio').addEventListener('click', e => { const a = e.currentTarget; a.classList.toggle('on'); a.querySelector('.play').textContent = a.classList.contains('on') ? '❚❚' : '▶'; });
+  let idea = [
+    { o:'voz', t:'Que la luz sea cálida y no encandile', subs:[], abre:['Probar papeles de distinto grosor', 'Usar una lamparita cálida de 2700 K'] },
+    { o:'voz', t:'Inspiración: las lámparas de papel japonesas', subs:[], abre:['Juntar 5 fotos de referencia', 'Ver cómo pliegan el papel en las Akari'] },
+    { o:'voz', t:'¿Colgante o de mesa?', subs:[], abre:['Pensar dónde iría en casa', 'Un boceto rápido de cada una'] },
+  ];
+  let pasosIdea = [], sugPasos = [];
+  const tandas = [['Probar una versión chica con papel de diario', 'Buscar un portalámparas colgante', 'Sacar fotos para el portfolio'], ['Medir dónde va a colgar', 'Comprar papel de arroz']];
+  const abreIA = { 'Probar una versión chica con papel de diario':['Cortar tiras de 3 cm', 'Armar un cilindro chico'], 'Buscar un portalámparas colgante':['Ver los de la ferretería', 'Medir el largo del cable'], 'Sacar fotos para el portfolio':['Fondo liso y luz de tarde', 'Una foto prendida y otra apagada'], 'Medir dónde va a colgar':['Alto del techo', 'Distancia a la mesa'], 'Comprar papel de arroz':['Ver grosores', 'Pedir muestras'] };
+  const rI = document.getElementById('rIdea');
+  function pintarIdea(nuevo) {
+    rI.innerHTML = idea.map((r, i) => `<div class="grp" data-i="${i}"><div class="reng ${nuevo === 'r' + i ? 'nuevo' : ''}">${ASA('asa-p')}${r.o === 'ia' ? '<span class="ia-i">✦</span>' : VOZ}<span class="tx" contenteditable="true">${r.t}</span>
+        ${r.abre.length ? `<button class="abrir" data-abrir="${i}">✦ abrir</button>` : ''}<button class="x" data-quitar="${i}" aria-label="Quitar">×</button></div>
+      ${r.subs.length ? `<div class="subs">${r.subs.map((s, j) => `<div class="reng ${s.sug ? 'sug' : ''} ${nuevo === i + '-' + j ? 'nuevo' : ''}" data-j="${j}">${s.sug ? '<span class="ia-i">✦</span>' : ASA('asa-h') + '<span class="ia-i" style="font-size:12px">✦</span>'}<span class="tx" contenteditable="${!s.sug}">${s.t}</span>${s.sug ? `<button class="sumar" data-s="${i}-${j}">Sumar</button>` : ''}<button class="x" data-qs="${i}-${j}" aria-label="Quitar">×</button></div>`).join('')}</div>` : ''}</div>`).join('');
+    rI.querySelectorAll('[data-abrir]').forEach(b => b.addEventListener('click', () => {
+      const r = idea[+b.dataset.abrir], ini = r.subs.length; r.abre.splice(0).forEach(t => r.subs.push({ t, sug:true })); pintarIdea(+b.dataset.abrir + '-' + ini);
+    }));
+    rI.querySelectorAll('[data-quitar]').forEach(b => b.addEventListener('click', () => { idea.splice(+b.dataset.quitar, 1); pintarIdea(); }));
+    rI.querySelectorAll('[data-s]').forEach(b => b.addEventListener('click', () => { const [i, j] = b.dataset.s.split('-'); idea[i].subs[j].sug = false; pintarIdea(); }));
+    rI.querySelectorAll('[data-qs]').forEach(b => b.addEventListener('click', () => { const [i, j] = b.dataset.qs.split('-'); idea[i].subs.splice(j, 1); pintarIdea(); }));
+    rI.querySelectorAll('.subs').forEach(sb => ordenable(sb, '.reng[data-j]', '.asa-h', () => {
+      const i = +sb.closest('.grp').dataset.i; idea[i].subs = [...sb.querySelectorAll('.reng[data-j]')].map(x => idea[i].subs[+x.dataset.j]); pintarIdea();
+    }));
+    pintarPasosIdea();
+  }
+  ordenable(rI, '.grp', '.asa-p', () => { idea = [...rI.querySelectorAll('.grp')].map(g => idea[+g.dataset.i]); pintarIdea(); });
+  function pintarPasosIdea() {
+    const p = document.getElementById('pasosIdea');
+    p.innerHTML = sugPasos.length ? `<div class="sugBox"><div class="t"><span class="ia-i">✦</span>Te propongo estos. Los que sumes entran en la lista.</div>` +
+        sugPasos.map((t, k) => `<div class="reng sug nuevo"><span class="tx">${t}</span><button class="sumar" data-ps="${k}">Sumar</button><button class="x" data-px="${k}" aria-label="Quitar">×</button></div>`).join('') + '</div>' : '';
+    p.querySelectorAll('[data-ps]').forEach(b => b.addEventListener('click', () => { const t = sugPasos.splice(+b.dataset.ps, 1)[0]; idea.push({ o:'ia', t, subs:[], abre:(abreIA[t] || []).slice() }); pintarIdea('r' + (idea.length - 1)); }));
+    p.querySelectorAll('[data-px]').forEach(b => b.addEventListener('click', () => { sugPasos.splice(+b.dataset.px, 1); pintarPasosIdea(); }));
+    const btn = document.getElementById('concretar');
+    btn.style.display = sugPasos.length || !tandas.length ? 'none' : '';
+    document.getElementById('concretarTxt').textContent = tandas.length < 2 ? '¿Te propongo algunos más?' : '¿Vamos con algunos pasos?';
+    document.getElementById('concretarSub').textContent = 'Te propongo pasos; los que sumes entran en la lista de arriba.';
+  }
+  pintarIdea();
+  document.getElementById('concretar').addEventListener('click', () => { if (!tandas.length) return; sugPasos = tandas.shift(); pintarPasosIdea(); });
+
+  // ---------- Lista ----------
+  let lista = [
+    { t:'Pedir cajas en el súper', ok:true, h:[] }, { t:'Comprar cinta', ok:true, h:[] }, { t:'Avisar al dueño', ok:false, h:[] },
+    { t:'Embalar los libros', ok:false, h:[{ t:'Living', ok:true }, { t:'Estudio', ok:false }] },
+    { t:'Dar de baja el gas', ok:false, h:[] }, { t:'Cambiar la dirección en el banco', ok:false, h:[] },
+  ];
+  let escribiendoEn = -1;
+  const rL = document.getElementById('rLista');
+  function pintarLista(efecto) {
+    rL.innerHTML = lista.map((r, i) => `<div class="grp" data-i="${i}">
+      <div class="reng ${r.ok ? 'ok' : ''} ${efecto === 'p' + i ? 'pum' : ''} ${efecto === 'n' + i ? 'nuevo' : ''}">${ASA('asa-p')}<button class="box" data-b="${i}" aria-label="Tachar">✓</button><span class="tx" contenteditable="true">${r.t}</span>
+        <button class="mas" data-mas="${i}" aria-label="Agregar adentro">+</button><button class="x" data-x="${i}" aria-label="Quitar">×</button></div>
+      <div class="hijos">${r.h.map((c, j) => `<div class="reng ${c.ok ? 'ok' : ''} ${efecto === i + '-' + j ? 'nuevo' : ''} ${efecto === 'p' + i + '-' + j ? 'pum' : ''}" data-j="${j}">${ASA('asa-h')}<button class="box" data-b="${i}-${j}" aria-label="Tachar">✓</button><span class="tx" contenteditable="true">${c.t}</span><button class="x" data-x="${i}-${j}" aria-label="Quitar">×</button></div>`).join('')}${escribiendoEn === i ? `<div class="reng escribiendo nuevo"><span style="width:20px"></span><input class="inHijo" id="inHijo" placeholder="Adentro de “${r.t}”" enterkeyhint="done"></div>` : ''}</div>
+    </div>`).join('');
+    rL.querySelectorAll('[data-b]').forEach(b => b.addEventListener('click', () => {
+      const [i, j] = b.dataset.b.split('-').map(Number), r = lista[i];
+      if (j === undefined || isNaN(j)) { r.ok = !r.ok; r.h.forEach(c => c.ok = r.ok); pintarLista('p' + i); return; }
+      r.h[j].ok = !r.h[j].ok;
+      const todos = r.h.every(c => c.ok), antes = r.ok; r.ok = todos;
+      pintarLista(todos && !antes ? 'p' + i : 'p' + i + '-' + j);
+      if (todos && !antes) toast(`"${r.t}": completo. ¡Bien ahí!`);
+    }));
+    rL.querySelectorAll('[data-mas]').forEach(b => b.addEventListener('click', () => { escribiendoEn = escribiendoEn === +b.dataset.mas ? -1 : +b.dataset.mas; pintarLista(); document.getElementById('inHijo')?.focus(); }));
+    rL.querySelectorAll('[data-x]').forEach(b => b.addEventListener('click', () => {
+      const [i, j] = b.dataset.x.split('-').map(Number);
+      if (j === undefined || isNaN(j)) lista.splice(i, 1); else { lista[i].h.splice(j, 1); if (lista[i].h.length) lista[i].ok = lista[i].h.every(c => c.ok); }
+      escribiendoEn = -1; pintarLista();
+    }));
+    const inH = document.getElementById('inHijo');
+    if (inH) inH.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return; e.preventDefault();
+      if (!inH.value.trim()) { escribiendoEn = -1; pintarLista(); return; }
+      const r = lista[escribiendoEn]; r.h.push({ t:inH.value.trim(), ok:false }); r.ok = false;
+      const k = escribiendoEn; pintarLista(k + '-' + (r.h.length - 1)); document.getElementById('inHijo')?.focus();
+    });
+    rL.querySelectorAll('.hijos').forEach(h => ordenable(h, '.reng[data-j]', '.asa-h', () => {
+      const i = +h.closest('.grp').dataset.i; lista[i].h = [...h.querySelectorAll('.reng[data-j]')].map(x => lista[i].h[+x.dataset.j]); pintarLista();
+    }));
+    const prin = lista.length, hechos = lista.filter(r => r.ok).length, f = prin ? hechos / prin : 0;
+    document.getElementById('cuentaLista').textContent = `${hechos}/${prin}`;
+    document.getElementById('arco').setAttribute('stroke-dasharray', `${f * 163.4} 200`);
+    document.getElementById('heroeLista').classList.toggle('lleno', f === 1);
+    document.getElementById('cuentaLista').textContent = f === 1 ? '✓' : `${hechos}/${prin}`;
+    document.getElementById('animoLista').innerHTML = f === 1 ? '<b>¡Lista completa!</b> ¿Qué hacemos con ella?' : f >= .5 ? `<b>Más de la mitad.</b> Quedan ${prin - hechos}.` : hechos ? `<b>Arrancaste.</b> Van ${hechos}, quedan ${prin - hechos}.` : '<b>De a un renglón.</b>';
+  }
+  document.getElementById('lArch').addEventListener('click', () => toast('Archivada. La encontrás en Cajón › Archivadas.'));
+  document.getElementById('lReusar').addEventListener('click', () => { lista.forEach(r => { r.ok = false; r.h.forEach(c => c.ok = false); }); pintarLista(); toast('Lista lista para usar de nuevo.'); });
+  document.getElementById('lDejar').addEventListener('click', () => toast('Queda así, completa, en el cajón.'));
+  document.getElementById('tacharTodo')?.addEventListener('click', () => { ir('lista'); lista.forEach(r => { r.ok = true; r.h.forEach(c => c.ok = true); }); pintarLista('p0'); });
+  ordenable(rL, '.grp', '.asa-p', () => { lista = [...rL.querySelectorAll('.grp')].map(g => lista[+g.dataset.i]); escribiendoEn = -1; pintarLista(); });
+  pintarLista();
+
+  // ---------- Dictar pasos ----------
+  let pasos = [
+    { t:'Buscar el número de cliente', o:'voz' },
+    { t:'Preparar los papeles', o:'voz', grande:['Juntar el DNI', 'Buscar el contrato'] },
+    { t:'Tener a mano el último resumen', o:'ia' },
+    { t:'Anotar lo que te digan', o:'voz' },
+  ];
+  const masSug = [{ t:'Confirmar la dirección nueva antes de cortar', antesDe:'Anotar lo que te digan' }, { t:'Preguntar cuándo llega la tarjeta', antesDe:'Anotar lo que te digan' }, { t:'Dejar el teléfono cargado', antesDe:'Buscar el número de cliente' }];
+  const rD = document.getElementById('rDictar');
+  function pintarPasos(nuevos = []) {
+    rD.innerHTML = pasos.map((p, i) => `<div class="paso ${p.o === 'ia' ? 'sug' : ''} ${nuevos.includes(i) ? 'nuevo' : ''}" data-i="${i}">${ASA('asa-d')}<span class="n">${i + 1}</span>
+      <div class="cuerpo"><span class="tx" contenteditable="${p.o !== 'ia'}">${p.t}</span>${p.grande ? `<button class="partir" data-partir="${i}">✦ Parece grande · Partir</button>` : ''}</div>
+      ${p.o === 'voz' ? VOZ : p.o === 'ia' ? '<span class="ia-i">✦</span>' : ''}
+      ${p.o === 'ia' ? `<button class="sumar" data-sumar="${i}">Sumar</button>` : ''}<button class="x" data-x="${i}" aria-label="Quitar">×</button></div>`).join('');
+    rD.querySelectorAll('[data-x]').forEach(b => b.addEventListener('click', () => { pasos.splice(+b.dataset.x, 1); pintarPasos(); }));
+    rD.querySelectorAll('[data-sumar]').forEach(b => b.addEventListener('click', () => { pasos[+b.dataset.sumar].o = ''; pintarPasos([+b.dataset.sumar]); }));
+    rD.querySelectorAll('[data-partir]').forEach(b => b.addEventListener('click', () => {
+      const i = +b.dataset.partir, partes = pasos[i].grande.map(t => ({ t, o:'ia' }));
+      pasos.splice(i, 1, ...partes); pintarPasos(partes.map((_, k) => i + k));
+      nota.textContent = 'Entraron en color de sugerencia: confirmalos con Sumar o sacalos con la cruz.';
+    }));
+  }
+  ordenable(rD, '.paso', '.asa-d', () => { pasos = [...rD.querySelectorAll('.paso')].map(x => pasos[+x.dataset.i]); pintarPasos(); });
+  pintarPasos();
+  document.getElementById('dicho').addEventListener('click', e => {
+    const d = e.currentTarget; d.classList.toggle('abierto');
+    document.getElementById('dichoMas').textContent = d.classList.contains('abierto') ? 'Mostrar menos' : 'Ver todo lo que dijiste';
+  });
+  document.getElementById('otraSug').addEventListener('click', () => {
+    const s = masSug.shift();
+    if (!s) { toast('No se me ocurre otro que tenga sentido para esta tarea.'); return; }
+    let i = pasos.findIndex(p => p.t === s.antesDe); if (i < 0) i = pasos.length;
+    pasos.splice(i, 0, { t:s.t, o:'ia' }); pintarPasos([i]);
+    nota.textContent = 'La sugerencia entró donde corresponde en el procedimiento.';
+  });
+
+  // Agregar escribiendo o con el micrófono
+  const dictados = { idea:'Que se pueda desarmar para mandarla por correo', lista:'Desconectar la heladera el día antes', dictar:'Pedir que me manden el resumen por mail' };
+  function agregar(cual, texto, porVoz) {
     if (!texto.trim()) return;
-    datos[cual].push([texto.trim(), false, marca || '']); pintar(cual, datos[cual].length - 1);
+    if (cual === 'idea') { idea.push({ t:texto.trim(), subs:[], abre:[] }); pintarIdea('r' + (idea.length - 1)); }
+    if (cual === 'lista') { lista.push({ t:texto.trim(), ok:false, h:[] }); pintarLista('n' + (lista.length - 1)); }
+    if (cual === 'dictar') {
+      let i = pasos.findIndex(p => p.t === 'Anotar lo que te digan'); if (i < 0) i = pasos.length;
+      pasos.splice(i, 0, { t:texto.trim(), o:porVoz ? 'voz' : '' }); pintarPasos([i]);
+    }
   }
-  [['idea', 'inIdea', 'micIdea'], ['lista', 'inLista', 'micLista'], ['dictar', 'inDictar', 'micDictar']].forEach(([c, inp, mic]) => {
-    const i = document.getElementById(inp);
-    i.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); agregar(c, i.value, c === 'dictar' ? 'tuyo' : ''); i.value = ''; } });
+  [['idea', 'inIdea', null], ['lista', 'inLista', 'micLista'], ['dictar', 'inDictar', 'micDictar'], ['inbox', 'inInbox', null]].forEach(([c, inp, mic]) => {
+    const i = document.getElementById(inp), caja = i.closest('.agregar');
+    const confirmar = () => {
+      if (!i.value.trim()) return;
+      if (c === 'inbox') { toast(`Gracias. Con eso lo ordeno: "${i.value.trim()}".`); i.value = ''; caja.classList.remove('escribe'); return; }
+      agregar(c, i.value, false); i.value = ''; caja.classList.remove('escribe'); if (c === 'lista') i.focus();
+    };
+    i.addEventListener('input', () => caja.classList.toggle('escribe', !!i.value.trim()));
+    i.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); confirmar(); } });
+    caja.querySelector('.sumarIn').addEventListener('click', confirmar);
+    if (!mic) return;
     const m = document.getElementById(mic);
     m.addEventListener('click', () => {
       if (m.classList.contains('on')) return;
-      m.classList.add('on'); i.placeholder = 'Te escucho…';
-      setTimeout(() => { m.classList.remove('on'); i.placeholder = c === 'dictar' ? 'Agregar un paso' : 'Agregar un renglón'; agregar(c, dictados[c], c === 'dictar' ? 'tuyo' : ''); }, 1800);
+      m.classList.add('on'); const ph = i.placeholder; i.placeholder = 'Te escucho…';
+      setTimeout(() => { m.classList.remove('on'); i.placeholder = ph; agregar(c, dictados[c], true); }, 1800);
     });
   });
+  // Inbox
+  document.getElementById('ondasI').innerHTML = [6,12,8,14,9,5,11,7].map((h, i) => `<i style="height:${h}px;animation-delay:${-i * .07}s"></i>`).join('');
+  document.getElementById('audioI').addEventListener('click', e => { const a = e.currentTarget; a.classList.toggle('on'); a.querySelector('.play').textContent = a.classList.contains('on') ? '❚❚' : '▶'; });
+  document.querySelectorAll('#adivs .adiv').forEach(b => b.addEventListener('click', () => {
+    const cat = b.querySelector('small').textContent, t = b.querySelector('b').textContent;
+    toast(cat === 'Tarea' ? `Ahora es una tarea: "${t}". Falta elegir la hora.` : `Pasó a Ideas: "${t}".`);
+  }));
+  document.getElementById('archI').addEventListener('click', () => toast('Archivado. Se puede recuperar.'));
 
-  // Convertir
-  const hoja = document.getElementById('hoja'), velo = document.getElementById('velo'), toast = document.getElementById('toast');
+
+  // ---------- Revisión: editar los datos ----------
+  const DATOS = { dia:'Mañana', diaE:'viernes 20', hora:10, dura:30, lugar:'Banco', lugarE:'abre a las 9' };
+  const hhR = h => `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.round(h % 1 * 60)).padStart(2, '0')}`;
+  function pintarDatos(q) {
+    document.getElementById('vDia').textContent = DATOS.dia; document.getElementById('eDia').textContent = DATOS.diaE;
+    document.getElementById('vHora').textContent = hhR(DATOS.hora); document.getElementById('vDura').textContent = DATOS.dura < 60 ? DATOS.dura + ' min' : (DATOS.dura / 60 + ' h').replace('.5 h', ' h 30');
+    document.getElementById('vLugar').textContent = DATOS.lugar; document.getElementById('eLugar').textContent = DATOS.lugarE;
+    if (q) { const d = document.querySelector(`[data-dato="${q}"]`); d.classList.remove('flash'); void d.offsetWidth; d.classList.add('flash'); }
+  }
+  const chips = (arr, act, attr) => `<div class="chipsH">${arr.map(x => `<button data-${attr}="${x}" aria-pressed="${x === act}">${x}</button>`).join('')}</div>`;
+  document.querySelectorAll('[data-dato]').forEach(b => b.addEventListener('click', () => {
+    const q = b.dataset.dato;
+    if (q === 'dia') hoja.innerHTML = `<h4>¿Cuándo?</h4>${chips(['Hoy', 'Mañana', 'Sábado', 'Lunes'], DATOS.dia, 'v')}<p style="margin-top:10px">Para otro día, más abajo aparece el calendario.</p>`;
+    if (q === 'hora') hoja.innerHTML = `<h4>¿A qué hora?</h4><div class="filaH"><span><b id="hV">${hhR(DATOS.hora)}</b></span><span class="stp"><button data-h="-0.25" aria-label="Más temprano">−</button><button data-h="0.25" aria-label="Más tarde">+</button></span></div><button class="btnH" id="hOk">Listo</button>`;
+    if (q === 'dura') hoja.innerHTML = `<h4>¿Cuánto dura?</h4>${chips(['15 min', '30 min', '45 min', '1 h', '1 h 30'], DATOS.dura < 60 ? DATOS.dura + ' min' : '', 'v')}`;
+    if (q === 'lugar') hoja.innerHTML = `<h4>¿Dónde?</h4><input class="inH" value="${DATOS.lugar}" id="lV"><div class="chipsH"><button data-v="Banco · sucursal centro">Banco · sucursal centro</button><button data-v="Banco · cerca de casa">Banco · cerca de casa</button><button data-v="Sin lugar">Sin lugar</button></div><button class="btnH" id="lOk">Listo</button>`;
+    hoja.classList.add('on'); velo.classList.add('on');
+    hoja.querySelectorAll('.chipsH [data-v]').forEach(c => c.addEventListener('click', () => {
+      const v = c.dataset.v;
+      if (q === 'dia') { DATOS.dia = v; DATOS.diaE = ({ Hoy:'jueves 19', Mañana:'viernes 20', Sábado:'sábado 21', Lunes:'lunes 23' })[v]; }
+      if (q === 'dura') DATOS.dura = ({ '15 min':15, '30 min':30, '45 min':45, '1 h':60, '1 h 30':90 })[v];
+      if (q === 'lugar') { DATOS.lugar = v === 'Sin lugar' ? '—' : v.split(' · ')[0]; DATOS.lugarE = v === 'Sin lugar' ? 'sin lugar' : v.split(' · ')[1]; }
+      cerrarHoja(); pintarDatos(q);
+    }));
+    let h = DATOS.hora;
+    hoja.querySelectorAll('[data-h]').forEach(c => c.addEventListener('click', () => { h = Math.max(6, Math.min(23, h + +c.dataset.h)); document.getElementById('hV').textContent = hhR(h); }));
+    document.getElementById('hOk')?.addEventListener('click', () => { DATOS.hora = h; cerrarHoja(); pintarDatos('hora'); });
+    document.getElementById('lOk')?.addEventListener('click', () => { DATOS.lugar = document.getElementById('lV').value || '—'; cerrarHoja(); pintarDatos('lugar'); });
+  }));
+  document.getElementById('abrirEsc').addEventListener('click', () => { const e = document.getElementById('escribirPaso'); e.classList.toggle('on'); if (e.classList.contains('on')) document.getElementById('inDictar').focus(); });
+
+  // ---------- Convertir ----------
+  const hoja = document.getElementById('hoja'), velo = document.getElementById('velo');
   const op = (cat, b, s, ia) => `<button class="opcion ${ia ? 'ia' : ''}" data-res="${b}" style="--cat:${cat}"><i></i><span><b>${b}</b><small>${s}</small></span></button>`;
   const hojas = {
-    idea: `<h4>Convertir</h4><p>¿En qué lo convertimos? Lo que escribiste viaja entero.</p>
+    idea: `<h4>Convertir</h4><p>¿En qué la convertimos? Lo que escribiste viaja entero.</p>
       ${op('#4E6B55', 'Que lo ordene la app', 'Lee el texto y los renglones y propone qué es', true)}
-      ${op('#7FA383', 'Tarea', 'Los renglones pasan a ser pasos')}${op('#C9A35E', 'Cita', 'Te pide día y hora')}
-      ${op('#8EA3B8', 'Proyecto', 'Los renglones pasan a ser etapas')}${op('#9C92B4', 'Idea', 'Queda en Ideas')}${op(color, 'Lista', 'Queda en Listas')}`,
-    lista: `<h4>Convertir la lista</h4><p>6 renglones. ¿Cómo la pasamos a acción?</p>
-      ${op('#7FA383', 'Una tarea con estos pasos', 'Los 4 sin tachar van a la ruleta')}
-      ${op('#8EA3B8', 'Un proyecto con estas etapas', 'Cada renglón, una etapa')}
-      ${op('#4E6B55', 'Una acción por renglón', 'Cada renglón se ordena por separado', true)}`,
+      ${op('#7FA383', 'Tarea', 'Los pasos sumados van a la ruleta')}${op('#C9A35E', 'Cita', 'Te pide día y hora')}
+      ${op('#8EA3B8', 'Proyecto', 'Los renglones pasan a ser etapas')}${op('#9DB5AC', 'Lista', 'Queda en Listas')}
+      ${op('#4E6B55', 'Una acción por renglón', 'Cada renglón se ordena por separado')}`,
+    lista: `<h4>Convertir la lista</h4><p>¿Cómo la pasamos a acción?</p>
+      ${op('#7FA383', 'Una tarea con estos pasos', 'Lo que no está tachado va a la ruleta; lo de adentro, como subpasos')}
+      ${op('#8EA3B8', 'Un proyecto con estas etapas', 'Cada renglón, una etapa; lo de adentro, sus tareas')}
+      ${op('#4E6B55', 'Una acción por renglón', 'Cada renglón se ordena por separado: tarea, cita…', true)}`,
   };
   const resultados = {
-    'Que lo ordene la app':'La app propone: Tarea "Probar la lámpara en cartón". Revisalo antes de guardar.',
-    'Tarea':'Ahora es una tarea con 3 pasos. Falta elegir la hora.', 'Cita':'Ahora es una cita. Elegí día y hora.',
-    'Proyecto':'Ahora es un proyecto con 3 etapas. Elegí las fechas.', 'Idea':'Queda en Ideas.', 'Lista':'Queda en Listas.',
-    'Una tarea con estos pasos':'Tarea "Para la mudanza" con 4 pasos. Falta elegir la hora.',
-    'Un proyecto con estas etapas':'Proyecto "Para la mudanza" con 6 etapas. Elegí las fechas.',
-    'Una acción por renglón':'Se ordenan los 4 renglones sin tachar: vas a revisar cada uno.',
+    'Que lo ordene la app':'La app propone: Proyecto "Lámpara de papel". Revisalo antes de guardar.',
+    'Tarea':'Ahora es una tarea con esos pasos. Falta elegir la hora.', 'Cita':'Ahora es una cita. Elegí día y hora.',
+    'Proyecto':'Ahora es un proyecto con esas etapas. Elegí las fechas.', 'Lista':'Queda en Listas.',
+    'Una acción por renglón':'Se ordenan los renglones por separado: vas a revisar cada uno antes de guardar.',
+    'Una tarea con estos pasos':'Tarea "Para la mudanza" con sus pasos. Falta elegir la hora.',
+    'Un proyecto con estas etapas':'Proyecto "Para la mudanza" con sus etapas. Elegí las fechas.',
   };
   function cerrarHoja() { hoja.classList.remove('on'); velo.classList.remove('on'); }
   velo.addEventListener('click', cerrarHoja);
   document.querySelectorAll('[data-convertir]').forEach(b => b.addEventListener('click', () => {
     hoja.innerHTML = hojas[b.dataset.convertir]; hoja.classList.add('on'); velo.classList.add('on');
-    hoja.querySelectorAll('.opcion').forEach(o => o.addEventListener('click', () => {
-      cerrarHoja(); toast.textContent = resultados[o.dataset.res]; toast.classList.add('on');
-      setTimeout(() => toast.classList.remove('on'), 2800);
-    }));
-  }));
-
-  document.querySelectorAll('[data-opt]').forEach(g => g.addEventListener('click', e => {
-    const b = e.target.closest('.chip'); if (!b) return;
-    g.querySelectorAll('.chip').forEach(x => x.setAttribute('aria-pressed', x === b));
-    if (g.dataset.opt === 'sug') { sug = b.dataset.v; pintar('dictar'); ir('dictar'); }
-    if (g.dataset.opt === 'color') { color = b.dataset.v; scr.style.setProperty('--lista', color); }
+    hoja.querySelectorAll('.opcion').forEach(o => o.addEventListener('click', () => { cerrarHoja(); toast(resultados[o.dataset.res]); }));
   }));
 
   document.getElementById('form').addEventListener('submit', async e => {
     e.preventDefault();
-    const t = `Maqueta F\n- Color de listas: ${color}\n- Pasos dictados: ${sug === 'no' ? 'solo los míos' : 'los míos + sugerencias aparte'}\n- Comentarios: ${document.getElementById('coment').value || '(sin comentarios)'}`;
+    const t = `Maqueta F v6\n- Comentarios: ${document.getElementById('coment').value || '(sin comentarios)'}`;
     const r = document.getElementById('resumen'); r.textContent = t;
     try { await navigator.clipboard.writeText(t); r.textContent = t + '\n\nCopiado. Pegalo en Claude Code.'; } catch { r.textContent = t + '\n\nNo se pudo copiar solo: seleccioná el texto y copialo.'; }
   });

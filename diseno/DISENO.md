@@ -146,3 +146,125 @@ Paleta **Salvia y crema** de día y **Bosque** de noche. Nunca rojo: los avisos 
 "Armar las etapas" · "Ordenar".
 
 **Regla:** la interfaz nunca nombra a la IA que está detrás (Claude). Solo Ajustes la menciona, porque ahí se carga la clave.
+
+---
+
+## Ajustes del 2026-11-19 (maquetas D, E y F aprobadas)
+
+Las maquetas [`maqueta-d.html`](maqueta-d.html), [`maqueta-e.html`](maqueta-e.html) y [`maqueta-f.html`](maqueta-f.html) muestran solo lo
+último que se revisó; lo aprobado antes se describe acá. **Nada de degradés**: colores lisos de la paleta.
+
+### Colores nuevos
+- **Dorado de la importante:** borde `#D9B26E`, fondo `#F1E3C2`, texto `#7A5E22`.
+- **Lista:** salvia agua `#9DB5AC` (tinta `#5E8378`).
+- **Turnos de trabajo:** mañana salvia agua `#5E8378`, tarde azul `#6E86A0`.
+
+### Inicio
+- **Arriba:** a la izquierda la personita (**Vos**), a la derecha el engranaje (**Ajustes**).
+- **Halo imán:** al apoyar el dedo en cualquier lugar, el halo se estira hacia el dedo sin dejar de respirar (dos círculos
+  unidos por sus tangentes). El círculo no se mueve.
+- **Cuatro medias pastillas** asoman desde los bordes: izquierda calendario, derecha listado, arriba cajón, abajo todo lo que viene.
+  Al apoyar el dedo entran enteras con ícono y nombre. Cuando el halo toca una, se enciende (tic de vibración); al soltar se abre.
+- Tocar el círculo: hablar. Mantenerlo apretado: escribir.
+- **Terminé** en la primera tarjeta del fichero cuando hay algo en curso ("Ya terminó" en una cita), y también adentro de la tarjeta abierta.
+- **La importante en el fichero:** borde dorado si está entre las tres próximas (suave y firme). En firme, si hay otra antes,
+  asoma detrás del fichero, a la izquierda, una **solapa dorada** "★ 11:00 · título". No hay renglón fijo arriba.
+
+### Vos (la personita)
+- Foto (tuya o cualquiera; sin foto, la inicial) y nombre (va en los avisos a tu persona).
+- **Tu día:** a qué hora te levantás y te acostás; cuándo rendís más (mañana, tarde o noche) para ubicar lo pesado.
+- **Lo que te importa:** Objetivos (pantalla propia) y **Con la importante: Suave / Firme**.
+- **Tu semana:** **Horarios fijos**. Minutos de foco.
+- **Tu gente:** persona de accountability y **Los tuyos**.
+
+### Ajustes (el engranaje)
+Apariencia, sonido del aviso, vibraciones, casa y ciudad, clave de Claude, calendario y copia de seguridad, diagnóstico.
+
+### Horarios fijos
+- Lo ocupado: ahí la app no propone nada. Si el usuario carga algo ahí, lo deja.
+- **Trabajo:** turno mañana (06:00–14:00) y turno tarde (14:00–22:00), editables; qué días (L a D); **días distintos**
+  (tocando un día: "entrás/salís X antes o después", vale para los dos turnos; queda un puntito); **Alterno cada semana** (interruptor estándar).
+- Otros fijos (por ejemplo, un deporte los sábados de 10:00 a 12:30) y "+ Agregar un horario fijo".
+
+### Esta semana (domingos 20:00, dentro de Preparar mañana; también desde Horarios fijos)
+- "¿Qué te toca esta semana?" y las fechas, con aire.
+- Renglón **Turno** con selector chico Mañana | Tarde (si alterna, ya viene elegido; debajo lo dice).
+- Los 7 días como **letras con número**: fondo blanco, borde y letra del color del turno; libres con borde punteado; puntito dorado si se cambió.
+  Tocando uno se abre debajo: Mañana / Tarde / Libre y Entro / Salgo (renglones bajos con − y +). Cambia solo ese día.
+- "Contame la semana" por voz.
+
+### Repetir
+- Se dicta ("contámelo como te salga") o se elige: Todos los días · Algunos días (L a D) · Cada tanto (cada N días o semanas:
+  "la hacés una vez y la siguiente es N después") · Una vez por mes (el día N).
+- **La hora siempre** (y lo que dura). Hasta cuándo: Siempre · Unos meses (N) · Hasta una fecha (pastillita gris con la fecha
+  que abre un calendario chico) · Unas veces (N).
+- Controles − y + del stepper de iOS. Renglón "Cada 2 semanas" con letra del sistema y número de ancho fijo.
+- Abajo, 6 semanas de calendario con los días que se encienden y el total de veces.
+
+### Widgets
+- **Lo que viene:** franja de color de la categoría arriba con la etiqueta en blanco ("TAREA · 09:45"), flechitas ‹ › y puntitos
+  para pasar a lo siguiente y volver. Título en un renglón (si es largo, la app arma un **título corto**; el completo queda en la tarea).
+  Abajo: la cuenta en una columna de ancho fijo (desde 1 h "1:12 h", desde 6 h la hora) y a la derecha los próximos pasos o, si no hay, lugar y notas.
+  Chico, mediano y grande (con "Después"). **Borde dorado** cuando lo que viene es la importante.
+- **Hablar:** chico, solo el micrófono centrado; redondo en la pantalla de bloqueo.
+- **Escribir:** mediano bajo, un renglón "Contame en qué estás…"; rectangular en la pantalla de bloqueo. Abre la app con el teclado listo.
+  (iOS no deja que la app haga transparente el fondo del widget.)
+
+### Vibraciones
+Empiezo: un golpe firme. Ahora no: suave que crece mientras se sostiene y un golpe al cerrar. Terminé: dos toquecitos.
+Tachar un paso: un tic leve. Halo en una pastilla: un tic. Dictado: un tic al empezar y otro al terminar. También en silencio; se apaga en Ajustes.
+
+### Preparar mañana (aviso a las 20:00; si no se abre, espera esa noche al abrir la app)
+1. **Mañana, viernes 20:** un renglón de ánimo que cambia según cuánto hay y la línea del día (salidas, citas, tareas, turnos).
+2. **¿Qué dejamos listo?:** primero la tarea (chica) y después lo que hay que llevar o tener listo. Cada cosa: **Listo** o
+   **Mañana** (avisa media hora antes de salir o de la tarea). Orden por hora.
+3. **La importante de mañana:** una sola; las de los objetivos primero. Puede sugerir un mejor horario, sin consecuencia si no se acepta.
+   En firme hay que elegir una para poder cerrar.
+4. **Mañana está armado.** El brote aprobado de la celebración (sin "Listo."), la primera cosa (con lo que hay que llevar) y la importante.
+
+### La importante: suave o firme (se elige en Vos)
+- **Suave:** su ★ y borde dorado. La primera vez que se abre la app en el día baja una tarjetita dorada "Hoy, lo importante" que se va sola.
+- **Firme:**
+  - La primera vez del día: "Buen día. Hoy lo importante es:" con su tarjeta. Si hay un hueco libre de verdad antes (respetando
+    horarios fijos y lo cargado), ofrece adelantarla; si no, solo la recuerda.
+  - "Ahora no" se sostiene **4 s** (en vez de 2) con vibración que crece. Después la transición de siempre y "¿Cuándo, entonces?"
+    con la etiqueta ★ La importante y borde dorado; propone solo horas de hoy y avisa a la persona de accountability.
+  - La app nunca propone otra cosa en el horario de la importante.
+- **Cargar algo encima** (igual en los dos modos): "Ese horario es de la importante. Te propongo las 12:30, apenas termina." · Usar 12:30 · Ponerla igual (la importante se corre).
+
+### Objetivos
+- Hasta 3, con nombre editable y minutos de foco de la semana. "Estar presente con los míos" lleva la gente.
+- Lo demás se ordena solo en áreas: Casa, Cuidado personal, Pareja, Trámites y papeles, Trabajo, Tiempo libre.
+- "Lo último que ordenó": tocando la etiqueta se corrige y la app aprende para lo parecido.
+
+### Empujoncito (si pasan un par de días sin nada de un objetivo)
+Pantalla propia, fondo liso. Ícono: **arco que avanza**. "¿Le damos un empujoncito a lo tuyo?", tarjeta con barras de la semana,
+un comentario cálido sobre lo último que hizo y dos sugerencias con **Agendar**. "Ahora no" · "Avisame menos seguido".
+
+### Los tuyos (estar presente)
+- Personas elegidas de Contactos, con cada cuánto querés hablar. La app no puede leer llamadas ni WhatsApp.
+- Círculos: con foto, la foto; sin foto, la letra y la circunferencia en el color. El aro se llena al hablar, se vacía con los días
+  y gira despacio; vacío = "ya toca". Leyenda chica debajo.
+- Al elegir a alguien: su **hilo** (lo que te contó, en qué quedaron), **¿Cómo?** Llamada · Audio · Mensaje · En persona,
+  **¿De qué querés hablar?** (con temas sugeridos del hilo), cuándo y **Agendar**. Nunca sugiere cosas de proyectos ni tareas.
+- Al terminar (o con "Ya hablé"), pregunta "¿Qué te contaron? ¿En qué quedaron?" y lo guarda en el hilo.
+
+### Cajón
+Orden: **Listas** ("pongámoslo en papel"), **Ideas** ("cosas para pelotear"), **Inbox** ("dame más data").
+
+- **Lista:** título, renglones con círculo para tachar, **+** en cada renglón para agregar adentro (un nivel), tachar todo lo de
+  adentro tacha el de arriba, rayitas para mover. Intro = "Siguiente" (deja el teclado abierto) y botón Sumar. Anillo de progreso con
+  frase. Al completarse: Archivarla · Usarla de nuevo · Dejarla así. No cuenta minutos de foco. Convertir: una tarea con estos pasos ·
+  un proyecto con estas etapas · una acción por renglón.
+- **Idea:** cabecera lila lisa con el tema, título editable, tu audio y lo que dijiste como cita. **Lo que la mueve:** una sola lista;
+  cada renglón con la marca de voz (lo dictaste) o ✦ (sugerido); "✦ abrir" agrega cosas más chicas adentro (Sumar o ×); todo se
+  reordena. Sumar un renglón escribiendo (Intro o Sumar, sin micrófono). "¿Vamos con algunos pasos?" propone pasos en un recuadro; los
+  sumados entran al final de la lista y también se abren. Convertir.
+- **Inbox:** cabecera arena, lo que dijiste, tu audio y "se archiva solo en N días". La app pregunta "No me quedó claro. ¿Qué es…?" con
+  2–3 opciones (categoría y título); "O contame más"; Convertir; Archivar. "Convertir" reemplaza a "Ordenar": primero "Que lo ordene la app", después elegir.
+
+### Revisión al dictar
+"Recién dictaste", lo dicho en dos renglones (se abre al tocar), el título en verde liso y **cuatro tarjetas grandes: Cuándo, Hora,
+Dura, Dónde**, que se tocan para cambiar. Pasos compactos: marca de voz o ✦, sugeridos con Sumar, "✦ Parece grande · Partir" (los pasos
+más chicos entran en la lista como sugeridos), × siempre, rayitas para mover. Debajo: "+ Escribir un paso" y "✦ Sugerime uno" (entra
+donde corresponde). Si el usuario dicta pasos, la IA usa exactamente esos.
