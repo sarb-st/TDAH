@@ -118,7 +118,10 @@ enum Guardado {
         for i in r.indices where r[i].tipo == "tarea" || r[i].tipo == "cita" {
             // "Casa" es la dirección de Ajustes: no se busca en Mapas.
             if Casa.es(r[i].lugar) || Casa.es(r[i].direccion) {
-                Casa.completar(lugar: &r[i].lugar, direccion: &r[i].direccion)
+                var lugar = r[i].lugar, direccion = r[i].direccion
+                Casa.completar(lugar: &lugar, direccion: &direccion)
+                r[i].lugar = lugar
+                r[i].direccion = direccion
                 continue
             }
             let consulta = (r[i].direccion.isEmpty ? r[i].lugar : r[i].direccion).trimmingCharacters(in: .whitespaces)
