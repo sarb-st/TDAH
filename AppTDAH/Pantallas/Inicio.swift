@@ -236,15 +236,15 @@ struct InicioView: View {
     private func posicion(_ d: Direccion, centro: CGPoint, tamano: CGSize, tocando: Bool) -> CGPoint {
         // En reposo asoman apenas desde el borde; al apoyar el dedo entran enteras.
         switch d {
-        case .izquierda: CGPoint(x: tocando ? 32 : 2, y: centro.y)
-        case .derecha: CGPoint(x: tamano.width - (tocando ? 32 : 2), y: centro.y)
-        case .arriba: CGPoint(x: centro.x, y: tocando ? 80 : 52)
+        case .izquierda: return CGPoint(x: tocando ? 32 : 2, y: centro.y)
+        case .derecha: return CGPoint(x: tamano.width - (tocando ? 32 : 2), y: centro.y)
+        case .arriba: return CGPoint(x: centro.x, y: tocando ? 80 : 52)
         case .abajo:
             // Asoma por encima de las tarjetas (la mitad queda detrás) y, al apoyar el dedo, sube entera con aire.
             // Si asoma la solapa dorada de la importante, se corre por encima de ella.
             let techo = tareas.isEmpty ? tamano.height : tamano.height - 10 - altoFichero
             let solapa: CGFloat = haySolapa ? 30 : 0
-            CGPoint(x: centro.x, y: techo - solapa - (tocando ? 21 + 16 : 0))
+            return CGPoint(x: centro.x, y: techo - solapa - (tocando ? 21 + 16 : 0))
         }
     }
 
