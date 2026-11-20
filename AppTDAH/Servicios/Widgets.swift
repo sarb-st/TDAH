@@ -24,7 +24,7 @@ enum Widgets {
         let notas = t.notas.trimmingCharacters(in: .whitespacesAndNewlines)
         var i = LoQueViene.Item(titulo: t.titulo, categoria: t.categoria.rawValue, inicio: inicio, fin: fin,
                                 enCurso: t.estado == .enCurso, salida: t.salida,
-                                lugar: t.lugar, notas: notas.count > 140 ? String(notas.prefix(140)) + "…" : notas)
+                                lugar: t.lugar.isEmpty ? t.direccion : t.lugar, notas: notas.count > 140 ? String(notas.prefix(140)) + "…" : notas)
         i.tituloCorto = t.tituloCorto.isEmpty ? nil : t.tituloCorto
         let pendientes = t.pasosOrdenados.filter { !$0.hecho }.map(\.texto)
         i.pasos = pendientes.isEmpty ? nil : Array(pendientes.prefix(5))

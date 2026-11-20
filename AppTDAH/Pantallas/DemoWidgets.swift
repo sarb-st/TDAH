@@ -29,6 +29,21 @@ struct DemoWidgetsView: View {
         ])
     }
 
+    /// El grande con pasos, lugar y nota, y varias cosas después.
+    private var grande: LoQueViene {
+        LoQueViene(items: [
+            .init(titulo: "Cocinar para congelar", categoria: "tarea", inicio: ahora.addingTimeInterval(506),
+                  fin: ahora.addingTimeInterval(506 + 60 * 60), lugar: "Casa", notas: "Sacar el freezer a las 10",
+                  pasos: ["Milanesas", "Nuggets", "Croquetas de arroz"]),
+            .init(titulo: "Facturas veterinaria al seguro", categoria: "tarea", inicio: ahora.addingTimeInterval(74 * 60),
+                  fin: ahora.addingTimeInterval(104 * 60)),
+            .init(titulo: "Chequear respuesta de la asociación", categoria: "tarea", inicio: ahora.addingTimeInterval(150 * 60),
+                  fin: ahora.addingTimeInterval(180 * 60), importante: true),
+            .init(titulo: "Dentista", categoria: "cita", inicio: ahora.addingTimeInterval(300 * 60),
+                  fin: ahora.addingTimeInterval(345 * 60)),
+        ])
+    }
+
     private var cita: LoQueViene {
         LoQueViene(items: [
             .init(titulo: "Dentista", categoria: "cita", inicio: ahora.addingTimeInterval(80 * 60),
@@ -46,7 +61,8 @@ struct DemoWidgetsView: View {
                 }
                 marco(VistaEscribirWidget(familia: .systemMedium), ancho: 330, alto: 158, c: c)
                 marco(VistaLoQueVieneWidget(datos: tarea, fecha: ahora, familia: .systemMedium, indice: 0), ancho: 330, alto: 158, c: c, margen: false)
-                marco(VistaLoQueVieneWidget(datos: proyecto, fecha: ahora, familia: .systemLarge, indice: 0), ancho: 330, alto: 330, c: c, margen: false)
+                marco(VistaLoQueVieneWidget(datos: grande, fecha: ahora, familia: .systemLarge, indice: 0), ancho: 345, alto: 362, c: c, margen: false)
+                marco(VistaLoQueVieneWidget(datos: proyecto, fecha: ahora, familia: .systemLarge, indice: 0), ancho: 345, alto: 362, c: c, margen: false)
                 HStack(spacing: 12) {
                     bloqueo(VistaLoQueVieneWidget(datos: cita, fecha: ahora, familia: .accessoryRectangular), ancho: 170, alto: 72)
                     bloqueo(VistaCapturaWidget(familia: .accessoryCircular), ancho: 72, alto: 72)

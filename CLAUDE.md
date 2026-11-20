@@ -105,7 +105,8 @@ Un ajuste que regula cuánto cuesta decir "Ahora no". Existe porque el cerebro s
 - **Idiomas:** se dicta en español, pero el usuario mezcla palabras en alemán e inglés. El mismo audio se reconoce a la vez en
   español y en alemán; la IA toma el sentido del español y la escritura de calles, locales y términos alemanes del alemán.
   Después, los lugares y direcciones se buscan en Apple Maps (cerca del usuario) y se corrigen con el nombre real.
-- **Escribir en vez de dictar:** "o escribilo" debajo de la pista de Inicio. Lo escrito se ordena igual que el dictado;
+- **Escribir en vez de dictar:** "o escribilo" debajo de la pista de Inicio. Esa pantalla es solo para escribir (sin micrófono);
+  el teclado se baja tocando afuera o arrastrando hacia abajo. Lo escrito se ordena igual que el dictado;
   ahí mismo está "Cargar a mano" (pregunta si es tarea, cita, proyecto o idea).
 - **Notas:** la IA solo pone en notas lo que el usuario pidió recordar o llevar; lo que no entiende va al Inbox.
 - **La interfaz nunca nombra a la IA** (Claude): los botones dicen cosas como "Armar las etapas" u "Ordenar". Solo Ajustes la nombra.
@@ -117,11 +118,11 @@ Un ajuste que regula cuánto cuesta decir "Ahora no". Existe porque el cerebro s
 
 ### Pantalla principal: "la una cosa"
 - En el centro, el círculo que respira es el **micrófono**.
-- Abajo, un **fichero** con lo próximo (slot o cita) y su countdown; las dos siguientes asoman debajo. Un toque lo despliega y aparece **"Ver todo"** (abre el listado); a los pocos segundos vuelve solo.
+- Abajo, un **fichero** con lo próximo (slot o cita) y su countdown; las dos siguientes asoman debajo. Un toque lo despliega (las tres); desplegado, tocar una la abre; a los pocos segundos vuelve solo.
 - En la primera tarjeta se ven el **lugar** y las **notas** de la tarea (qué llevar, qué no olvidar).
 - Arriba: **Vos** (la personita) a la izquierda y **Ajustes** (el engranaje) a la derecha. Apoyando el dedo en la pantalla,
   el halo se estira hacia el dedo (halo imán) y cuatro medias pastillas abren **calendario** (izquierda), **listado** (derecha),
-  **cajón** (arriba: listas, ideas e inbox) y **todo lo que viene** (abajo). Detalle en `diseno/DISENO.md`.
+  **cajón** (arriba: listas, ideas e inbox) y **ver todo** (abajo: asoma por encima de las tarjetas y abre el listado en Hoy). Detalle en `diseno/DISENO.md`.
   - **Listado** con pestañas: Hoy (por defecto), Tareas, Citas y Proyectos. En Hoy: "Hecho hoy" arriba (plegable y más tenue), una línea "Ahora" adonde baja solo al abrir, lo que falta elegir hora y lo que viene. El "+" de Hoy pregunta qué cargar; en las otras pestañas carga esa categoría. Tocando una tarea se ve su detalle, se edita, se archiva o se borra.
   - **Calendario** con franjas horarias, colores por categoría y el rastro rayado de los slots cerrados.
 - **Colores por categoría** (tarea, cita, proyecto, idea, inbox): ver `diseno/DISENO.md`.
@@ -142,7 +143,7 @@ Cosas de corto plazo, que se terminan en el día o en una o dos sesiones. Ejempl
   - La IA decide sola si la tarea necesita desglose.
   - Botón para desglosar más, **por paso** (no toda la lista), hasta **3 niveles** de profundidad. El tope evita que desglosar se vuelva una forma de no arrancar.
 - **Horario del lugar.** Si la tarea depende de que algo esté abierto (llamar al banco, ir a una oficina), la IA estima el horario de atención, el usuario lo confirma o corrige una vez, y la app lo recuerda. Las horas propuestas siempre lo respetan.
-- **Lugar, dirección y notas.** Opcionales y distintos de los pasos. La dirección se abre en Mapas. Al escribir el lugar, Mapas **sugiere lugares y direcciones** (cerca de donde estás o de tu ciudad) y corrige errores de tipeo.
+- **Lugar, dirección y notas.** Opcionales y distintos de los pasos. La dirección se abre en Mapas. "Casa" toma la dirección cargada en Ajustes (el viaje se calcula desde donde estés). Al escribir el lugar, Mapas **sugiere lugares y direcciones** (cerca de donde estás o de tu ciudad) y corrige errores de tipeo.
 - **Slot.** Cubre la tarea entera, con duración. Adentro el usuario va tachando pasos en una ruleta.
 - **Cierre.** Terminé / necesito más / paro por hoy (con nueva hora obligatoria). Ver 2.4.
 - **Recurrencia.** Para tareas que se repiten (regar plantas, surtido semanal).
@@ -300,7 +301,7 @@ Sin una Mac al lado no se ven los errores en el momento. Estas reglas lo compens
 - [ ] **Nombre definitivo de la app** (provisorio: AppTDAH).
 - [ ] **Logo e ícono** para la pantalla de inicio del iPhone.
 - [ ] **Pantalla de carga** con animación al abrir la app.
-- [ ] **Revisar el micrófono**: el usuario lo nota "medio raro" (2026-11-15). Ver si el toque largo (abre escribir) o el corte por silencio confunden.
+- [ ] **Revisar el micrófono**: el usuario lo nota "medio raro" (2026-11-15). En la calle no arrancaba (2026-11-20): ahora se arma de cero en cada dictado, acepta Bluetooth, usa el filtro de voz de Apple y el corte por silencio mira las palabras, no el volumen. Si vuelve a fallar, el error exacto queda en Diagnóstico.
 - [x] **Tanda grande del 2026-11-16 y maquetas D, E y F** (escritas el 2026-11-19): trayecto en auto, viaje bloqueado en el
   calendario, Preparar mañana a las 20, avisos urgentes, micrófono que reintenta, tus propios pasos, revisión al dictar,
   Inicio con halo imán, Vos, horarios fijos y esta semana, objetivos y áreas, la importante (suave o firme), empujoncito,

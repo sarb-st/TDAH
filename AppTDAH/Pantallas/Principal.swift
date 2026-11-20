@@ -149,6 +149,9 @@ struct DecidirView: View {
                 let rellenoNo = enBorde ? sosten : 0
                 let relleno = max(rellenoArriba, rellenoNo)
                 let colorRelleno = rellenoNo > rellenoArriba ? paleta.ahoraNo : paleta.energia
+                // Primero se pinta el círculo (el primer cuarto del gesto) y recién después el color sale a la pantalla.
+                let pintado = min(1, relleno / 0.25)
+                let expansion = max(0, (relleno - 0.2) / 0.8)
                 let radioMax = hypot(geo.size.width, alto) * 1.15
                 ZStack {
                     LienzoCirculo {
@@ -177,22 +180,26 @@ struct DecidirView: View {
                     // La pantalla se llena de color desde el círculo.
                     Circle()
                         .fill(colorRelleno.color)
-                        .frame(width: radioMax * 2 * relleno, height: radioMax * 2 * relleno)
+                        .frame(width: radioMax * 2 * expansion, height: radioMax * 2 * expansion)
                         .blur(radius: 24)
                         .position(x: centro.x + arrastre.width, y: centro.y + arrastre.height)
-                        .opacity(relleno > 0.001 ? 1 : 0)
+                        .opacity(expansion > 0.001 ? 1 : 0)
                         .allowsHitTesting(false)
 
-                    CirculoQueRespira(halo: paleta.halo, fondo: paleta.fondo,
-                                      intensidad: enBorde ? 0.3 + 0.7 * sosten : bajada * 0.3,
-                                      interior: 1 - relleno * 1.25) {
+                    // Mientras se pinta, el halo toma el mismo color y el borde claro de adentro se apaga:
+                    // lleno, ya no se nota la circunferencia.
+                    CirculoQueRespira(halo: paleta.halo.mezcla(colorRelleno, pintado), fondo: paleta.fondo,
+                                      intensidad: (enBorde ? 0.3 + 0.7 * sosten : bajada * 0.3) * (1 - pintado),
+                                      interior: 1 - pintado) {
                         VStack(spacing: 10) {
                             Image(systemName: "chevron.up")
                             Image(systemName: "chevron.down")
                         }
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundStyle(paleta.primario.color)
-                        .opacity(1 - max(rellenoArriba * 2, bajada))
+                        .opacity(max(0, 1 - max(pintado * 1.6, bajada)))
+                        .frame(width: Medidas.circulo, height: Medidas.circulo)
+                        .background(Circle().fill(colorRelleno.color).padding(-6).opacity(pintado))
                     }
                     .contentShape(Circle())
                     .gesture(DragGesture(minimumDistance: 0, coordinateSpace: .global)
@@ -210,7 +217,7 @@ struct DecidirView: View {
                     Text("Empiezo")
                         .font(.serif(32, relativoA: .largeTitle))
                         .foregroundStyle(Paleta.blancoCalido.color)
-                        .opacity(rellenoArriba)
+                        .opacity(rellenoNo > rellenoArriba ? 0 : min(1, max(0, (expansion - 0.15) / 0.3)))
                         .position(x: centro.x, y: alto * 0.46)
                         .allowsHitTesting(false)
                     Text("Ahora no")

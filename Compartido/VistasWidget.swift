@@ -187,7 +187,7 @@ struct VistaLoQueVieneWidget: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 default:
-                    tarjeta(item, lista: lista, indice: i, c)
+                    tarjeta(item, lista: lista, indice: i, despues: datos?.siguientes(en: fecha, cantidad: 6) ?? [], c)
                 }
             } else {
                 vacio(c)
@@ -213,7 +213,8 @@ struct VistaLoQueVieneWidget: View {
 
     /// Franja de color arriba (etiqueta en blanco y flechitas), título en un renglón, la cuenta en una columna
     /// fija y, al lado, los pasos o el lugar y las notas.
-    private func tarjeta(_ item: LoQueViene.Item, lista: [LoQueViene.Item], indice: Int, _ c: ColoresWidget) -> some View {
+    private func tarjeta(_ item: LoQueViene.Item, lista: [LoQueViene.Item], indice: Int, despues proximos: [LoQueViene.Item],
+                         _ c: ColoresWidget) -> some View {
         let chico = familia == .systemSmall
         let grande = familia == .systemLarge
         let color = ColoresWidget.categoria(item.categoria)
@@ -243,17 +244,25 @@ struct VistaLoQueVieneWidget: View {
                 .lineLimit(chico ? 2 : 1)
                 .padding(.horizontal, 14)
                 .padding(.top, chico ? 12 : 10)
-            Spacer(minLength: 4)
-            if chico {
+            if grande {
+                // El grande: cuenta y pasos pegados al título; lugar y nota en cajitas; el aire queda antes de "Después".
+                bloqueGrande(item, c).padding(.horizontal, 14).padding(.top, 12)
+                Spacer(minLength: 8)
+                let otras = proximos.filter { $0 != item }
+                if !otras.isEmpty {
+                    despues(Array(otras.prefix(cabenDespues(item))), c).padding(.horizontal, 14).padding(.bottom, 14)
+                }
+            } else if chico {
+                Spacer(minLength: 4)
                 columnaCuenta(item, c).padding(.horizontal, 14).padding(.bottom, 12)
             } else {
+                Spacer(minLength: 4)
                 HStack(alignment: .bottom, spacing: 12) {
                     columnaCuenta(item, c).frame(width: 100, alignment: .leading)
-                    detalle(item, maximo: grande ? 5 : 2, c).frame(maxWidth: .infinity, alignment: .leading)
+                    detalle(item, maximo: 2, c).frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .padding(.horizontal, 14)
-                .padding(.bottom, grande ? 6 : 12)
-                if grande { despues(lista, actual: indice, c).padding(.horizontal, 14).padding(.bottom, 14) }
+                .padding(.bottom, 12)
             }
         }
         .overlay {
@@ -317,9 +326,114 @@ struct VistaLoQueVieneWidget: View {
         }
     }
 
-    private func despues(_ lista: [LoQueViene.Item], actual: Int, _ c: ColoresWidget) -> some View {
-        let otras = lista.enumerated().filter { $0.offset != actual }.map(\.element)
-        return VStack(alignment: .leading, spacing: 8) {
+    // MARK: El bloque central del grande
+
+    /// Una nota que no entra en un renglón de la cajita.
+    private func notaLarga(_ item: LoQueViene.Item) -> Bool { item.notas.count > 34 }
+
+    /// Con dos cajitas (o la nota a todo el ancho) entran 3 en "Después"; con un renglón o nada, 4.
+    private func cabenDespues(_ item: LoQueViene.Item) -> Int {
+        let hayPasos = !(item.pasos ?? []).isEmpty
+        let lugar = !item.lugar.isEmpty, nota = !item.notas.isEmpty
+        if hayPasos { return lugar && nota ? 3 : 4 }
+        return nota && notaLarga(item) ? 3 : 4
+    }
+
+    @ViewBuilder
+    private func bloqueGrande(_ item: LoQueViene.Item, _ c: ColoresWidget) -> some View {
+        let pasos = item.pasos ?? []
+        let lugar = !item.lugar.isEmpty, nota = !item.notas.isEmpty
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    columnaCuenta(item, c)
+                    Text("\(LoQueViene.cuando(item.inicio, desde: fecha)) – \(LoQueViene.formatoHora.string(from: item.fin))")
+                        .font(.system(size: 11)).foregroundStyle(c.secundario).monospacedDigit().lineLimit(1)
+                }
+                .frame(width: 100, alignment: .leading)
+                Rectangle().fill(c.linea).frame(width: 1).frame(maxHeight: .infinity)
+                if !pasos.isEmpty {
+                    listaPasos(pasos, item, c)
+                } else if lugar || nota {
+                    // Sin pasos: el lugar (y la nota corta) a la derecha de la cuenta, centrados en el alto.
+                    VStack(alignment: .leading, spacing: 6) {
+                        if lugar { cajita("mappin.and.ellipse", "Lugar", item.lugar, renglones: 1, c) }
+                        if nota && !notaLarga(item) { cajita("note.text", "Nota", item.notas, renglones: 1, c) }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                } else {
+                    detalle(item, maximo: 4, c).frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            if !pasos.isEmpty {
+                if lugar && nota {
+                    HStack(alignment: .top, spacing: 7) {
+                        // El lugar ocupa menos que la nota.
+                        cajita("mappin.and.ellipse", "Lugar", item.lugar, renglones: 1, c).frame(width: 118)
+                        cajita("note.text", "Nota", item.notas, renglones: 1, c).frame(maxWidth: .infinity)
+                    }
+                } else if lugar {
+                    renglon("mappin.and.ellipse", "Lugar", item.lugar, c)
+                } else if nota {
+                    renglon("note.text", "Nota", item.notas, c)
+                }
+            } else if nota && notaLarga(item) {
+                cajita("note.text", "Nota", item.notas, renglones: 3, c)
+            }
+        }
+    }
+
+    private func listaPasos(_ pasos: [String], _ item: LoQueViene.Item, _ c: ColoresWidget) -> some View {
+        let color = ColoresWidget.categoria(item.categoria)
+        let maximo = 4
+        let mostrar = pasos.count > maximo ? Array(pasos.prefix(maximo - 1)) : pasos
+        return VStack(alignment: .leading, spacing: 6) {
+            ForEach(Array(mostrar.enumerated()), id: \.offset) { _, p in
+                HStack(spacing: 7) {
+                    Circle().stroke(color, lineWidth: 1.8).frame(width: 13, height: 13)
+                    Text(p).font(.system(size: 15)).foregroundStyle(c.texto).lineLimit(1)
+                }
+            }
+            if pasos.count > maximo {
+                Text("y \(pasos.count - mostrar.count) más").font(.system(size: 12.5)).foregroundStyle(c.secundario).padding(.leading, 20)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Una cajita con rótulo (ícono y "LUGAR" o "NOTA") y el texto debajo.
+    private func cajita(_ icono: String, _ rotulo: String, _ texto: String, renglones: Int, _ c: ColoresWidget) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Label(rotulo.uppercased(), systemImage: icono)
+                .font(.system(size: 9.5, weight: .bold)).tracking(0.5)
+                .foregroundStyle(c.primario)
+                .labelStyle(EtiquetaApretada())
+            Text(texto).font(.system(size: 13, weight: .medium)).foregroundStyle(c.texto)
+                .lineLimit(renglones).truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 9).padding(.vertical, 7)
+        .background(c.linea.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    /// La cajita en un solo renglón: rótulo y texto uno al lado del otro (entra una dirección larga).
+    private func renglon(_ icono: String, _ rotulo: String, _ texto: String, _ c: ColoresWidget) -> some View {
+        HStack(spacing: 8) {
+            Label(rotulo.uppercased(), systemImage: icono)
+                .font(.system(size: 9.5, weight: .bold)).tracking(0.5)
+                .foregroundStyle(c.primario)
+                .labelStyle(EtiquetaApretada())
+                .fixedSize()
+            Text(texto).font(.system(size: 13, weight: .medium)).foregroundStyle(c.texto).lineLimit(1)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 9).padding(.vertical, 7)
+        .background(c.linea.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func despues(_ otras: [LoQueViene.Item], _ c: ColoresWidget) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
             Divider()
             Text("DESPUÉS").font(.system(size: 11, weight: .bold)).foregroundStyle(c.secundario)
             ForEach(Array(otras.enumerated()), id: \.offset) { _, s in
@@ -354,4 +468,11 @@ extension WidgetFamily {
 extension Array {
     /// Leer sin salirse: nil si el índice no existe.
     subscript(seguro i: Int) -> Element? { indices.contains(i) ? self[i] : nil }
+}
+
+/// Ícono y texto bien juntos, para los rótulos de las cajitas del widget.
+struct EtiquetaApretada: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 3) { configuration.icon; configuration.title }
+    }
 }

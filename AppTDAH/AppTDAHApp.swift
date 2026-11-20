@@ -104,7 +104,9 @@ struct RaizView: View {
             if !Task.isCancelled { withAnimation(.easeInOut(duration: 0.6)) { transicion = nil } }
         }
         .sheet(item: $cargarAMano) { c in CargarAMano(categoria: c).environment(\.paleta, paleta) }
-        .sheet(isPresented: $captura.escribiendo) { CapturaView(paleta: paleta) { cargarAMano = $0 } }
+        .sheet(isPresented: $captura.escribiendo, onDismiss: { captura.conMicrofono = false }) {
+            CapturaView(paleta: paleta, conMicrofono: captura.conMicrofono) { cargarAMano = $0 }
+        }
         .sheet(isPresented: $captura.revisando) {
             RevisionView(propuestas: $captura.propuestas, paleta: paleta, dicho: captura.dicho, audio: captura.audio) { captura.revisando = false }
                 .presentationDetents([.fraction(0.82), .large])
@@ -188,6 +190,7 @@ struct RaizView: View {
                 if enInicio && !captura.escribiendo {
                     if !captura.dictado.escuchando { captura.tocar(ctx: ctx) }
                 } else {
+                    captura.conMicrofono = true
                     captura.escribiendo = true
                 }
             case "escribir":

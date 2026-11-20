@@ -116,6 +116,11 @@ enum Guardado {
     static func corregirLugares(_ propuestas: [Propuesta]) async -> [Propuesta] {
         var r = propuestas
         for i in r.indices where r[i].tipo == "tarea" || r[i].tipo == "cita" {
+            // "Casa" es la dirección de Ajustes: no se busca en Mapas.
+            if Casa.es(r[i].lugar) || Casa.es(r[i].direccion) {
+                Casa.completar(lugar: &r[i].lugar, direccion: &r[i].direccion)
+                continue
+            }
             let consulta = (r[i].direccion.isEmpty ? r[i].lugar : r[i].direccion).trimmingCharacters(in: .whitespaces)
             guard consulta.count >= 3, let item = await Viaje.shared.buscarCerca(consulta) else { continue }
             let direccion = Viaje.direccion(de: item)
@@ -228,6 +233,8 @@ final class CapturaInicio {
     var propuestas: [Propuesta] = DatosDemo.pantalla == "captura" ? CapturaView.ejemplo : []
     var revisando = DatosDemo.pantalla == "captura"
     var escribiendo = false
+    /// La captura aparte se abrió para hablar (desde el widget, con algo pendiente): lleva micrófono.
+    var conMicrofono = false
     var aviso: String?
     /// Lo que se dijo, para mostrarlo arriba de la revisión.
     var dicho = DatosDemo.pantalla == "captura" ? CapturaView.dichoEjemplo : ""
@@ -399,10 +406,12 @@ struct RevisionView: View {
 
 // MARK: - Escribir en vez de dictar
 
-/// Escribir (o dictar) lo que hay en la cabeza; la IA lo separa y clasifica, y el usuario revisa antes de guardar.
-/// Se abre manteniendo apretado el círculo de la pantalla principal.
+/// Escribir lo que hay en la cabeza; la IA lo separa y clasifica, y el usuario revisa antes de guardar.
+/// Se abre con "o escribilo" o manteniendo apretado el círculo: ahí es solo para escribir (si elegiste escribir es porque
+/// no podés hablar). Desde el widget de hablar, con algo pendiente de decidir, se abre con micrófono.
 struct CapturaView: View {
     let paleta: Paleta
+    var conMicrofono = false
     var onCargarAMano: (Categoria) -> Void
 
     enum Estado: Equatable { case captura, procesando, revision, aviso(String) }
@@ -437,7 +446,11 @@ struct CapturaView: View {
         .environment(\.paleta, paleta)
         .tint(paleta.primario.color)
         .onDisappear { dictado.detener() }
-        .onAppear { DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { escribiendo = true } }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                if conMicrofono { if !dictado.escuchando { dictado.alternar() } } else { escribiendo = true }
+            }
+        }
         .confirmationDialog("¿Qué querés cargar?", isPresented: $eligiendoTipo, titleVisibility: .visible) {
             ForEach([Categoria.tarea, .cita, .proyecto, .idea]) { c in
                 Button(c.nombre) {
@@ -448,7 +461,53 @@ struct CapturaView: View {
         }
     }
 
+    @ViewBuilder
     private var vistaCaptura: some View {
+        if conMicrofono { vistaConMicrofono } else { vistaEscribir }
+    }
+
+    /// Solo para escribir: la caja grande con el teclado abierto. El teclado se baja tocando afuera de la caja o
+    /// arrastrando hacia abajo; "Listo" queda pegado arriba del teclado.
+    private var vistaEscribir: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Contame en qué estás")
+                    .font(.serif(28, relativoA: .largeTitle))
+                    .padding(.top, 8)
+                    .padding(.bottom, 4)
+                TextField("Llamar al banco mañana, el jueves dentista a las 10, idea para el portfolio…", text: $dictado.texto, axis: .vertical)
+                    .focused($escribiendo)
+                    .lineLimit(5...12)
+                    .padding(14)
+                    .background(paleta.superficie.color, in: RoundedRectangle(cornerRadius: 16))
+                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(paleta.primario.mezcla(paleta.linea, 0.55).color, lineWidth: 1.5))
+                Text("Podés poner varias cosas juntas; después las separo.")
+                    .font(.footnote).foregroundStyle(paleta.secundario.color)
+                    .padding(.horizontal, 2)
+                Button("Cargar a mano, con todos los campos") { escribiendo = false; eligiendoTipo = true }
+                    .font(.subheadline)
+                    .underline()
+                    .foregroundStyle(paleta.secundario.color)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 10)
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .contentShape(Rectangle())
+        .onTapGesture { escribiendo = false }
+        .safeAreaInset(edge: .bottom) {
+            Button("Listo", action: procesar)
+                .buttonStyle(BotonPrimario(paleta: paleta))
+                .disabled(dictado.texto.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(paleta.fondo.color)
+        }
+    }
+
+    private var vistaConMicrofono: some View {
         VStack(spacing: 18) {
             Text("Contame en qué estás")
                 .font(.serif(30, relativoA: .largeTitle))
@@ -485,6 +544,8 @@ struct CapturaView: View {
                 .foregroundStyle(paleta.secundario.color)
         }
         .padding(20)
+        .contentShape(Rectangle())
+        .onTapGesture { escribiendo = false }
     }
 
     private var vistaProcesando: some View {

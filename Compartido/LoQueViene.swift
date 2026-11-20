@@ -105,10 +105,18 @@ struct LoQueViene: Codable, Equatable {
     /// Una cuenta regresiva de más de este tiempo se muestra como hora ("mañana 18:00").
     static let cuentaMaxima: TimeInterval = 6 * 3600
 
+    /// Siempre en 24 horas ("13:30", nunca "01:30"), aunque el iPhone esté en formato de 12 horas.
+    static let formatoHora: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+
     /// "18:00", "mañana 18:00" o "jue 18:00".
     static func cuando(_ fecha: Date, desde ahora: Date) -> String {
         let cal = Calendar.current
-        let hora = fecha.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits).locale(Locale(identifier: "es_AR")))
+        let hora = formatoHora.string(from: fecha)
         if cal.isDate(fecha, inSameDayAs: ahora) { return hora }
         if let manana = cal.date(byAdding: .day, value: 1, to: ahora), cal.isDate(fecha, inSameDayAs: manana) { return "mañana \(hora)" }
         let dia = fecha.formatted(.dateTime.weekday(.abbreviated).locale(Locale(identifier: "es_AR")))

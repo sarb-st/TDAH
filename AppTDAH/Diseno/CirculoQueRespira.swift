@@ -35,7 +35,8 @@ struct CirculoQueRespira<Contenido: View>: View {
 }
 
 enum Medidas {
-    static let circulo: CGFloat = 168
+    /// Un cuarto más chico que al principio (168), para que haya aire hasta las pastillas de Inicio.
+    static let circulo: CGFloat = 124
     /// Centro óptico: un poco por encima de la mitad.
     static let alturaCentro: CGFloat = 0.48
 }

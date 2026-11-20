@@ -232,6 +232,7 @@ struct NuevaTareaView: View {
         t.titulo = titulo.trimmingCharacters(in: .whitespacesAndNewlines)
         t.inicio = inicio
         t.duracionMinutos = duracion
+        Casa.completar(lugar: &lugar, direccion: &direccion)
         t.lugar = lugar.trimmingCharacters(in: .whitespacesAndNewlines)
         t.direccion = direccion.trimmingCharacters(in: .whitespacesAndNewlines)
         t.notas = notas.trimmingCharacters(in: .whitespacesAndNewlines)

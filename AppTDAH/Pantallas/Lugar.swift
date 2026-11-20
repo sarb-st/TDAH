@@ -47,6 +47,29 @@ final class BuscadorLugar: NSObject, MKLocalSearchCompleterDelegate {
     }
 }
 
+/// "Casa": si el lugar es la casa, se usa la dirección cargada en Ajustes. El viaje se calcula desde donde estés,
+/// así sirve también para volver.
+enum Casa {
+    static let nombre = "Casa"
+    static var direccion: String { (UserDefaults.standard.string(forKey: "casa") ?? "").trimmingCharacters(in: .whitespaces) }
+
+    /// "casa", "mi casa", "en casa", "a casa", "zuhause", "home"…
+    static func es(_ texto: String) -> Bool {
+        let t = texto.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            .folding(options: .diacriticInsensitive, locale: Locale(identifier: "es"))
+        let formas: Set<String> = ["casa", "mi casa", "en casa", "a casa", "la casa", "en mi casa", "a mi casa",
+                                   "zuhause", "zu hause", "nach hause", "daheim", "home"]
+        return formas.contains(t)
+    }
+
+    /// Completa la dirección con la de Ajustes si el lugar es la casa (y hay una cargada).
+    static func completar(lugar: inout String, direccion: inout String) {
+        guard es(lugar) || es(direccion), !Casa.direccion.isEmpty else { return }
+        lugar = nombre
+        direccion = Casa.direccion
+    }
+}
+
 /// Campo "Lugar" con sugerencias; al elegir una, completa también la dirección.
 struct CampoLugar: View {
     @Binding var lugar: String
@@ -66,7 +89,24 @@ struct CampoLugar: View {
                     if recienElegido { recienElegido = false; return }
                     if enfocado { buscador.buscar(nuevo) }
                 }
-                .onChange(of: enfocado) { _, foco in if !foco { buscador.limpiar() } }
+                .onChange(of: enfocado) { _, foco in
+                    if !foco { buscador.limpiar(); Casa.completar(lugar: &lugar, direccion: &direccion) }
+                }
+            // "casa": primero la dirección de Ajustes.
+            if enfocado, Casa.es(lugar), !Casa.direccion.isEmpty {
+                Button { elegirCasa() } label: {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "house.fill").foregroundStyle(paleta.primario.color)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(Casa.nombre).font(.subheadline.weight(.semibold)).foregroundStyle(paleta.texto.color)
+                            Text("La dirección de Ajustes").font(.caption).foregroundStyle(paleta.secundario.color).lineLimit(1)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless)
+            }
             ForEach(buscador.resultados, id: \.self) { r in
                 Button { elegir(r) } label: {
                     HStack(alignment: .top, spacing: 8) {
@@ -84,6 +124,14 @@ struct CampoLugar: View {
                 .buttonStyle(.borderless)
             }
         }
+    }
+
+    private func elegirCasa() {
+        recienElegido = true
+        lugar = Casa.nombre
+        direccion = Casa.direccion
+        buscador.limpiar()
+        enfocado = false
     }
 
     private func elegir(_ r: MKLocalSearchCompletion) {

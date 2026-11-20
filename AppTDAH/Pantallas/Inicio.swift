@@ -76,7 +76,7 @@ enum Direccion: CaseIterable {
         case .izquierda: "Calendario"
         case .derecha: "Listado"
         case .arriba: "Cajón"
-        case .abajo: "Todo lo que viene"
+        case .abajo: "Ver todo"
         }
     }
 
@@ -85,7 +85,7 @@ enum Direccion: CaseIterable {
         case .izquierda: "calendar"
         case .derecha: "list.bullet"
         case .arriba: "tray"
-        case .abajo: "chevron.down"
+        case .abajo: "rectangle.stack"
         }
     }
 
@@ -94,7 +94,8 @@ enum Direccion: CaseIterable {
 
 /// La pantalla principal: el círculo es el micrófono (un toque y escucha; mantenerlo apretado, escribir).
 /// Apoyando el dedo en cualquier lugar, el halo se estira hacia el dedo como un imán; llevándolo hasta una de las
-/// cuatro medias pastillas de los bordes y soltando, se abre (calendario, listado, cajón, todo lo que viene).
+/// cuatro medias pastillas y soltando, se abre (calendario, listado, cajón, ver todo). La de abajo asoma por encima
+/// de las tarjetas del fichero; tocar las tarjetas las despliega.
 struct InicioView: View {
     let tareas: [Tarea]
     let ahora: Date
@@ -111,9 +112,11 @@ struct InicioView: View {
     @State private var punta: CGSize = .zero
     @State private var encendida: Direccion?
     @State private var ficheroAbierto = false
+    @State private var altoFichero: CGFloat = 0
 
-    private let alcance: CGFloat = 160
-    private let umbral: CGFloat = 108
+    /// Hasta dónde llega la gota (casi hasta el dedo) y desde dónde se enciende una pastilla.
+    private let alcance: CGFloat = 250
+    private let umbral: CGFloat = 96
 
     var body: some View {
         GeometryReader { geo in
@@ -130,16 +133,17 @@ struct InicioView: View {
 
                 BarraSuperior(navegacion: navegacion)
 
-                HaloEstirado(punta: punta, radio: Medidas.circulo / 2 * 1.08)
-                    .fill(halo.color)
-                    .blur(radius: 16)
-                    .opacity(tocando ? 0.42 : 0)
+                // El imán: el verde salvia (más oscuro que el halo), bien opaco y poco difuso, para que se vea.
+                HaloEstirado(punta: punta, radio: Medidas.circulo / 2 * 1.08, alcance: alcance)
+                    .fill(halo.mezcla(paleta.primario, 0.45).color)
+                    .blur(radius: 8)
+                    .opacity(tocando ? 0.62 : 0)
                     .frame(width: geo.size.width, height: geo.size.height)
                     .position(x: centro.x, y: centro.y)
                     .allowsHitTesting(false)
 
                 circulo
-                    .offset(x: punta.width * 0.06, y: punta.height * 0.06)
+                    .offset(x: punta.width * 0.16, y: punta.height * 0.16)
                     .position(x: centro.x, y: centro.y)
 
                 ForEach(Direccion.allCases, id: \.self) { d in
@@ -170,7 +174,12 @@ struct InicioView: View {
                     } else {
                         Fichero(tareas: tareas, ahora: ahora, abierto: $ficheroAbierto, importante: importante,
                                 firme: Perfil.desde(datosPerfil).firme,
-                                onVerTodo: navegacion.lista, onAbrir: onAbrir, onTermine: onTermine)
+                                onAbrir: onAbrir, onTermine: onTermine)
+                            .background(GeometryReader { g in
+                                Color.clear
+                                    .onAppear { altoFichero = g.size.height }
+                                    .onChange(of: g.size.height) { _, alto in altoFichero = alto }
+                            })
                             .padding(.horizontal, 14)
                             .padding(.bottom, 10)
                     }
@@ -201,7 +210,7 @@ struct InicioView: View {
         dedo = p
         let dx = p.x - centro.x, dy = p.y - centro.y
         let d = max(1, hypot(dx, dy))
-        let largo = min(d * 0.8, alcance)
+        let largo = min(d * 0.94, alcance)
         withAnimation(.interactiveSpring(response: 0.28, dampingFraction: 0.72)) {
             punta = CGSize(width: dx / d * largo, height: dy / d * largo)
         }
@@ -217,7 +226,7 @@ struct InicioView: View {
         case .izquierda: navegacion.calendario()
         case .derecha: navegacion.lista()
         case .arriba: navegacion.cajon()
-        case .abajo: withAnimation(.spring(duration: 0.4, bounce: 0.15)) { ficheroAbierto = true }
+        case .abajo: navegacion.lista()
         case nil: break
         }
     }
@@ -230,17 +239,25 @@ struct InicioView: View {
         case .izquierda: CGPoint(x: tocando ? 32 : 2, y: centro.y)
         case .derecha: CGPoint(x: tamano.width - (tocando ? 32 : 2), y: centro.y)
         case .arriba: CGPoint(x: centro.x, y: tocando ? 80 : 52)
-        case .abajo: CGPoint(x: centro.x, y: tamano.height - (ficheroAbierto ? 400 : 190) + (tocando ? 0 : 24))
+        case .abajo:
+            // Asoma por encima de las tarjetas (la mitad queda detrás) y, al apoyar el dedo, sube entera con aire.
+            // Si asoma la solapa dorada de la importante, se corre por encima de ella.
+            let techo = tareas.isEmpty ? tamano.height : tamano.height - 10 - altoFichero
+            let solapa: CGFloat = haySolapa ? 30 : 0
+            CGPoint(x: centro.x, y: techo - solapa - (tocando ? 21 + 16 : 0))
         }
+    }
+
+    /// Igual que en el Fichero: en firme, la solapa dorada asoma si la importante no es la primera.
+    private var haySolapa: Bool {
+        guard Perfil.desde(datosPerfil).firme, !ficheroAbierto, let imp = importante else { return false }
+        return tareas.first?.uid != imp.uid
     }
 
     private func pastilla(_ d: Direccion, tocando: Bool) -> some View {
         let luz = encendida == d
         let forma = Capsule()
         return VStack(spacing: 3) {
-            if d == .abajo && tocando {
-                Text(d.nombre).font(.caption2).foregroundStyle(paleta.primario.color)
-            }
             Image(systemName: d.icono)
                 .font(.system(size: 16, weight: .medium))
                 .opacity(tocando ? 1 : 0)
@@ -249,11 +266,14 @@ struct InicioView: View {
                 .background(luz ? paleta.primario.color : paleta.primario.mezcla(paleta.fondo, 0.88).color, in: forma)
                 .overlay(forma.stroke(paleta.primario.color.opacity(0.22)))
                 .scaleEffect(luz ? 1.1 : 1)
-            if d != .abajo && tocando {
+        }
+        .overlay(alignment: d == .abajo ? .top : .bottom) {
+            if tocando {
                 Text(d.nombre).font(.caption2).foregroundStyle(paleta.primario.color)
+                    .fixedSize()
+                    .offset(y: d == .abajo ? -16 : 16)
             }
         }
-        .opacity(d == .abajo && !tocando ? 0 : 1)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
@@ -331,6 +351,7 @@ struct InicioView: View {
 struct HaloEstirado: Shape {
     var punta: CGSize
     var radio: CGFloat
+    var alcance: CGFloat = 160
 
     var animatableData: AnimatablePair<CGFloat, CGFloat> {
         get { AnimatablePair(punta.width, punta.height) }
@@ -339,11 +360,11 @@ struct HaloEstirado: Shape {
 
     func path(in r: CGRect) -> Path {
         let c = CGPoint(x: r.midX, y: r.midY)
-        let ext = min(1, hypot(punta.width, punta.height) / 160)
+        let ext = min(1, hypot(punta.width, punta.height) / alcance)
         let base = CGPoint(x: c.x + punta.width * 0.12, y: c.y + punta.height * 0.12)
         let tip = CGPoint(x: c.x + punta.width, y: c.y + punta.height)
         let r1 = radio
-        let r2 = radio * (1 - ext * 0.55)
+        let r2 = radio * (1 - ext * 0.3)
         var p = Path()
         p.addEllipse(in: CGRect(x: base.x - r1, y: base.y - r1, width: r1 * 2, height: r1 * 2))
         let dx = tip.x - base.x, dy = tip.y - base.y, d = hypot(dx, dy)
@@ -362,7 +383,8 @@ struct HaloEstirado: Shape {
 
 // MARK: - Fichero
 
-/// Lo próximo en tres tarjetas apiladas. Un toque las despliega (y aparece "Ver todo"); a los pocos segundos vuelven solas.
+/// Lo próximo en tres tarjetas apiladas. Un toque las despliega; desplegadas, tocar una la abre. A los pocos segundos
+/// vuelven solas. "Ver todo" se abre llevando el halo a la pastilla de abajo.
 /// La importante lleva borde dorado; en firme, si hay otra antes, asoma una solapa dorada detrás, a la izquierda.
 struct Fichero: View {
     let tareas: [Tarea]
@@ -370,7 +392,6 @@ struct Fichero: View {
     @Binding var abierto: Bool
     var importante: Tarea? = nil
     var firme = false
-    var onVerTodo: () -> Void
     var onAbrir: (Tarea) -> Void = { _ in }
     var onTermine: (Tarea) -> Void = { _ in }
 
@@ -396,28 +417,6 @@ struct Fichero: View {
                             withAnimation(.spring(duration: 0.4, bounce: 0.15)) { abierto = true }
                         }
                     }
-            }
-            if abierto {
-                HStack(spacing: 10) {
-                    Button { abierto = false; onVerTodo() } label: {
-                        Label("Ver todo", systemImage: "rectangle.stack")
-                            .font(.subheadline.weight(.semibold))
-                            .padding(.horizontal, 18).padding(.vertical, 9)
-                            .background(paleta.superficie.color, in: Capsule())
-                            .overlay(Capsule().stroke(paleta.linea.color))
-                    }
-                    Button { withAnimation(.spring(duration: 0.4)) { abierto = false } } label: {
-                        Image(systemName: "chevron.down")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(width: 38, height: 38)
-                            .background(paleta.superficie.color, in: Circle())
-                            .overlay(Circle().stroke(paleta.linea.color))
-                    }
-                    .accessibilityLabel("Cerrar")
-                }
-                .foregroundStyle(paleta.primario.color)
-                .padding(.top, 4)
-                .transition(.opacity)
             }
         }
         .background(alignment: .topLeading) {

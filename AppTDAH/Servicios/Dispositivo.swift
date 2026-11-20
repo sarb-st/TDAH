@@ -37,7 +37,10 @@ final class Dictado {
     }
 
     @ObservationIgnored private let reconocedor = SFSpeechRecognizer(locale: Locale(identifier: "es-AR")) ?? SFSpeechRecognizer(locale: Locale(identifier: "es-ES"))
-    @ObservationIgnored private let motor = AVAudioEngine()
+    /// Se arma de cero en cada dictado: uno viejo puede quedar con el formato del micrófono vencido y no arrancar.
+    @ObservationIgnored private var motor = AVAudioEngine()
+    /// Si el filtro de voz no deja arrancar el micrófono, se prueba sin él.
+    @ObservationIgnored private var sinFiltro = false
     @ObservationIgnored private var pedido: SFSpeechAudioBufferRecognitionRequest?
     @ObservationIgnored private var tarea: SFSpeechRecognitionTask?
     @ObservationIgnored private var textoPrevio = ""
@@ -53,7 +56,7 @@ final class Dictado {
     @MainActor
     func empezar(esReintento: Bool = false) async {
         error = nil
-        if !esReintento { reintentos = 0 }
+        if !esReintento { reintentos = 0; sinFiltro = false }
         // Desde un widget, la app puede estar abriéndose todavía: si empieza a escuchar antes, el reconocimiento
         // falla al instante. Espera (hasta 2 s) a que esté activa del todo.
         var espera = 0
@@ -69,8 +72,10 @@ final class Dictado {
 
         do {
             let sesion = AVAudioSession.sharedInstance()
-            try sesion.setCategory(.record, mode: .measurement, options: .duckOthers)
+            // playAndRecord permite auriculares Bluetooth y el filtro de voz de Apple (el de las llamadas).
+            try sesion.setCategory(.playAndRecord, mode: .default, options: [.duckOthers, .allowBluetooth, .defaultToSpeaker])
             try sesion.setActive(true, options: .notifyOthersOnDeactivation)
+            motor = AVAudioEngine()
             let pedido = SFSpeechAudioBufferRecognitionRequest()
             pedido.shouldReportPartialResults = true
             if reconocedor.supportsOnDeviceRecognition { pedido.requiresOnDeviceRecognition = true }
@@ -87,6 +92,13 @@ final class Dictado {
             textoPrevioAleman = textoAleman.isEmpty ? "" : textoAleman + " "
             let entrada = motor.inputNode
             entrada.removeTap(onBus: 0)
+            // Filtro de voz: baja el ruido de la calle y deja la voz adelante.
+            if !sinFiltro {
+                do { try entrada.setVoiceProcessingEnabled(true) } catch {
+                    sinFiltro = true
+                    Registro.anotar("Dictado: el filtro de voz no se pudo activar (\((error as NSError).code)).")
+                }
+            }
             let formato = entrada.outputFormat(forBus: 0)
             guard formato.sampleRate > 0 else { throw NSError(domain: "Dictado", code: 1, userInfo: [NSLocalizedDescriptionKey: "el micrófono todavía no está listo"]) }
             // El audio se guarda también en un archivo, para escucharlo después en la ficha de una idea o un inbox.
@@ -102,8 +114,9 @@ final class Dictado {
                 let n = Dictado.volumen(buffer)
                 DispatchQueue.main.async {
                     guard let self else { return }
+                    // El volumen solo mueve el halo. Que terminaste de hablar se sabe por las palabras (en la calle
+                    // nunca hay silencio de verdad).
                     self.nivel = n > self.nivel ? self.nivel * 0.3 + n * 0.7 : self.nivel * 0.82 + n * 0.18
-                    if n > 0.45 { self.ultimaVoz = .now }
                 }
             }
             motor.prepare()
@@ -146,12 +159,15 @@ final class Dictado {
                 }
             }
         } catch {
-            Registro.anotar("Dictado: \(error.localizedDescription)")
+            let e = error as NSError
+            Registro.anotar("Dictado: no arrancó el micrófono (\(e.domain) \(e.code)): \(e.localizedDescription). Ruta: \(AVAudioSession.sharedInstance().currentRoute.inputs.map(\.portType.rawValue).joined(separator: ", ")).")
+            // Primero prueba sin el filtro de voz; después reintenta.
+            if !sinFiltro { sinFiltro = true }
             if reintentos < 2 {
                 reintentos += 1
                 reintentar()
             } else {
-                self.error = "No te pude escuchar. Tocá de nuevo para hablar."
+                self.error = "No pude usar el micrófono. Probá de nuevo o escribilo."
                 detener()
             }
         }
@@ -300,7 +316,9 @@ final class Viaje: NSObject, CLLocationManagerDelegate {
             guard !casa.isEmpty, let item = await buscar(casa) else { return nil }
             origen = item
         }
-        guard let destino = await buscar(direccion) else { return nil }
+        // "Casa" es la dirección de Ajustes (el origen sigue siendo donde estás: sirve para volver).
+        let hacia = Casa.es(direccion) && !Casa.direccion.isEmpty ? Casa.direccion : direccion
+        guard let destino = await buscar(hacia) else { return nil }
         let medios: [MKDirectionsTransportType] = medio == "auto" ? [.automobile, .transit] : [.transit, .walking, .automobile]
         for tipo in medios {
             let pedido = MKDirections.Request()

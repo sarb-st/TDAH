@@ -268,3 +268,21 @@ Orden: **Listas** ("pongámoslo en papel"), **Ideas** ("cosas para pelotear"), *
 Dura, Dónde**, que se tocan para cambiar. Pasos compactos: marca de voz o ✦, sugeridos con Sumar, "✦ Parece grande · Partir" (los pasos
 más chicos entran en la lista como sugeridos), × siempre, rayitas para mover. Debajo: "+ Escribir un paso" y "✦ Sugerime uno" (entra
 donde corresponde). Si el usuario dicta pasos, la IA usa exactamente esos.
+
+
+## Ajustes del 2026-11-20 (maqueta G aprobada)
+
+Salieron de usar la app unos días. Muestra en `diseno/maqueta-g.html`.
+
+- **Círculo:** baja de 168 a 124 pt en todas las pantallas (sigue siempre del mismo tamaño y en el mismo lugar). Deja aire hasta las pastillas.
+- **Halo imán:** el verde es el halo mezclado con el salvia (más oscuro), opacidad 0,62 y difuminado 8. La gota llega casi hasta el dedo (94 % de la distancia, hasta 250 pt), se adelgaza poco en la punta y el círculo se inclina hacia el dedo (16 %).
+- **Pastilla de abajo:** asoma por encima de las tarjetas del fichero (la mitad queda detrás), como la de arriba desde el borde. Al apoyar el dedo sube entera con aire. Si asoma la solapa dorada, se corre por encima. Abre **Ver todo** (el listado en Hoy).
+- **Fichero:** tocar las tarjetas las despliega (las tres); desplegadas, tocar una la abre. Ya no hay botón "Ver todo".
+- **Escribir:** sin micrófono ni círculo (si elegiste escribir es porque no podés hablar): la pregunta, la caja grande, "Cargar a mano" y "Listo" pegado arriba del teclado. El teclado se baja tocando afuera de la caja o arrastrando hacia abajo, sin botón. Desde el widget de hablar con algo pendiente, sí lleva micrófono.
+- **Decidir:** en el primer cuarto del gesto se pinta el círculo entero; después el color sale a la pantalla. Mientras se pinta, el halo toma el mismo color y el borde claro de adentro se apaga: lleno, no se nota la circunferencia.
+- **Widget grande (opción A):** título; debajo, la cuenta (con la hora de inicio y fin) y, separados por una línea fina, los pasos (15 pt, hasta 4; si hay más, "y N más"). El aire queda antes de "Después".
+  - Con lugar y nota: dos cajitas con rótulo e ícono (el lugar más angosto); la nota en un renglón con "…".
+  - Solo lugar (o solo nota): una cajita baja con el rótulo y el texto en el mismo renglón; "Después" muestra 4.
+  - Sin pasos: el lugar (y la nota corta) a la derecha de la cuenta, centrados en el alto. Una nota larga pasa abajo, a todo el ancho, hasta 3 renglones.
+- **Hora del widget:** siempre en 24 h.
+- **"Casa" en el lugar:** usa la dirección de Ajustes; al escribir, "Casa" aparece primera en las sugerencias.
